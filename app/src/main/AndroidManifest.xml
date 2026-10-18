@@ -32,9 +32,10 @@
         </service>
 
         <activity
-            android:name=".ui.NetworkListActivity"
+            android:name=".ui.MainActivity"
             android:exported="true"
-            android:label="${appLabel}">
+            android:label="${appLabel}"
+            android:theme="@style/Theme.ZerotierFix">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -42,20 +43,11 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.JoinNetworkActivity"
-            android:label="@string/join_network" />
-        <activity
-            android:name=".ui.PrefsActivity"
-            android:label="${appLabel}" />
-        <activity
             android:name=".ui.view.NetworkDetailActivity"
             android:label="@string/network_detail" />
         <activity
             android:name=".ui.MoonOrbitActivity"
             android:label="@string/moon_orbit_activity" />
-        <activity
-            android:name=".ui.PeerListActivity"
-            android:label="@string/peer_list" />
 
         <receiver
             android:name=".service.StartupReceiver"

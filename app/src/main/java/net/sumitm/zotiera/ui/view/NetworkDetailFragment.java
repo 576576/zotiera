@@ -24,7 +24,7 @@ import net.sumitm.zotiera.model.NetworkConfig;
 import net.sumitm.zotiera.model.type.DNSMode;
 import net.sumitm.zotiera.model.type.NetworkStatus;
 import net.sumitm.zotiera.model.type.NetworkType;
-import net.sumitm.zotiera.ui.NetworkListFragment;
+import net.sumitm.zotiera.ui.Extras;
 import net.sumitm.zotiera.ui.viewmodel.NetworkDetailModel;
 import net.sumitm.zotiera.util.Constants;
 
@@ -65,7 +65,7 @@ public class NetworkDetailFragment extends Fragment {
 
         // 如果参数中有网络 ID，就加载对应网络的信息
         if (getArguments() != null) {
-            long networkId = getArguments().getLong(NetworkListFragment.NETWORK_ID_MESSAGE);
+            long networkId = getArguments().getLong(Extras.NETWORK_ID);
             viewModel.doRetrieveDetail(networkId);
         } else {
             Log.e(TAG, "Network ID is not set!");

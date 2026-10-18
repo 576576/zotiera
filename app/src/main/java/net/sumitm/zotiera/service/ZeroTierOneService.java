@@ -53,7 +53,7 @@ import net.sumitm.zotiera.model.AppNode;
 import net.sumitm.zotiera.model.MoonOrbit;
 import net.sumitm.zotiera.model.Network;
 import net.sumitm.zotiera.model.type.DNSMode;
-import net.sumitm.zotiera.ui.NetworkListActivity;
+import net.sumitm.zotiera.ui.MainActivity;
 import net.sumitm.zotiera.util.Constants;
 import net.sumitm.zotiera.util.DatabaseUtils;
 import net.sumitm.zotiera.util.InetAddressUtils;
@@ -940,7 +940,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         }
         var pendingIntent =
                 PendingIntent.getActivity(this, 0,
-                        new Intent(this, NetworkListActivity.class)
+                        new Intent(this, MainActivity.class)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP
                                         | Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         , pendingIntentFlag);

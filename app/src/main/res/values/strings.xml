@@ -154,4 +154,5 @@
     <string name="open_notification_settings">Goto notification settings</string>
     <string name="dont_show_again">Don\'t show again</string>
     <string name="planet_url_requires_https">Planet file must be downloaded over HTTPS</string>
+    <string name="refresh">Refresh</string>
 </resources>
