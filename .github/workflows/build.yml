@@ -1,0 +1,69 @@
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      channel:
+        description: pr 或 release
+        type: string
+        required: true
+      version_name:
+        type: string
+        required: true
+      version_code:
+        type: string
+        required: true
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install NDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;28.2.13676358" > /dev/null
+      - name: Build
+        env:
+          # 版本由调用方的 prep 计算，这里不再推导
+          VERSION_NAME: ${{ inputs.version_name }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          # 正式通道才用到；PR 通道走仓库内的固定密钥
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ "${{ inputs.channel }}" = "release" ]; then
+            TASK=":app:assembleRelease"
+          else
+            TASK=":app:assemblePr"
+          fi
+          ./gradlew "$TASK" \
+            -PzotieraVersionName="$VERSION_NAME" \
+            -PzotieraVersionCode="$VERSION_CODE" --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zotiera-${{ inputs.channel }}
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error

@@ -1,6 +1,6 @@
 # Zotiera 重构计划
 
-- 状态：**决策已确认，待开工**（v2）
+- 状态：**执行中**（M0/M1/M2/M6 已完成，M3/M4 部分完成）
 - 建立日期：2026-10-19
 - 事实依据：[`notes/baseline-audit.md`](../notes/baseline-audit.md)
 - 基线提交：`0373a58`（`origin/master`，工作区干净）
@@ -16,6 +16,7 @@
 | 2026-10-19 | v3 | ABI 收敛为 `arm64-v8a` + `x86_64`；双通道签名（`.pr` 固定密钥 / dispatch `ANDROID_*`）；Room schema 命名自由；新增 §8 Moon 迁移方案；CI 改为五文件矩阵（依据 `ci-matrix`） | M1 T1.6、M2 T2.5/T2.8、M6 T6.1 重写；风险与验证矩阵扩充 |
 | 2026-10-19 | v3.1 | 文档名去掉日期（本文件改名 `plan/init-refactor.md`，对比文档移出 plan 为 `init-baseline-diff.md`）；CI 补 `update_i18n.yml`，建文件但阻塞至 Weblate 接上 | 文档命名与 CI 矩阵（六文件） |
 | 2026-10-19 | v3.2 | `update_i18n.yml` 改为悬空：只留 `workflow_dispatch`，暂不加 `push: main` | CI 矩阵 |
+| 2026-10-19 | v4 | 实际执行：核心 1.16.2 + AGP 9 + Room + 包名切换 + 双通道签名 + CI 六文件落地；Compose 覆盖主界面，详情/月亮仍为 Fragment | 里程碑状态回填，剩余项见 §13 |
 
 ## 1. 目标
 
@@ -343,3 +344,22 @@ M5 Legacy Central：挂起，待 M4 完成后再评估
 - 硬约束（包名、版本号规则、minSdk、子模块纪律）只写在 README 的「硬约束」小节，计划与笔记引用而不复述。
 - 重构前后逐项对照见 [`../init-baseline-diff.md`](../init-baseline-diff.md)。
 - 详细规范见 [`docs/agent/README.md`](../README.md)。
+
+## 13. 执行记录（2026-10-19）
+
+| 里程碑 | 状态 | 证据 |
+| --- | --- | --- |
+| M0 基线固化 | 完成 | symlink 改显式 `sourceSets`；Gradle 9.7.1；`local.properties` |
+| M1 核心 1.16.2 | 完成 | 子模块 `fc5c3ec`；`core/src/main/cpp/CMakeLists.txt`；两 ABI 编译；`readelf` LOAD `Align=0x4000` |
+| M2 包名/构建/数据层 | 完成 | `net.sumitm.zotiera`；AGP 9.4.1；Room schema v1；`.pr` 与 release 双通道签名 |
+| M3 Kotlin 业务层 | 部分 | 事件类全部迁 Kotlin；`service/`、`util/` 仍为 Java |
+| M4 Compose UI | 部分 | 主 Activity/网络/加入/Peers/设置已迁；详情页与月亮页仍为 Fragment + 13 个 layout |
+| M5 Legacy Central | 挂起 | 未动 |
+| M6 CI 与发布 | 完成 | 六个 workflow；版本计算脚本本地验证通过 |
+
+尚未完成（下一轮直接接续）：
+
+1. `service/*`（含 1063 行 `ZeroTierOneService`）与 `util/*` 迁 Kotlin，EventBus → `SharedFlow`。
+2. 网络详情页、月亮页迁 Compose，删除剩余 13 个 layout 与 `SingleFragmentActivity`。
+3. 设置项从 SharedPreferences 迁 DataStore（当前仍用旧 key，行为未变）。
+4. 真机回归：VPN 连通、DNS、多播、planet、moon、16KB 设备安装。

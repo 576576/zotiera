@@ -1,0 +1,28 @@
+name: pr
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: check
+    uses: ./.github/workflows/lint.yml
+
+  build:
+    name: build
+    needs: lint
+    uses: ./.github/workflows/build.yml
+    with:
+      # PR 只验证能不能构建，产物不发布
+      channel: pr
+      version_name: 0.0.0-pr
+      version_code: '1'

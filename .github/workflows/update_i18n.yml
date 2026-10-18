@@ -1,0 +1,29 @@
+# update_i18n.yml
+#
+# 悬空：Weblate 服务尚未接入，本文件只保留手动触发，不加 push 触发。
+# 接上之后要做的改动集中在本文件末尾的 guard 处：
+#   1. 增加 push: master 触发，并用 job 级 if 只放行 Weblate 提交
+#   2. 用真实流程替换 guard：拉取翻译 → 提交 → 推送
+# 在那之前，运行本工作流 = 明确失败，绝不静默成功。
+
+name: update_i18n
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-i18n:
+    name: update-i18n
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report missing prerequisites
+        run: |
+          echo "update_i18n 尚未接线：Weblate 服务未接入。" >&2
+          echo "缺少前置条件：" >&2
+          echo "  - WEBLATE_TOKEN（仓库 secret）" >&2
+          echo "  - Weblate 项目 slug 与目标分支" >&2
+          echo "  - push 触发的提交标记过滤规则" >&2
+          exit 1

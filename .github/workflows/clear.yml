@@ -1,0 +1,35 @@
+name: clear
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: 保留最近多少个 prerelease
+        type: string
+        default: '5'
+
+permissions:
+  contents: write
+
+jobs:
+  clear:
+    name: clear
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Delete surplus prereleases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: ${{ inputs.keep }}
+        run: |
+          set -euo pipefail
+          git rev-parse --git-dir > /dev/null
+          # 从旧到新删除，中途失败时保留最新的
+          gh release list --limit 100 --json tagName,isPrerelease,createdAt \
+            --jq '[.[] | select(.isPrerelease)] | sort_by(.createdAt) | .[:-'"$KEEP"'] | .[].tagName' \
+          | while read -r tag; do
+              [ -z "$tag" ] && continue
+              gh release delete "$tag" --cleanup-tag --yes
+            done

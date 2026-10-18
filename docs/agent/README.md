@@ -70,6 +70,6 @@ Android SDK 必需（compileSdk 37）；NDK 固定 `28.2.13676358`，CMake 由 A
 
 | 文档 | 状态 | 内容 |
 | --- | --- | --- |
-| [plan/init-refactor.md](plan/init-refactor.md) | 决策已确认，待开工 | 核心 1.12.2→1.16.2；Java→Kotlin + Compose/M3；Legacy Central 挂起 |
+| [plan/init-refactor.md](plan/init-refactor.md) | 执行中 | 核心 1.12.2→1.16.2；Java→Kotlin + Compose/M3；Legacy Central 挂起 |
 | [init-baseline-diff.md](init-baseline-diff.md) | 参考 | 重构前后的逐项对比、不变项、用户可感知差异 |
 | [notes/baseline-audit.md](notes/baseline-audit.md) | 事实记录 | 现状审计与证据 |

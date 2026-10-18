@@ -7,6 +7,10 @@ plugins {
 
 def prKeystore = file("${rootProject.projectDir}/ci/signing/pr.keystore")
 
+// CI 通过 -P 注入；本地用默认值。必须在 android 块外求值，块内 `project` 会被委托遮蔽。
+def zotieraVersionName = (project.findProperty('zotieraVersionName') ?: '1.16.2-1').toString()
+def zotieraVersionCode = (project.findProperty('zotieraVersionCode') ?: '1160201').toString().toInteger()
+
 // 正式包只认 4 个环境变量；缺任何一个就不配置 release 签名，构建随即失败而不是产出未签名包。
 def releaseEnvNames = [
         'ANDROID_KEYSTORE_BASE64',
@@ -25,8 +29,8 @@ android {
         applicationId "net.sumitm.zotiera"
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 1160201
-        versionName "1.16.2-1"
+        versionCode zotieraVersionCode
+        versionName zotieraVersionName
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         manifestPlaceholders = [appLabel: 'Zotiera']
@@ -65,7 +69,6 @@ android {
         pr {
             initWith release
             applicationIdSuffix '.pr'
-            versionNameSuffix '-pr'
             manifestPlaceholders = [appLabel: 'Zotiera PR']
             signingConfig signingConfigs.pr
             matchingFallbacks = ['release']

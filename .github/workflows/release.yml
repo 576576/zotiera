@@ -1,0 +1,109 @@
+name: release
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '**/*.md'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: pr 只产出测试包，release 才发布
+        type: choice
+        options: [pr, release]
+        default: pr
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prep:
+    name: prep
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.vars.outputs.channel }}
+      version_name: ${{ steps.vars.outputs.version_name }}
+      version_code: ${{ steps.vars.outputs.version_code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Compute version
+        id: vars
+        run: |
+          set -euo pipefail
+          major=$(sed -n 's/^#define ZEROTIER_ONE_VERSION_MAJOR //p' externals/core/version.h)
+          minor=$(sed -n 's/^#define ZEROTIER_ONE_VERSION_MINOR //p' externals/core/version.h)
+          patch=$(sed -n 's/^#define ZEROTIER_ONE_VERSION_REVISION //p' externals/core/version.h)
+          engine="${major}.${minor}.${patch}"
+          revision=$(tr -d '[:space:]' < version.txt)
+          commits=$(git rev-list --count HEAD)
+
+          # push 没有 dispatch 输入，必须显式走 pr 通道
+          channel="pr"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            channel="${{ inputs.channel }}"
+          fi
+
+          if [ "$channel" = "release" ]; then
+            version_name="${engine}-${revision}"
+            version_code=$(( major * 1000000 + minor * 10000 + patch * 100 + revision ))
+          else
+            version_name="${engine}-pr.${commits}"
+            version_code=$(( 100000 + commits ))
+          fi
+
+          echo "channel=$channel"
+          echo "version_name=$version_name"
+          echo "version_code=$version_code"
+          {
+            echo "channel=$channel"
+            echo "version_name=$version_name"
+            echo "version_code=$version_code"
+          } >> "$GITHUB_OUTPUT"
+
+  lint:
+    name: check
+    needs: prep
+    uses: ./.github/workflows/lint.yml
+
+  build:
+    name: build
+    needs: [prep, lint]
+    uses: ./.github/workflows/build.yml
+    with:
+      channel: ${{ needs.prep.outputs.channel }}
+      version_name: ${{ needs.prep.outputs.version_name }}
+      version_code: ${{ needs.prep.outputs.version_code }}
+    secrets: inherit
+
+  publish:
+    name: publish
+    needs: [prep, build]
+    if: needs.prep.outputs.channel == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: zotiera-release
+          path: dist
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prep.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          gh release create "v${VERSION}" dist/*.apk \
+            --title "Zotiera ${VERSION}" \
+            --notes "ZeroTier 核心 ${VERSION%%-*}；正式签名包。" \
+            --draft
