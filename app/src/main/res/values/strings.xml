@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Zerotier Fix</string>
+    <string name="app_name">Zotiera</string>
 
     <string name="button_connect">Connect</string>
     <string name="button_disconnect">Disconnect</string>
@@ -153,4 +153,5 @@
     <string name="dialog_no_notification_alert_title">Notification Permission Not Granted</string>
     <string name="open_notification_settings">Goto notification settings</string>
     <string name="dont_show_again">Don\'t show again</string>
+    <string name="planet_url_requires_https">Planet file must be downloaded over HTTPS</string>
 </resources>

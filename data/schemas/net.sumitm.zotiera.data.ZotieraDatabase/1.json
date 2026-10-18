@@ -1,0 +1,268 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "fb4b77e6c893bee4ad9ad06bdbc9a528",
+    "entities": [
+      {
+        "tableName": "networks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`network_id` INTEGER NOT NULL, `network_id_str` TEXT, `network_name` TEXT, `last_activated` INTEGER NOT NULL, `network_config_id` INTEGER NOT NULL, PRIMARY KEY(`network_id`))",
+        "fields": [
+          {
+            "fieldPath": "networkId",
+            "columnName": "network_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "networkIdStr",
+            "columnName": "network_id_str",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "networkName",
+            "columnName": "network_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastActivated",
+            "columnName": "last_activated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "networkConfigId",
+            "columnName": "network_config_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "network_id"
+          ]
+        }
+      },
+      {
+        "tableName": "network_configs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `route_via_zerotier` INTEGER NOT NULL, `dns_mode` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "routeViaZeroTier",
+            "columnName": "route_via_zerotier",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsMode",
+            "columnName": "dns_mode",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "dns_servers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `network_id` INTEGER NOT NULL, `nameserver` TEXT, FOREIGN KEY(`network_id`) REFERENCES `network_configs`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "networkId",
+            "columnName": "network_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameserver",
+            "columnName": "nameserver",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_dns_servers_network_id",
+            "unique": false,
+            "columnNames": [
+              "network_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_dns_servers_network_id` ON `${TABLE_NAME}` (`network_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "network_configs",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "network_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "assigned_addresses",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `network_id` INTEGER NOT NULL, `type` INTEGER, `address_bytes` BLOB, `address_string` TEXT, `prefix` INTEGER NOT NULL, FOREIGN KEY(`network_id`) REFERENCES `network_configs`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "networkId",
+            "columnName": "network_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "addressBytes",
+            "columnName": "address_bytes",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "addressString",
+            "columnName": "address_string",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "prefix",
+            "columnName": "prefix",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_assigned_addresses_network_id",
+            "unique": false,
+            "columnNames": [
+              "network_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_assigned_addresses_network_id` ON `${TABLE_NAME}` (`network_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "network_configs",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "network_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "app_node",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`node_id` INTEGER NOT NULL, `node_id_str` TEXT, PRIMARY KEY(`node_id`))",
+        "fields": [
+          {
+            "fieldPath": "nodeId",
+            "columnName": "node_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nodeIdStr",
+            "columnName": "node_id_str",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "node_id"
+          ]
+        }
+      },
+      {
+        "tableName": "moon_orbits",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`moon_world_id` INTEGER NOT NULL, `moon_seed` INTEGER NOT NULL, `from_file` INTEGER NOT NULL, `source` TEXT NOT NULL, `added_at` INTEGER NOT NULL, PRIMARY KEY(`moon_world_id`))",
+        "fields": [
+          {
+            "fieldPath": "moonWorldId",
+            "columnName": "moon_world_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moonSeed",
+            "columnName": "moon_seed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromFile",
+            "columnName": "from_file",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "added_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "moon_world_id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fb4b77e6c893bee4ad9ad06bdbc9a528')"
+    ]
+  }
+}

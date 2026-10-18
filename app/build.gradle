@@ -1,50 +1,104 @@
+import java.util.Base64
+
 plugins {
     id 'com.android.application'
-    id 'org.greenrobot.greendao'
 }
 
-greendao {
-    schemaVersion 22
-    daoPackage 'net.kaaass.zerotierfix.model'
-}
+def prKeystore = file("${rootProject.projectDir}/ci/signing/pr.keystore")
+
+// 正式包只认 4 个环境变量；缺任何一个就不配置 release 签名，构建随即失败而不是产出未签名包。
+def releaseEnvNames = [
+        'ANDROID_KEYSTORE_BASE64',
+        'ANDROID_KEYSTORE_PASSWORD',
+        'ANDROID_KEY_ALIAS',
+        'ANDROID_KEY_PASSWORD',
+]
+def hasReleaseSigning = releaseEnvNames.every { System.getenv(it) }
 
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
+    namespace 'net.sumitm.zotiera'
+    compileSdk rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
 
     defaultConfig {
-        applicationId "net.kaaass.zerotierfix"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
-        versionName "1.0.10"
-        multiDexEnabled true
+        applicationId "net.sumitm.zotiera"
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
+        versionCode 1160201
+        versionName "1.16.2-1"
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        manifestPlaceholders = [appLabel: 'Zotiera']
+
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+    }
+
+    signingConfigs {
+        // 公开的 .pr 测试密钥：只用于测试通道，不得用于正式分发。
+        pr {
+            storeFile prKeystore
+            storePassword 'zotierapr'
+            keyAlias 'zotierapr'
+            keyPassword 'zotierapr'
+        }
+        if (hasReleaseSigning) {
+            release {
+                def keystore = new File(layout.buildDirectory.get().asFile, 'signing/release.keystore')
+                keystore.parentFile.mkdirs()
+                keystore.bytes = Base64.decoder.decode(System.getenv('ANDROID_KEYSTORE_BASE64'))
+                storeFile keystore
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        pr {
+            initWith release
+            applicationIdSuffix '.pr'
+            versionNameSuffix '-pr'
+            manifestPlaceholders = [appLabel: 'Zotiera PR']
+            signingConfig signingConfigs.pr
+            matchingFallbacks = ['release']
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
-        coreLibraryDesugaringEnabled true
     }
 
-    configurations {
-        all {
-            exclude module: 'httpclient'
-            exclude module: 'commons-logging'
-        }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
-    namespace 'net.kaaass.zerotierfix'
+
+    buildFeatures {
+        buildConfig true
+        viewBinding true
+    }
+}
+
+configurations {
+    all {
+        exclude module: 'httpclient'
+        exclude module: 'commons-logging'
+    }
 }
 
 dependencies {
     implementation project(':core')
+    implementation project(':data')
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
@@ -54,17 +108,14 @@ dependencies {
     implementation 'androidx.preference:preference:1.2.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.0'
-    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'commons-io:commons-io:2.11.0'
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.0.4'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    implementation 'org.greenrobot:greendao:3.3.0'
     implementation 'org.greenrobot:eventbus:3.2.0'
     implementation 'commons-validator:commons-validator:1.7'
-    implementation "androidx.multidex:multidex:2.0.1"
     //noinspection AnnotationProcessorOnCompilePath
-    compileOnly 'org.projectlombok:lombok:1.18.20'
-    annotationProcessor 'org.projectlombok:lombok:1.18.20'
+    compileOnly 'org.projectlombok:lombok:1.18.48'
+    annotationProcessor 'org.projectlombok:lombok:1.18.48'
 }

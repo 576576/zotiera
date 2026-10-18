@@ -3,15 +3,18 @@ plugins {
 }
 
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
+    namespace 'com.zerotier.sdk'
+    compileSdk rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
 
     defaultConfig {
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // ZeroTier 核心只保留 64 位
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
     }
 
     buildTypes {
@@ -21,19 +24,22 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            // JNI 的 Java 类由子模块提供。历史上这里是 symlink，
+            // core.symlinks=false 的检出会把它变成普通文件，导致类找不到。
+            java.srcDirs += "${rootProject.projectDir}/externals/core/java/src"
+        }
     }
 
     externalNativeBuild {
         cmake {
-            path file('../externals/core/java/CMakeLists.txt')
-            version '3.22.1'
+            path file('src/main/cpp/CMakeLists.txt')
         }
-    }
-
-    buildFeatures {
-        viewBinding true
     }
 }
 

@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.library'
+    id 'com.google.devtools.ksp'
+}
+
+android {
+    namespace 'net.sumitm.zotiera.data'
+    compileSdk rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdk rootProject.ext.minSdkVersion
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+
+    sourceSets {
+        main {
+            java.srcDirs += 'src/main/kotlin'
+        }
+    }
+}
+
+ksp {
+    arg('room.schemaLocation', "$projectDir/schemas")
+    arg('room.generateKotlin', 'true')
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.15.0'
+    api 'androidx.room:room-runtime:2.8.5'
+    api 'androidx.room:room-ktx:2.8.5'
+    ksp 'androidx.room:room-compiler:2.8.5'
+    api 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
+
+    testImplementation 'junit:junit:4.13.2'
+}
