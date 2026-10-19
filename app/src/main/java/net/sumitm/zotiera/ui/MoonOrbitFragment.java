@@ -93,6 +93,16 @@ public class MoonOrbitFragment extends Fragment {
     private AlertDialog providerDialog = null;
     private ActivityResultLauncher<Intent> moonFileSelectLauncher = null;
 
+    /**
+     * 导出 moon 文件的目标选择器
+     */
+    private ActivityResultLauncher<String> moonFileExportLauncher = null;
+
+    /**
+     * 等待导出到用户选定位置的 moon 记录
+     */
+    private MoonOrbit pendingExport = null;
+
     public MoonOrbitFragment() {
         this.eventBus = EventBus.getDefault();
         this.eventBus.register(this);
@@ -132,6 +142,33 @@ public class MoonOrbitFragment extends Fragment {
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
+        // 初始化 Moon 文件导出回调
+        this.moonFileExportLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/octet-stream"),
+                uri -> {
+                    MoonOrbit moonOrbit = this.pendingExport;
+                    this.pendingExport = null;
+                    if (uri == null || moonOrbit == null) {
+                        return;
+                    }
+                    File source = new File(requireContext().getFilesDir(),
+                            String.format(MoonOrbit.MOON_FILE_PATH, moonOrbit.getMoonWorldId()));
+                    try (FileInputStream in = new FileInputStream(source);
+                         java.io.OutputStream out = requireContext().getContentResolver().openOutputStream(uri)) {
+                        if (out == null)
+                            throw new IOException("Cannot open output stream");
+                        byte[] buffer = new byte[8192];
+                        int read;
+                        while ((read = in.read(buffer)) > 0) {
+                            out.write(buffer, 0, read);
+                        }
+                        out.flush();
+                        Toast.makeText(getContext(), R.string.moon_file_exported, Toast.LENGTH_SHORT).show();
+                    } catch (IOException e) {
+                        Log.e(TAG, "Cannot export moon file", e);
+                        Toast.makeText(getContext(), R.string.cannot_export_moon, Toast.LENGTH_LONG).show();
+                    }
+                });
         // 初始化 Moon 文件选择结果回调
         this.moonFileSelectLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), (activityResult) -> {
             var result = activityResult.getResultCode();
@@ -440,6 +477,10 @@ public class MoonOrbitFragment extends Fragment {
                 if (!(mItem.isCacheFile() && !mItem.getFromFile())) {
                     popupMenu.getMenu().removeItem(R.id.menu_item_delete_moon_orbit_cache);
                 }
+                // 没有本地 moon 文件可导
+                if (!mItem.isCacheFile()) {
+                    popupMenu.getMenu().removeItem(R.id.menu_item_export_moon_orbit);
+                }
                 popupMenu.show();
                 popupMenu.setOnMenuItemClickListener(menuItem -> {
                     if (menuItem.getItemId() == R.id.menu_item_delete_moon_orbit) {
@@ -452,6 +493,12 @@ public class MoonOrbitFragment extends Fragment {
                         ClipData clip = ClipData.newPlainText(getString(R.string.network_id), Long.toHexString(this.mItem.getMoonWorldId()));
                         clipboard.setPrimaryClip(clip);
                         Toast.makeText(getContext(), R.string.text_copied, Toast.LENGTH_SHORT).show();
+                        return true;
+                    } else if (menuItem.getItemId() == R.id.menu_item_export_moon_orbit) {
+                        // 导出缓存中的 moon 文件
+                        MoonOrbitFragment.this.pendingExport = this.mItem;
+                        MoonOrbitFragment.this.moonFileExportLauncher.launch(
+                                String.format("%016x.moon", this.mItem.getMoonWorldId()));
                         return true;
                     } else if (menuItem.getItemId() == R.id.menu_item_delete_moon_orbit_cache) {
                         // 删除缓存文件

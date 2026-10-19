@@ -156,4 +156,7 @@
     <string name="planet_url_requires_https">Planet file must be downloaded over HTTPS</string>
     <string name="refresh">Refresh</string>
     <string name="peer_version_unknown" translatable="false">unknown</string>
+    <string name="export_moon_file">Export moon file</string>
+    <string name="moon_file_exported">Moon file exported</string>
+    <string name="cannot_export_moon">Cannot export moon file</string>
 </resources>

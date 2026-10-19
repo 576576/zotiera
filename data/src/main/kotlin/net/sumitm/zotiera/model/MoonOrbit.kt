@@ -37,6 +37,7 @@ class MoonOrbit @JvmOverloads constructor(
 
     fun deleteCacheFile(context: Context) {
         moonFile(context).delete()
+        isCacheFile = false
     }
 
     private fun moonFile(context: Context): File =
