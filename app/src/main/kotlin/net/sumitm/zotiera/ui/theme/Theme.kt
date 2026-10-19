@@ -87,6 +87,9 @@ data class ZotieraType(
 
 val LocalZotieraType = staticCompositionLocalOf { ZotieraType() }
 
+/** 当前是否深色。需要按明暗换色的地方（如角色胶囊）读它，别直接读系统的。 */
+val LocalDarkTheme = staticCompositionLocalOf { false }
+
 /** 品牌种子色。 */
 val SeedColor = Color(0xFFFF6A00)
 
@@ -132,6 +135,7 @@ fun ZotieraTheme(
     CompositionLocalProvider(
         LocalUiMode provides uiMode,
         LocalZotieraType provides ZotieraType(),
+        LocalDarkTheme provides dark,
     ) {
         when (uiMode) {
             UiMode.Material -> {

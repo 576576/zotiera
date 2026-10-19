@@ -33,7 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
@@ -59,6 +61,8 @@ fun AppButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier,
 /**
  * 对话框。Miuix 用 OverlayDialog，Material 用 AlertDialog——各自用自己那套，
  * 不混用，否则 Miuix 下会没有 MaterialTheme 而退化成黑块。
+ *
+ * [destructive] 把确认按钮的字染成错误色，用于删除这类不可撤销的操作。
  */
 @Composable
 fun AppDialog(
@@ -67,8 +71,10 @@ fun AppDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     dismissLabel: String? = null,
+    destructive: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val colors = appColors()
     when (LocalUiMode.current) {
         UiMode.Miuix -> OverlayDialog(show = true, title = title, onDismissRequest = onDismiss) {
             Column {
@@ -83,7 +89,11 @@ fun AppDialog(
                         }
                     }
                     MiuixButton(onClick = onConfirm, modifier = Modifier.weight(1f)) {
-                        MiuixText(confirmLabel)
+                        if (destructive) {
+                            MiuixText(confirmLabel, color = colors.error)
+                        } else {
+                            MiuixText(confirmLabel)
+                        }
                     }
                 }
             }
@@ -93,7 +103,16 @@ fun AppDialog(
             onDismissRequest = onDismiss,
             title = { Text(title) },
             text = { Column { content() } },
-            confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel) } },
+            confirmButton = {
+                TextButton(
+                    onClick = onConfirm,
+                    colors = if (destructive) {
+                        androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = colors.error)
+                    } else {
+                        androidx.compose.material3.ButtonDefaults.textButtonColors()
+                    },
+                ) { Text(confirmLabel) }
+            },
             dismissButton = dismissLabel?.let { { TextButton(onClick = onDismiss) { Text(it) } } },
         )
     }
@@ -210,6 +229,8 @@ data class AppColors(
     val onSurfaceVariant: Color,
     val primary: Color,
     val error: Color,
+    /** 压在 [error] 实心块上的字色 */
+    val onError: Color,
     val surfaceContainer: Color,
 )
 
@@ -217,12 +238,70 @@ data class AppColors(
 fun appColors(): AppColors = when (LocalUiMode.current) {
     UiMode.Miuix -> {
         val c = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
-        AppColors(c.onSurface, c.onSurfaceVariantSummary, c.primary, c.error, c.surfaceContainer)
+        AppColors(c.onSurface, c.onSurfaceVariantSummary, c.primary, c.error, c.onError, c.surfaceContainer)
     }
 
     UiMode.Material -> {
         val c = MaterialTheme.colorScheme
-        AppColors(c.onSurface, c.onSurfaceVariant, c.primary, c.error, c.surfaceContainerLow)
+        AppColors(c.onSurface, c.onSurfaceVariant, c.primary, c.error, c.onError, c.surfaceContainerLow)
+    }
+}
+
+/**
+ * 胶囊标签：小号圆角铭牌，放列表行尾部。
+ *
+ * 底色由 [tint] 按 16% 透明算出来，两种风格长得一样，也不用去凑各自的主题色板。
+ */
+@Composable
+fun AppRoleChip(label: String, tint: Color, modifier: Modifier = Modifier) {
+    val type = LocalZotieraType.current
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .background(tint.copy(alpha = 0.16f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = type.rowSummary.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+            color = tint,
+        )
+    }
+}
+
+/**
+ * 危险操作块：和上面那些卡片同宽同圆角，整块实心红底。
+ *
+ * 圆角取各自风格卡片的值，避免和相邻卡片对不齐。
+ */
+@Composable
+fun AppDangerCard(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = appColors()
+    val type = LocalZotieraType.current
+    val shape = when (LocalUiMode.current) {
+        // Miuix 卡片默认 16dp，Material 那套 AppCard 用 20dp
+        UiMode.Miuix -> RoundedCornerShape(16.dp)
+        UiMode.Material -> RoundedCornerShape(20.dp)
+    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(colors.error)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = colors.onError, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = type.rowTitle, color = colors.onError, fontWeight = FontWeight.Medium)
     }
 }
 

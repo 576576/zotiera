@@ -7,6 +7,7 @@
     <string name="custom_dns_tab_title">Custom DNS</string>
     <string name="default_route">Route all traffic through ZeroTier. (Requires external configuration of the network)</string>
     <string name="delete_network">Delete</string>
+    <string name="delete_network_warning">This removes it from the list only. You have to add the network again to reconnect.</string>
     <string name="device_label">Device:</string>
     <string name="dns_label_string">DNS</string>
     <string name="dnsv4">IPv4 DNS</string>

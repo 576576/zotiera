@@ -3,12 +3,14 @@ package net.sumitm.zotiera.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,9 +25,12 @@ import net.sumitm.zotiera.R
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.component.AppCard
+import net.sumitm.zotiera.ui.component.AppDangerCard
+import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppKeyValueRow
 import net.sumitm.zotiera.ui.component.AppTopBar
-import androidx.compose.foundation.layout.fillMaxWidth
+import net.sumitm.zotiera.ui.component.appColors
+import net.sumitm.zotiera.ui.theme.LocalZotieraType
 
 /** 标题用：没有名字时退回网络 ID，避免顶栏只剩一个「-」。 */
 @Composable
@@ -122,6 +127,7 @@ fun NetworkDetailPane(
     onDelete: (() -> Unit)? = null,
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
+    val type = LocalZotieraType.current
 
     LazyColumn(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
@@ -131,36 +137,39 @@ fun NetworkDetailPane(
         item { NetworkAddressCard(config) }
         if (onDelete != null) {
             item {
-                androidx.compose.material3.TextButton(
+                AppDangerCard(
+                    label = stringResource(R.string.delete_network),
+                    icon = Icons.Rounded.Delete,
                     onClick = { confirmDelete = true },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(R.string.delete_network),
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                    )
-                }
+                )
             }
         }
     }
 
     if (confirmDelete && onDelete != null) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text(stringResource(R.string.delete_network)) },
-            text = { Text(networkDisplayName(network, config)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDelete = false
-                    onDelete()
-                }) { Text(stringResource(R.string.delete_network)) }
+        AppDialog(
+            title = stringResource(R.string.delete_network),
+            confirmLabel = stringResource(R.string.delete_network),
+            onConfirm = {
+                confirmDelete = false
+                onDelete()
             },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-        )
+            onDismiss = { confirmDelete = false },
+            dismissLabel = stringResource(android.R.string.cancel),
+            destructive = true,
+        ) {
+            Text(
+                text = networkTitle(network, config),
+                style = type.rowTitle,
+                color = appColors().onSurface,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.delete_network_warning),
+                style = type.rowSummary,
+                color = appColors().onSurfaceVariant,
+            )
+        }
     }
 }
 

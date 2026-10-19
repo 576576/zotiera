@@ -3,7 +3,7 @@ package net.sumitm.zotiera.ui
 import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
- * 界面风格。默认 Miuix，与 KernelSU 一致：Material 是备选。
+ * 界面风格。默认 Miuix，Material 是备选。
  */
 enum class UiMode(val value: String, val label: String) {
     Miuix("miuix", "Miuix"),

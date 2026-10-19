@@ -1100,7 +1100,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         var notification = new NotificationCompat.Builder(this, Constants.CHANNEL_ID)
                 .setPriority(1)
                 .setOngoing(true)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_stat_zerotier)
                 .setContentTitle(getString(R.string.notification_title_connected))
                 .setContentText(notificationText)
                 .setColor(ContextCompat.getColor(getApplicationContext(), R.color.zerotier_orange))

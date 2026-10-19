@@ -7,6 +7,7 @@
     <string name="custom_dns_tab_title">自定义 DNS</string>
     <string name="default_route">通过 ZeroTier 路由所有流量（需要对网络进行额外配置）</string>
     <string name="delete_network">删除</string>
+    <string name="delete_network_warning">删除只是把它从列表里移除，之后需要重新加入才能连接。</string>
     <string name="device_label">设备:</string>
     <string name="dns_label_string">DNS</string>
     <string name="dnsv4">IPv4 DNS</string>
