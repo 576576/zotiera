@@ -8,6 +8,8 @@ package net.sumitm.zotiera.util;
 public class Constants {
     /** 界面风格：material / miuix */
     public static final String PREF_UI_STYLE = "ui_style";
+    /** 全局：所有流量走 ZeroTier */
+    public static final String PREF_ROUTE_ALL_TRAFFIC = "route_all_traffic";
     /** 配色模式：0 跟随系统 / 1 浅色 / 2 深色 / 3 AMOLED */
     public static final String PREF_COLOR_MODE = "color_mode";
 

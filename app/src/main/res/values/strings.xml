@@ -185,4 +185,15 @@
     <string name="color_mode_summary">System, light, dark or pure black</string>
     <string name="network_name_label">Name</string>
     <string name="mac_address_label">MAC Address</string>
+    <string name="notification_text_connected_multi">%d networks</string>
+    <plurals name="network_count">
+        <item quantity="one">%d network</item>
+        <item quantity="other">%d networks</item>
+    </plurals>
+    <string name="status_connecting">Connecting</string>
+    <string name="device_title">Device</string>
+    <string name="client_version">Client version</string>
+    <string name="core_version">Core version</string>
+    <string name="tunnel_mtu">Tunnel MTU</string>
+    <string name="tunnel_needs_network">Join at least one network first</string>
 </resources>

@@ -2,20 +2,29 @@ package net.sumitm.zotiera.ui.screens
 
 import android.app.Activity
 import android.net.VpnService
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,86 +34,97 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.model.Network
+import net.sumitm.zotiera.ui.NodeUiState
 import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.component.AppCard
 import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppHeader
-import net.sumitm.zotiera.ui.component.AppKeyValueRow
 import net.sumitm.zotiera.ui.component.AppListRow
-import net.sumitm.zotiera.ui.component.AppTopBar
+import net.sumitm.zotiera.ui.component.AppSwitch
+import net.sumitm.zotiera.ui.component.AppTunnelSwitch
 import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.isWideLayout
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
-import net.sumitm.zotiera.ui.component.preference.PreferenceSwitch
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 import net.sumitm.zotiera.util.NetworkIdUtils
 
 @Composable
-fun OverviewScreen(viewModel: NodeViewModel) {
+fun OverviewScreen(viewModel: NodeViewModel, onOpenDevice: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showJoin by remember { mutableStateOf(false) }
-    var pendingNetworkId by remember { mutableStateOf<Long?>(null) }
     var selectedId by remember { mutableStateOf<Long?>(null) }
 
-    val vpnPermission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val id = pendingNetworkId
-        pendingNetworkId = null
-        if (result.resultCode == Activity.RESULT_OK && id != null) viewModel.startService(id)
+    val vpnPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            viewModel.startTunnel()
+        }
     }
 
     LaunchedEffect(Unit) { viewModel.refresh() }
 
-    fun connect(network: Network, connect: Boolean) {
-        if (!connect) {
-            viewModel.stopService()
+    // 详情展开时，返回键先收起详情，而不是退出应用
+    BackHandler(enabled = selectedId != null) { selectedId = null }
+
+    // 隧道状态变化提示
+    var lastRunning by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(state.tunnelRunning) {
+        val now = state.tunnelRunning
+        val message = when {
+            now && lastRunning == false -> R.string.connected_toast
+            !now && lastRunning == true -> R.string.disconnected_toast
+            else -> null
+        }
+        lastRunning = now
+        message?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun toggleTunnel(on: Boolean) {
+        if (!on) {
+            viewModel.stopTunnel()
+            return
+        }
+        if (state.joinedNetworkIds.isEmpty()) {
+            android.widget.Toast.makeText(
+                context,
+                R.string.tunnel_needs_network,
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
             return
         }
         val prepare = VpnService.prepare(context)
         if (prepare != null) {
-            pendingNetworkId = network.networkId
             vpnPermission.launch(prepare)
         } else {
-            viewModel.startService(network.networkId)
+            viewModel.startTunnel()
         }
     }
 
     val wide = isWideLayout()
     val selected = state.networks.firstOrNull { it.networkId == selectedId }
 
-    // 详情展开时，返回键先收起详情，而不是直接退出应用
-    androidx.activity.compose.BackHandler(enabled = selectedId != null) { selectedId = null }
-
-    // 连接 / 断开提示
-    var lastConnected by remember { mutableStateOf<Long?>(null) }
-    LaunchedEffect(state.connectNetworkId) {
-        val now = state.connectNetworkId
-        val message = when {
-            now != null && now != lastConnected -> R.string.connected_toast
-            now == null && lastConnected != null -> R.string.disconnected_toast
-            else -> null
-        }
-        lastConnected = now
-        message?.let { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show() }
-    }
-
     if (!wide && selected != null) {
-        Column(Modifier.fillMaxSize()) {
-            AppTopBar(
-                title = selected.networkName?.takeIf { it.isNotBlank() }
-                    ?: stringResource(R.string.network_detail_label),
-                onBack = { selectedId = null },
-            )
-            NetworkDetail(viewModel, selected, Modifier.fillMaxSize())
-        }
+        NetworkDetailScreen(
+            viewModel = viewModel,
+            network = selected,
+            config = state.configs[selected.networkId],
+            onBack = { selectedId = null },
+        )
     } else {
         Row(Modifier.fillMaxSize()) {
             Box(Modifier.weight(if (wide) 0.42f else 1f).fillMaxSize()) {
@@ -113,10 +133,10 @@ fun OverviewScreen(viewModel: NodeViewModel) {
                         title = stringResource(R.string.app_name),
                         subtitle = stringResource(R.string.network_list),
                     )
-                    NodeSummary(
-                        nodeId = state.nodeId,
-                        online = state.online,
-                        clientVersion = state.clientVersion,
+                    DeviceCard(
+                        state = state,
+                        onOpen = onOpenDevice,
+                        onToggleTunnel = ::toggleTunnel,
                     )
                     if (state.networks.isEmpty()) {
                         Text(
@@ -127,34 +147,15 @@ fun OverviewScreen(viewModel: NodeViewModel) {
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 8.dp, bottom = 96.dp),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(state.networks, key = { it.networkId }) { network ->
-                                val displayName = network.networkName?.takeIf { it.isNotBlank() }
-                                AppListRow(
-                                    title = displayName ?: java.lang.Long.toHexString(network.networkId),
-                                    // 没有名字时标题已经是 ID，别再重复一行
-                                    subtitle = if (displayName != null) {
-                                        java.lang.Long.toHexString(network.networkId)
-                                    } else {
-                                        null
-                                    },
-                                    monoSubtitle = true,
-                                    leading = Icons.Rounded.Language,
-                                    leadingTint = if (state.connectNetworkId == network.networkId) {
-                                        appColors().primary
-                                    } else {
-                                        androidx.compose.ui.graphics.Color.Unspecified
-                                    },
-                                    trailing = {
-                                        net.sumitm.zotiera.ui.component.AppSwitch(
-                                            checked = state.connectNetworkId == network.networkId,
-                                            onCheckedChange = { connect(network, it) },
-                                        )
-                                    },
+                                NetworkRow(
+                                    network = network,
+                                    joined = network.lastActivated,
                                     onClick = { selectedId = network.networkId },
-                                    onLongClick = { viewModel.deleteNetwork(network) },
+                                    onJoinedChange = { joined -> viewModel.setJoined(network, joined) },
                                 )
                             }
                         }
@@ -170,7 +171,14 @@ fun OverviewScreen(viewModel: NodeViewModel) {
             if (wide) {
                 Box(Modifier.weight(0.58f).fillMaxSize()) {
                     if (selected != null) {
-                        NetworkDetail(viewModel, selected, Modifier.fillMaxSize())
+                        NetworkDetailPane(
+                            network = selected,
+                            config = state.configs[selected.networkId],
+                            onDelete = {
+                                viewModel.deleteNetwork(selected)
+                                selectedId = null
+                            },
+                        )
                     } else {
                         Text(
                             text = stringResource(R.string.select_a_network),
@@ -186,125 +194,114 @@ fun OverviewScreen(viewModel: NodeViewModel) {
     if (showJoin) {
         JoinNetworkDialog(
             onDismiss = { showJoin = false },
-            onConfirm = { id, defaultRoute, dnsMode ->
-                viewModel.joinNetwork(NetworkIdUtils.hexStringToLong(id), id, defaultRoute, dnsMode)
+            onConfirm = { id, dnsMode ->
+                viewModel.joinNetwork(NetworkIdUtils.hexStringToLong(id), id, false, dnsMode)
                 showJoin = false
             },
         )
     }
 }
 
+/**
+ * 设备卡：图标 + 节点 ID + 「N 个网络 · 在线」+ 隧道总开关。
+ *
+ * 总开关只管隧道；加入了哪些网络由列表里各自的开关决定。
+ */
 @Composable
-private fun statusLabel(status: com.zerotier.sdk.VirtualNetworkStatus?): String = when (status) {
-    com.zerotier.sdk.VirtualNetworkStatus.NETWORK_STATUS_REQUESTING_CONFIGURATION ->
-        stringResource(R.string.network_status_requesting)
-    com.zerotier.sdk.VirtualNetworkStatus.NETWORK_STATUS_OK ->
-        stringResource(R.string.network_status_ok)
-    com.zerotier.sdk.VirtualNetworkStatus.NETWORK_STATUS_ACCESS_DENIED ->
-        stringResource(R.string.network_status_access_denied)
-    com.zerotier.sdk.VirtualNetworkStatus.NETWORK_STATUS_NOT_FOUND ->
-        stringResource(R.string.network_status_not_found)
-    com.zerotier.sdk.VirtualNetworkStatus.NETWORK_STATUS_PORT_ERROR ->
-        stringResource(R.string.network_status_port_error)
-    com.zerotier.sdk.VirtualNetworkStatus.NETWORK_STATUS_AUTHENTICATION_REQUIRED ->
-        stringResource(R.string.network_status_auth_required)
-    com.zerotier.sdk.VirtualNetworkStatus.NETWORK_STATUS_CLIENT_TOO_OLD ->
-        stringResource(R.string.network_status_client_too_old)
-    null -> "-"
-    else -> status.name
-}
-
-@Composable
-private fun NodeSummary(nodeId: String, online: Boolean, clientVersion: String) {
+private fun DeviceCard(
+    state: NodeUiState,
+    onOpen: () -> Unit,
+    onToggleTunnel: (Boolean) -> Unit,
+) {
     val type = LocalZotieraType.current
-    AppCard(Modifier.padding(horizontal = 16.dp)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(stringResource(R.string.device_label), style = type.rowSummary, color = appColors().onSurfaceVariant)
-            Text(nodeId.ifEmpty { "----------" }, style = type.mono, color = appColors().onSurface)
-            if (clientVersion.isNotEmpty()) {
-                Text(clientVersion, style = type.monoSmall, color = appColors().onSurfaceVariant)
-            }
-        }
+    val colors = appColors()
+    val subtitle = buildString {
+        append(pluralStringResource(R.plurals.network_count, state.joinedNetworkIds.size, state.joinedNetworkIds.size))
+        append(" · ")
+        append(
+            stringResource(
+                when {
+                    state.tunnelRunning && state.online -> R.string.status_online
+                    state.tunnelRunning -> R.string.status_connecting
+                    else -> R.string.status_offline
+                }
+            )
+        )
     }
-}
-
-@Composable
-private fun NetworkDetail(viewModel: NodeViewModel, network: Network, modifier: Modifier = Modifier) {
-    val config by viewModel.detailConfig.collectAsStateWithLifecycle()
-    LaunchedEffect(network.networkId) { viewModel.requestNetworkConfig(network.networkId) }
-    val type = LocalZotieraType.current
-
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // 基本信息放一张卡片；只有分配到的 IP 单独成组（可能有多条）
-        item {
-            AppCard {
-                val name = config?.name?.takeIf { it.isNotBlank() }
-                    ?: network.networkName?.takeIf { it.isNotBlank() }
-                val mac = config?.let {
-                    com.zerotier.sdk.util.StringUtils.macAddressToString(it.mac)
-                } ?: "-"
-                val dns = network.networkConfig?.dnsServers.orEmpty()
-                    .mapNotNull { it.nameserver?.takeIf(String::isNotBlank) }
-                Column(Modifier.padding(vertical = 8.dp)) {
-                    AppKeyValueRow(stringResource(R.string.network_name_label), name ?: "-")
-                    AppKeyValueRow(stringResource(R.string.network_id), java.lang.Long.toHexString(network.networkId), mono = true)
-                    AppKeyValueRow(stringResource(R.string.mac_address_label), mac, mono = true)
-                    AppKeyValueRow(stringResource(R.string.network_status_label), statusLabel(config?.status))
-                    AppKeyValueRow("MTU", config?.mtu?.toString() ?: "-", mono = true)
-                    AppKeyValueRow(
-                        label = stringResource(R.string.dns_label_string),
-                        value = if (dns.isEmpty()) "-" else dns.joinToString(", "),
-                        mono = dns.isNotEmpty(),
-                    )
-                }
-            }
-        }
-        item {
-            AppCard {
-                Column(Modifier.padding(vertical = 8.dp)) {
-                    val addresses = config?.assignedAddresses
-                    if (addresses.isNullOrEmpty()) {
-                        AppKeyValueRow(stringResource(R.string.ip_addresses_label), "-")
-                    } else {
-                        addresses.forEach { address ->
-                            AppKeyValueRow(
-                                label = stringResource(R.string.ip_addresses_label),
-                                value = "${address.address.hostAddress}/${address.port}",
-                                mono = true,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            AppCard {
-                PreferenceSwitch(
-                    title = stringResource(R.string.route_all_traffic),
-                    summary = stringResource(R.string.route_all_traffic_summary),
-                    checked = network.networkConfig?.routeViaZeroTier == true,
-                    onCheckedChange = { viewModel.setRouteViaZeroTier(network, it) },
+    AppCard(Modifier.padding(horizontal = 16.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpen)
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 图标放一个浅色圆底，和列表里的单色小图标区分开
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(
+                        if (state.tunnelRunning) colors.primary.copy(alpha = 0.14f)
+                        else colors.onSurfaceVariant.copy(alpha = 0.10f)
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Smartphone,
+                    contentDescription = null,
+                    tint = if (state.tunnelRunning) colors.primary else colors.onSurfaceVariant,
+                    modifier = Modifier.size(26.dp),
                 )
             }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = state.nodeId.ifEmpty { "----------" },
+                    style = type.deviceTitle,
+                    color = colors.onSurface,
+                )
+                Text(text = subtitle, style = type.rowSummary, color = colors.onSurfaceVariant)
+            }
+            Spacer(Modifier.width(12.dp))
+            AppTunnelSwitch(checked = state.tunnelRunning, onCheckedChange = onToggleTunnel)
         }
     }
 }
 
+/** 网络行：开关 = 加入/离开该网络；点行 = 看详情。 */
 @Composable
-private fun JoinNetworkDialog(onDismiss: () -> Unit, onConfirm: (String, Boolean, Int) -> Unit) {
+private fun NetworkRow(
+    network: Network,
+    joined: Boolean,
+    onClick: () -> Unit,
+    onJoinedChange: (Boolean) -> Unit,
+) {
+    val displayName = network.networkName?.takeIf { it.isNotBlank() }
+    AppListRow(
+        title = displayName ?: java.lang.Long.toHexString(network.networkId),
+        subtitle = if (displayName != null) java.lang.Long.toHexString(network.networkId) else null,
+        monoSubtitle = true,
+        leading = Icons.Rounded.Language,
+        leadingTint = if (joined) appColors().primary else Color.Unspecified,
+        trailing = { AppSwitch(checked = joined, onCheckedChange = onJoinedChange) },
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun JoinNetworkDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, Int) -> Unit,
+) {
     var networkId by remember { mutableStateOf("") }
-    var defaultRoute by remember { mutableStateOf(false) }
     var dnsMode by remember { mutableStateOf(1) }
     val valid = networkId.length == 16 && networkId.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
 
     AppDialog(
         title = stringResource(R.string.join_network),
         confirmLabel = stringResource(android.R.string.ok),
-        onConfirm = { if (valid) onConfirm(networkId.lowercase(), defaultRoute, dnsMode) },
+        onConfirm = { if (valid) onConfirm(networkId.lowercase(), dnsMode) },
         onDismiss = onDismiss,
         dismissLabel = stringResource(android.R.string.cancel),
     ) {
@@ -313,12 +310,6 @@ private fun JoinNetworkDialog(onDismiss: () -> Unit, onConfirm: (String, Boolean
                 value = networkId,
                 onValueChange = { networkId = it.trim() },
                 label = stringResource(R.string.network_id),
-            )
-            PreferenceSwitch(
-                title = stringResource(R.string.default_route),
-                summary = null,
-                checked = defaultRoute,
-                onCheckedChange = { defaultRoute = it },
             )
             PreferenceSelect(
                 title = stringResource(R.string.network_dns_mode),

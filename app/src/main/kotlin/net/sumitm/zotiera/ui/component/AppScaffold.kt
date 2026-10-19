@@ -46,7 +46,11 @@ fun AppScaffold(
 }
 
 @Composable
-fun AppTopBar(title: String, onBack: (() -> Unit)? = null) {
+fun AppTopBar(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    action: @Composable () -> Unit = {},
+) {
     val tint = when (LocalUiMode.current) {
         UiMode.Miuix -> top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface
         UiMode.Material -> MaterialTheme.colorScheme.onSurface
@@ -59,8 +63,17 @@ fun AppTopBar(title: String, onBack: (() -> Unit)? = null) {
         }
     }
     when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixTopAppBar(title = title, navigationIcon = back)
-        UiMode.Material -> TopAppBar(title = { Text(title) }, navigationIcon = back)
+        UiMode.Miuix -> MiuixTopAppBar(
+            title = title,
+            navigationIcon = back,
+            actions = { action() },
+        )
+
+        UiMode.Material -> TopAppBar(
+            title = { Text(title) },
+            navigationIcon = back,
+            actions = { action() },
+        )
     }
 }
 

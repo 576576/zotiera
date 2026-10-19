@@ -1,6 +1,15 @@
 package net.sumitm.zotiera.ui.component
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -269,6 +279,58 @@ fun AppSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
         UiMode.Material -> androidx.compose.material3.Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+        )
+    }
+}
+
+
+/** 隧道开关的绿色：与 Miuix 默认主色区分开，只用于「已连接」。 */
+private val TunnelGreen = Color(0xFF34C759)
+
+/**
+ * 设备卡上的隧道开关：整条轨道变绿，轨道左侧留一个对勾。
+ *
+ * 框架自带的 Switch 只有滑块、没有轨道上的对勾（Miuix 的 Switch 同样没有），
+ * 这里按同一套尺寸自己画，点击与无障碍语义仍走 toggleable。
+ */
+@Composable
+fun AppTunnelSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = appColors()
+    val trackWidth = 58.dp
+    val trackHeight = 34.dp
+    val knobSize = 28.dp
+    val knobOffset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (checked) trackWidth - knobSize - 3.dp else 3.dp,
+        label = "tunnelKnob",
+    )
+    Box(
+        modifier = modifier
+            .size(trackWidth, trackHeight)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50))
+            .background(if (checked) TunnelGreen else colors.onSurfaceVariant.copy(alpha = 0.28f))
+            .toggleable(value = checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = onCheckedChange),
+    ) {
+        if (checked) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 7.dp)
+                    .size(17.dp),
+            )
+        }
+        Box(
+            Modifier
+                .offset(x = knobOffset, y = 3.dp)
+                .size(knobSize)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(if (checked) Color.White else Color.White),
         )
     }
 }

@@ -47,6 +47,7 @@ import net.sumitm.zotiera.ui.component.AppNavigationRail
 import net.sumitm.zotiera.ui.component.AppScaffold
 import net.sumitm.zotiera.ui.component.NavDestination
 import net.sumitm.zotiera.ui.component.isWideLayout
+import net.sumitm.zotiera.ui.screens.DeviceScreen
 import net.sumitm.zotiera.ui.screens.MoonsScreen
 import net.sumitm.zotiera.ui.screens.OverviewScreen
 import net.sumitm.zotiera.ui.screens.PeersScreen
@@ -160,7 +161,12 @@ private fun ZotieraApp(
                     startDestination = "overview",
                     modifier = Modifier.widthIn(max = 840.dp).fillMaxSize(),
                 ) {
-                    composable("overview") { OverviewScreen(viewModel) }
+                    composable("overview") {
+                        OverviewScreen(viewModel, onOpenDevice = { navController.navigate("device") })
+                    }
+                    composable("device") {
+                        DeviceScreen(viewModel, onBack = { navController.popBackStack() })
+                    }
                     composable("peers") { PeersScreen(viewModel) }
                     composable("settings") {
                         SettingsScreen(

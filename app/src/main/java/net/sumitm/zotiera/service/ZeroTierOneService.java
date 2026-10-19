@@ -32,6 +32,8 @@ import net.sumitm.zotiera.ZotieraApplication;
 import net.sumitm.zotiera.events.AfterJoinNetworkEvent;
 import net.sumitm.zotiera.events.ErrorEvent;
 import net.sumitm.zotiera.events.IsServiceRunningReplyEvent;
+import net.sumitm.zotiera.events.LeaveNetworkEvent;
+import net.sumitm.zotiera.events.TunnelConfigChangedEvent;
 import net.sumitm.zotiera.events.IsServiceRunningRequestEvent;
 import net.sumitm.zotiera.events.ManualDisconnectEvent;
 import net.sumitm.zotiera.events.NetworkConfigChangedByUserEvent;
@@ -99,7 +101,10 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
     private int bindCount = 0;
     private boolean disableIPv6 = false;
     private int mStartID = -1;
-    private long networkId = 0;
+    private final java.util.Set<Long> joinedNetworkIds =
+            java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<>());
+    private String tunnelFingerprint = "";
+    private boolean routeAllTraffic = false;
     private long nextBackgroundTaskDeadline = 0;
     private Node node;
     private NotificationManager notificationManager;
@@ -128,7 +133,10 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                                 hexStringToByteArray[i] = hexStringToByteArray[(hexStringToByteArray.length - i) - 1];
                                 hexStringToByteArray[(hexStringToByteArray.length - i) - 1] = b;
                             }
-                            ResultCode multicastSubscribe = ZeroTierOneService.this.node.multicastSubscribe(ZeroTierOneService.this.networkId, TunTapAdapter.multicastAddressToMAC(InetAddress.getByAddress(hexStringToByteArray)));
+                            ResultCode multicastSubscribe = ResultCode.RESULT_OK;
+                            for (long nwid : ZeroTierOneService.this.getJoinedNetworkIds()) {
+                                multicastSubscribe = ZeroTierOneService.this.node.multicastSubscribe(nwid, TunTapAdapter.multicastAddressToMAC(InetAddress.getByAddress(hexStringToByteArray)));
+                            }
                             if (multicastSubscribe != ResultCode.RESULT_OK) {
                                 Log.e(ZeroTierOneService.TAG, "Error when calling multicastSubscribe: " + multicastSubscribe);
                             }
@@ -145,7 +153,10 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                                 hexStringToByteArray2[i2] = hexStringToByteArray2[(hexStringToByteArray2.length - i2) - 1];
                                 hexStringToByteArray2[(hexStringToByteArray2.length - i2) - 1] = b2;
                             }
-                            ResultCode multicastUnsubscribe = ZeroTierOneService.this.node.multicastUnsubscribe(ZeroTierOneService.this.networkId, TunTapAdapter.multicastAddressToMAC(InetAddress.getByAddress(hexStringToByteArray2)));
+                            ResultCode multicastUnsubscribe = ResultCode.RESULT_OK;
+                            for (long nwid : ZeroTierOneService.this.getJoinedNetworkIds()) {
+                                multicastUnsubscribe = ZeroTierOneService.this.node.multicastUnsubscribe(nwid, TunTapAdapter.multicastAddressToMAC(InetAddress.getByAddress(hexStringToByteArray2)));
+                            }
                             if (multicastUnsubscribe != ResultCode.RESULT_OK) {
                                 Log.e(ZeroTierOneService.TAG, "Error when calling multicastUnsubscribe: " + multicastUnsubscribe);
                             }
@@ -179,7 +190,10 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                     arrayList3.removeAll(arrayList2);
                     for (String str : arrayList3) {
                         try {
-                            ResultCode multicastSubscribe = ZeroTierOneService.this.node.multicastSubscribe(ZeroTierOneService.this.networkId, TunTapAdapter.multicastAddressToMAC(InetAddress.getByAddress(StringUtils.hexStringToBytes(str))));
+                            ResultCode multicastSubscribe = ResultCode.RESULT_OK;
+                            for (long nwid : ZeroTierOneService.this.getJoinedNetworkIds()) {
+                                multicastSubscribe = ZeroTierOneService.this.node.multicastSubscribe(nwid, TunTapAdapter.multicastAddressToMAC(InetAddress.getByAddress(StringUtils.hexStringToBytes(str))));
+                            }
                             if (multicastSubscribe != ResultCode.RESULT_OK) {
                                 Log.e(ZeroTierOneService.TAG, "Error when calling multicastSubscribe: " + multicastSubscribe);
                             }
@@ -190,7 +204,10 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                     arrayList2.removeAll(new ArrayList<>(groups));
                     for (String str2 : arrayList2) {
                         try {
-                            ResultCode multicastUnsubscribe = ZeroTierOneService.this.node.multicastUnsubscribe(ZeroTierOneService.this.networkId, TunTapAdapter.multicastAddressToMAC(InetAddress.getByAddress(StringUtils.hexStringToBytes(str2))));
+                            ResultCode multicastUnsubscribe = ResultCode.RESULT_OK;
+                            for (long nwid : ZeroTierOneService.this.getJoinedNetworkIds()) {
+                                multicastUnsubscribe = ZeroTierOneService.this.node.multicastUnsubscribe(nwid, TunTapAdapter.multicastAddressToMAC(InetAddress.getByAddress(StringUtils.hexStringToBytes(str2))));
+                            }
                             if (multicastUnsubscribe != ResultCode.RESULT_OK) {
                                 Log.e(ZeroTierOneService.TAG, "Error when calling multicastUnsubscribe: " + multicastUnsubscribe);
                             }
@@ -264,7 +281,6 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
      */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        long networkId;
         Log.d(TAG, "onStartCommand");
         if (startId == 3) {
             Log.i(TAG, "Authorizing VPN");
@@ -280,44 +296,35 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
             this.eventBus.register(this);
         }
 
-        // 确定待启动的网络 ID
+        // 本次要加入的网络 = intent 指定的那个 + 数据库里所有「已加入」的
+        var requested = new java.util.LinkedHashSet<Long>();
         if (intent.hasExtra(ZT1_NETWORK_ID)) {
-            // Intent 中指定了目标网络，直接使用此 ID
-            networkId = intent.getLongExtra(ZT1_NETWORK_ID, 0);
-        } else {
-            // 默认启用最近一次启动的网络
-            DatabaseUtils.readLock.lock();
-            try {
-                var repository = ((ZotieraApplication) getApplication()).getRepository();
-                var lastActivatedNetworks = repository.lastActivatedNetworks();
-                if (lastActivatedNetworks == null || lastActivatedNetworks.isEmpty()) {
-                    Log.e(TAG, "Couldn't find last activated connection");
-                    return START_NOT_STICKY;
-                } else if (lastActivatedNetworks.size() > 1) {
-                    Log.e(TAG, "Multiple networks marked as last connected: " + lastActivatedNetworks.size());
-                    for (Network network : lastActivatedNetworks) {
-                        Log.e(TAG, "ID: " + Long.toHexString(network.getNetworkId()));
-                    }
-                    throw new IllegalStateException("Database is inconsistent");
-                } else {
-                    networkId = lastActivatedNetworks.get(0).getNetworkId();
-                    Log.i(TAG, "Got Always On request for ZeroTier");
-                }
-            } finally {
-                DatabaseUtils.readLock.unlock();
+            long requestedId = intent.getLongExtra(ZT1_NETWORK_ID, 0);
+            if (requestedId != 0) {
+                requested.add(requestedId);
             }
         }
-        if (networkId == 0) {
-            Log.e(TAG, "Network ID not provided to service");
+        DatabaseUtils.readLock.lock();
+        try {
+            var repository = ((ZotieraApplication) getApplication()).getRepository();
+            for (Network network : repository.lastActivatedNetworks()) {
+                requested.add(network.getNetworkId());
+            }
+        } finally {
+            DatabaseUtils.readLock.unlock();
+        }
+        if (requested.isEmpty()) {
+            Log.e(TAG, "No network to join");
             stopSelf(startId);
             return START_NOT_STICKY;
         }
-        this.networkId = networkId;
+        this.joinedNetworkIds.addAll(requested);
 
         // 检查当前的网络环境
         var preferences = PreferenceManager.getDefaultSharedPreferences(this);
         boolean useCellularData = preferences.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, false);
         this.disableIPv6 = preferences.getBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, false);
+        this.routeAllTraffic = preferences.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false);
         var currentNetworkInfo = NetworkInfoUtils.getNetworkInfoCurrentConnection(this);
 
         if (currentNetworkInfo == NetworkInfoUtils.CurrentConnection.CONNECTION_NONE) {
@@ -350,7 +357,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                 // 创建本地节点
                 if (this.node == null) {
                     this.udpCom = new UdpCom(this, this.svrSocket);
-                    this.tunTapAdapter = new TunTapAdapter(this, networkId);
+                    this.tunTapAdapter = new TunTapAdapter(this);
 
                     // 创建节点对象并初始化
                     var dataStore = this.dataStore;
@@ -412,11 +419,15 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                 return START_NOT_STICKY;
             }
         }
-        joinNetwork(networkId);
+        for (long id : requested) {
+            joinNetwork(id);
+        }
         return START_STICKY;
     }
 
     public void stopZeroTier() {
+        this.joinedNetworkIds.clear();
+        this.tunnelFingerprint = "";
         if (this.svrSocket != null) {
             this.svrSocket.close();
             this.svrSocket = null;
@@ -564,6 +575,18 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         stopZeroTier();
     }
 
+    @Subscribe(threadMode = ThreadMode.BACKGROUND)
+    public void onLeaveNetwork(LeaveNetworkEvent event) {
+        leaveNetwork(event.getNetworkId());
+    }
+
+    @Subscribe(threadMode = ThreadMode.BACKGROUND)
+    public void onTunnelConfigChanged(TunnelConfigChangedEvent event) {
+        this.routeAllTraffic = PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false);
+        rebuildTunnel();
+    }
+
     @Subscribe(threadMode = ThreadMode.POSTING)
     public void onIsServiceRunningRequest(IsServiceRunningRequestEvent event) {
         this.eventBus.post(new IsServiceRunningReplyEvent(true));
@@ -583,6 +606,9 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
             this.eventBus.post(new ErrorEvent(result));
             return;
         }
+        this.joinedNetworkIds.add(networkId);
+        Log.i(TAG, "Joined network " + Long.toHexString(networkId)
+                + " (total " + this.joinedNetworkIds.size() + ")");
         // 连接后事件
         this.eventBus.post(new AfterJoinNetworkEvent());
     }
@@ -600,11 +626,15 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
             this.eventBus.post(new ErrorEvent(result));
             return;
         }
-        var networkConfigs = this.node.networkConfigs();
-        if (networkConfigs != null && networkConfigs.length != 0) {
+        this.joinedNetworkIds.remove(networkId);
+        clearVirtualNetworkConfig(networkId);
+        // 只剩这一个网络时把隧道也拆掉；否则按剩余网络重建
+        if (this.joinedNetworkIds.isEmpty()) {
+            stopZeroTier();
+        } else {
+            rebuildTunnel();
             return;
         }
-        stopZeroTier();
         if (this.vpnSocket != null) {
             try {
                 this.vpnSocket.close();
@@ -669,7 +699,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         boolean isChanged = event.isChanged();
         var network = event.getNetwork();
         var networkConfig = event.getVirtualNetworkConfig();
-        boolean configUpdated = isChanged && updateTunnelConfig(network);
+        boolean configUpdated = isChanged && rebuildTunnel();
         boolean networkIsOk = networkConfig.getStatus() == VirtualNetworkStatus.NETWORK_STATUS_OK;
 
         if (configUpdated || !networkIsOk) {
@@ -679,11 +709,10 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onNetworkConfigChangedByUser(NetworkConfigChangedByUserEvent event) {
-        Network network = event.getNetwork();
-        if (network.getNetworkId() != this.networkId) {
-            return;
-        }
-        updateTunnelConfig(network);
+        // 全局全隧道开关或某个网络的 DNS 模式变化：按当前网络集合重建
+        this.routeAllTraffic = PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false);
+        rebuildTunnel();
     }
 
     /**
@@ -734,6 +763,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                 case VIRTUAL_NETWORK_CONFIG_OPERATION_DESTROY:
                     Log.d(TAG, "Network Down!");
                     clearVirtualNetworkConfig(networkId);
+                    rebuildTunnel();
                     break;
             }
             return 0;
@@ -769,30 +799,41 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         stopSelf(this.mStartID);
     }
 
-    private boolean updateTunnelConfig(Network network) {
-        long networkId = network.getNetworkId();
-        var networkConfig = network.getNetworkConfig();
-        var virtualNetworkConfig = getVirtualNetworkConfig(networkId);
-        if (virtualNetworkConfig == null) {
-            return false;
+    /**
+     * 已加入的网络 id 快照。适配器用它决定组播订阅与地址归属。
+     */
+    public long[] getJoinedNetworkIds() {
+        synchronized (this.joinedNetworkIds) {
+            long[] ids = new long[this.joinedNetworkIds.size()];
+            int i = 0;
+            for (long id : this.joinedNetworkIds) {
+                ids[i++] = id;
+            }
+            return ids;
         }
+    }
 
-        // 重启 TUN TAP
-        if (this.tunTapAdapter.isRunning()) {
+    /** 拆掉当前隧道：TUN 线程、VPN socket 与路由表。 */
+    private void teardownTunnel() {
+        if (this.tunTapAdapter != null && this.tunTapAdapter.isRunning()) {
             this.tunTapAdapter.interrupt();
             try {
                 this.tunTapAdapter.join();
             } catch (InterruptedException ignored) {
             }
         }
-        this.tunTapAdapter.clearRouteMap();
-
-        // 重启 VPN Socket
+        if (this.tunTapAdapter != null) {
+            this.tunTapAdapter.clearRouteMap();
+        }
         if (this.vpnSocket != null) {
             try {
                 this.vpnSocket.close();
-                this.in.close();
-                this.out.close();
+                if (this.in != null) {
+                    this.in.close();
+                }
+                if (this.out != null) {
+                    this.out.close();
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Error closing VPN socket: " + e, e);
             }
@@ -800,116 +841,184 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
             this.in = null;
             this.out = null;
         }
+    }
 
-        // 配置 VPN
-        Log.i(TAG, "Configuring VpnService.Builder");
-        var builder = new VpnService.Builder();
-        var assignedAddresses = virtualNetworkConfig.getAssignedAddresses();
-        Log.i(TAG, "address length: " + assignedAddresses.length);
-        if (assignedAddresses.length == 0) {
-            // 网络尚未分配地址（未授权或还在配置中）。此时 establish() 会抛
-            // IllegalArgumentException("At least one address must be specified")，
-            // 直接跳过，等下一次配置更新。
-            Log.w(TAG, "No assigned address yet, skip VPN setup");
+    /**
+     * 配置指纹：地址、路由、DNS、MTU 任何一个变化才重建隧道。
+     *
+     * 不做这层判断的话，每次 CONFIG_UPDATE 都会拆一次隧道，连接会周期抖动。
+     */
+    private String tunnelFingerprint(java.util.Map<Long, VirtualNetworkConfig> configs) {
+        var builder = new StringBuilder();
+        for (long id : getJoinedNetworkIds()) {
+            builder.append(id).append(';');
+        }
+        builder.append("routeAll=").append(this.routeAllTraffic)
+                .append(" disableV6=").append(this.disableIPv6);
+        try {
+            var repository = ((ZotieraApplication) getApplication()).getRepository();
+            for (var entry : configs.entrySet()) {
+                var dbNetwork = repository.network(entry.getKey());
+                builder.append(entry.getKey()).append('#')
+                        .append(dbNetwork == null ? "?" : dbNetwork.getNetworkConfig().getDnsMode())
+                        .append('=')
+                        .append(entry.getValue().toString())
+                        .append('|');
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Cannot compute tunnel fingerprint", e);
+        }
+        return Integer.toHexString(builder.toString().hashCode()) + ":" + builder.length();
+    }
+
+    /**
+     * 按所有已加入网络重建隧道。
+     *
+     * 之前的实现每次只处理一个网络，加第二个网络会把第一个的地址和路由冲掉。
+     */
+    private boolean rebuildTunnel() {
+        if (this.node == null || this.tunTapAdapter == null) {
             return false;
         }
-        boolean isRouteViaZeroTier = networkConfig.getRouteViaZeroTier();
+        var repository = ((ZotieraApplication) getApplication()).getRepository();
 
-        // 遍历 ZT 网络中当前设备的 IP 地址，组播配置
-        for (var vpnAddress : assignedAddresses) {
-            Log.d(TAG, "Adding VPN Address: " + vpnAddress.getAddress()
-                    + " Mac: " + com.zerotier.sdk.util.StringUtils.macAddressToString(virtualNetworkConfig.getMac()));
-            byte[] rawAddress = vpnAddress.getAddress().getAddress();
-
-            if (!this.disableIPv6 || !(vpnAddress.getAddress() instanceof Inet6Address)) {
-                var address = vpnAddress.getAddress();
-                var port = vpnAddress.getPort();
-                var route = InetAddressUtils.addressToRoute(address, port);
-                if (route == null) {
-                    Log.e(TAG, "NULL route calculated!");
-                    continue;
-                }
-
-                // 计算 VPN 地址相关的组播 MAC 与 ADI
-                long multicastGroup;
-                long multicastAdi;
-                if (rawAddress.length == 4) {
-                    // IPv4
-                    multicastGroup = InetAddressUtils.BROADCAST_MAC_ADDRESS;
-                    multicastAdi = ByteBuffer.wrap(rawAddress).getInt();
-                } else {
-                    // IPv6
-                    multicastGroup = ByteBuffer.wrap(new byte[]{
-                                    0, 0, 0x33, 0x33, (byte) 0xFF, rawAddress[13], rawAddress[14], rawAddress[15]})
-                            .getLong();
-                    multicastAdi = 0;
-                }
-
-                // 订阅组播并添加至 TUN TAP 路由
-                var result = this.node.multicastSubscribe(networkId, multicastGroup, multicastAdi);
-                if (result != ResultCode.RESULT_OK) {
-                    Log.e(TAG, "Error joining multicast group");
-                } else {
-                    Log.d(TAG, "Joined multicast group");
-                }
-                builder.addAddress(address, port);
-                builder.addRoute(route, port);
-                this.tunTapAdapter.addRouteAndNetwork(new Route(route, port), networkId);
+        // 已加入且已经拿到配置的网络
+        var configs = new java.util.LinkedHashMap<Long, VirtualNetworkConfig>();
+        for (long id : getJoinedNetworkIds()) {
+            var config = getVirtualNetworkConfig(id);
+            if (config != null) {
+                configs.put(id, config);
             }
         }
 
-        // 遍历网络的路由规则，将网络负责路由的地址路由至 VPN
+        boolean hasAddress = false;
+        for (var config : configs.values()) {
+            if (config.getAssignedAddresses().length > 0) {
+                hasAddress = true;
+                break;
+            }
+        }
+        if (!hasAddress) {
+            // 全部网络都还没分配地址（未授权或还在配置中），先不建隧道
+            if (this.vpnSocket != null) {
+                teardownTunnel();
+                this.tunnelFingerprint = "";
+            }
+            Log.w(TAG, "No assigned address yet, skip VPN setup");
+            return false;
+        }
+
+        String fingerprint = tunnelFingerprint(configs);
+        if (fingerprint.equals(this.tunnelFingerprint) && this.vpnSocket != null) {
+            return false;
+        }
+
+        teardownTunnel();
+
+        Log.i(TAG, "Configuring VpnService.Builder for " + configs.size() + " network(s)");
+        var builder = new VpnService.Builder();
+        int mtu = Integer.MAX_VALUE;
+
         try {
             var v4Loopback = InetAddress.getByName("0.0.0.0");
             var v6Loopback = InetAddress.getByName("::");
-            if (virtualNetworkConfig.getRoutes().length > 0) {
+
+            for (var entry : configs.entrySet()) {
+                long nwid = entry.getKey();
+                var virtualNetworkConfig = entry.getValue();
+                var dbNetwork = repository.network(nwid);
+
+                // 1) 该网络分配给本机的地址
+                for (var vpnAddress : virtualNetworkConfig.getAssignedAddresses()) {
+                    var address = vpnAddress.getAddress();
+                    int prefix = vpnAddress.getPort();
+                    if (this.disableIPv6 && address instanceof Inet6Address) {
+                        continue;
+                    }
+                    var route = InetAddressUtils.addressToRoute(address, prefix);
+                    if (route == null) {
+                        Log.e(TAG, "NULL route calculated for " + address);
+                        continue;
+                    }
+                    byte[] rawAddress = address.getAddress();
+                    long multicastGroup;
+                    long multicastAdi;
+                    if (rawAddress.length == 4) {
+                        multicastGroup = InetAddressUtils.BROADCAST_MAC_ADDRESS;
+                        multicastAdi = ByteBuffer.wrap(rawAddress).getInt();
+                    } else {
+                        multicastGroup = ByteBuffer.wrap(new byte[]{
+                                0, 0, 0x33, 0x33, (byte) 0xFF, rawAddress[13], rawAddress[14], rawAddress[15]})
+                                .getLong();
+                        multicastAdi = 0;
+                    }
+                    var result = this.node.multicastSubscribe(nwid, multicastGroup, multicastAdi);
+                    if (result != ResultCode.RESULT_OK) {
+                        Log.e(TAG, "Error joining multicast group on " + Long.toHexString(nwid));
+                    }
+                    builder.addAddress(address, prefix);
+                    builder.addRoute(route, prefix);
+                    this.tunTapAdapter.addRouteAndNetwork(new Route(route, prefix), nwid);
+                }
+
+                // 2) 该网络下发的路由
                 for (var routeConfig : virtualNetworkConfig.getRoutes()) {
                     var target = routeConfig.getTarget();
                     var via = routeConfig.getVia();
                     var targetAddress = target.getAddress();
-                    var targetPort = target.getPort();
+                    int targetPort = target.getPort();
                     var viaAddress = InetAddressUtils.addressToRoute(targetAddress, targetPort);
 
                     boolean isIPv6Route = (targetAddress instanceof Inet6Address) || (viaAddress instanceof Inet6Address);
-                    boolean isDisabledV6Route = this.disableIPv6 && isIPv6Route;
+                    if (this.disableIPv6 && isIPv6Route) {
+                        continue;
+                    }
                     boolean shouldRouteToZerotier = viaAddress != null && (
-                            isRouteViaZeroTier
+                            this.routeAllTraffic
                                     || (!viaAddress.equals(v4Loopback) && !viaAddress.equals(v6Loopback))
                     );
-                    if (!isDisabledV6Route && shouldRouteToZerotier) {
-                        builder.addRoute(viaAddress, targetPort);
-                        Route route = new Route(viaAddress, targetPort);
-                        if (via != null) {
-                            route.setGateway(via.getAddress());
-                        }
-                        this.tunTapAdapter.addRouteAndNetwork(route, networkId);
+                    if (!shouldRouteToZerotier) {
+                        continue;
                     }
+                    builder.addRoute(viaAddress, targetPort);
+                    var route = new Route(viaAddress, targetPort);
+                    if (via != null) {
+                        route.setGateway(via.getAddress());
+                    }
+                    this.tunTapAdapter.addRouteAndNetwork(route, nwid);
+                }
+
+                // 3) 该网络的 DNS
+                if (dbNetwork != null) {
+                    addDNSServers(builder, dbNetwork);
+                }
+
+                // 4) MTU 取所有网络的最小值
+                int networkMtu = virtualNetworkConfig.getMtu();
+                if (networkMtu > 0) {
+                    mtu = Math.min(mtu, networkMtu);
                 }
             }
             builder.addRoute(InetAddress.getByName("224.0.0.0"), 4);
         } catch (Exception e) {
             this.eventBus.post(new VPNErrorEvent(e.getLocalizedMessage()));
+            Log.e(TAG, "Cannot configure VPN", e);
             return false;
         }
 
-        if (Build.VERSION.SDK_INT >= 29) {
-            builder.setMetered(false);
-        }
-        addDNSServers(builder, network);
-
-        // 配置 MTU
-        int mtu = virtualNetworkConfig.getMtu();
-        Log.i(TAG, "MTU from Network Config: " + mtu);
-        if (mtu == 0) {
+        if (mtu == Integer.MAX_VALUE) {
             mtu = 2800;
         }
         Log.i(TAG, "MTU Set: " + mtu);
         builder.setMtu(mtu);
 
+        if (Build.VERSION.SDK_INT >= 29) {
+            builder.setMetered(false);
+        }
         builder.setSession(Constants.VPN_SESSION_NAME);
 
-        // 设置部分 APP 不经过 VPN
-        if (!isRouteViaZeroTier && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        // 只有没开全局全隧道时才让部分应用绕开 VPN
+        if (!this.routeAllTraffic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             for (var app : DISALLOWED_APPS) {
                 try {
                     builder.addDisallowedApplication(app);
@@ -919,11 +1028,10 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
             }
         }
 
-        // 建立 VPN 连接
         try {
             this.vpnSocket = builder.establish();
         } catch (IllegalArgumentException e) {
-            // 配置在构建过程中失效（例如地址被回收）时同样不应打断事件分发
+            // 配置在构建过程中失效（例如地址被回收）时不应打断事件分发
             Log.e(TAG, "Cannot establish VPN: " + e.getMessage(), e);
             this.eventBus.post(new VPNErrorEvent(getString(R.string.toast_vpn_application_not_prepared)));
             return false;
@@ -937,6 +1045,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         this.tunTapAdapter.setVpnSocket(this.vpnSocket);
         this.tunTapAdapter.setFileStreams(this.in, this.out);
         this.tunTapAdapter.startThreads();
+        this.tunnelFingerprint = fingerprint;
 
         // 状态栏提示
         if (this.notificationManager == null) {
@@ -960,12 +1069,15 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP
                                         | Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         , pendingIntentFlag);
+        String notificationText = configs.size() == 1
+                ? getString(R.string.notification_text_connected, Long.toHexString(configs.keySet().iterator().next()))
+                : getString(R.string.notification_text_connected_multi, configs.size());
         var notification = new NotificationCompat.Builder(this, Constants.CHANNEL_ID)
                 .setPriority(1)
                 .setOngoing(true)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(getString(R.string.notification_title_connected))
-                .setContentText(getString(R.string.notification_text_connected, network.getNetworkIdStr()))
+                .setContentText(notificationText)
                 .setColor(ContextCompat.getColor(getApplicationContext(), R.color.zerotier_orange))
                 .setContentIntent(pendingIntent).build();
         this.notificationManager.notify(ZT_NOTIFICATION_TAG, notification);

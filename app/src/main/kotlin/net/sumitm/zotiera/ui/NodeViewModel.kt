@@ -6,7 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
+import androidx.preference.PreferenceManager
 import com.zerotier.sdk.NodeStatus
 import com.zerotier.sdk.Peer
 import com.zerotier.sdk.Version
@@ -17,19 +19,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.data.ZotieraRepository
+import net.sumitm.zotiera.events.IsServiceRunningReplyEvent
 import net.sumitm.zotiera.events.IsServiceRunningRequestEvent
+import net.sumitm.zotiera.events.LeaveNetworkEvent
 import net.sumitm.zotiera.events.NetworkListReplyEvent
 import net.sumitm.zotiera.events.NetworkListRequestEvent
 import net.sumitm.zotiera.events.NodeDestroyedEvent
 import net.sumitm.zotiera.events.NodeIDEvent
 import net.sumitm.zotiera.events.NodeStatusEvent
 import net.sumitm.zotiera.events.NodeStatusRequestEvent
-import net.sumitm.zotiera.events.NetworkConfigChangedByUserEvent
 import net.sumitm.zotiera.events.PeerInfoReplyEvent
 import net.sumitm.zotiera.events.PeerInfoRequestEvent
+import net.sumitm.zotiera.events.StopEvent
+import net.sumitm.zotiera.events.TunnelConfigChangedEvent
+import net.sumitm.zotiera.events.VirtualNetworkConfigChangedEvent
 import net.sumitm.zotiera.events.VirtualNetworkConfigReplyEvent
 import net.sumitm.zotiera.events.VirtualNetworkConfigRequestEvent
-import net.sumitm.zotiera.events.StopEvent
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.service.ZeroTierOneService
 import net.sumitm.zotiera.util.Constants
@@ -41,8 +46,16 @@ data class NodeUiState(
     val networks: List<Network> = emptyList(),
     val nodeId: String = "",
     val online: Boolean = false,
-    val clientVersion: String = "",
-    val connectNetworkId: Long? = null,
+    /** 核心版本（引擎自报） */
+    val coreVersion: String = "",
+    /** VPN 隧道是否在跑 */
+    val tunnelRunning: Boolean = false,
+    /** 已加入（成员资格）的网络 id；与隧道开关无关 */
+    val joinedNetworkIds: Set<Long> = emptySet(),
+    /** 全局：所有流量走 ZeroTier */
+    val routeAllTraffic: Boolean = false,
+    /** 每个已加入网络的实时配置，键是 network id */
+    val configs: Map<Long, VirtualNetworkConfig> = emptyMap(),
     val peers: List<Peer> = emptyList(),
     val peersLoaded: Boolean = false,
 )
@@ -50,26 +63,31 @@ data class NodeUiState(
 /**
  * UI 与 ZeroTierOneService 之间的唯一通道。
  *
- * 服务仍然通过 EventBus 汇报状态（Java 侧尚未改完），这里把事件收敛成 StateFlow，
- * 新代码只读 StateFlow，不再直接注册 EventBus。
+ * 三件事互不相干：隧道开关（[tunnelRunning]）、网络成员资格
+ * （[joinedNetworkIds]，存在 `Network.lastActivated`）、详情选中（屏内局部状态）。
  */
 class NodeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository: ZotieraRepository =
         (app as ZotieraApplication).getRepository()
 
+    private val prefs = PreferenceManager.getDefaultSharedPreferences(app)
     private val bus = EventBus.getDefault()
-    private val _state = MutableStateFlow(NodeUiState(networks = repository.networks()))
+    private val _state = MutableStateFlow(
+        NodeUiState(
+            networks = repository.networks(),
+            joinedNetworkIds = repository.lastActivatedNetworks().map { it.networkId }.toSet(),
+            routeAllTraffic = prefs.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false),
+        )
+    )
     val state: StateFlow<NodeUiState> = _state.asStateFlow()
-
-    private val _detailConfig = MutableStateFlow<VirtualNetworkConfig?>(null)
-    val detailConfig: StateFlow<VirtualNetworkConfig?> = _detailConfig.asStateFlow()
 
     private var service: ZeroTierOneService? = null
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             service = (binder as? ZeroTierOneService.ZeroTierBinder)?.service
+            _state.update { it.copy(tunnelRunning = true) }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -90,60 +108,106 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
     // ---- 请求 ----
 
     fun refresh() {
-        _state.update { it.copy(networks = repository.networks()) }
+        _state.update {
+            it.copy(
+                networks = repository.networks(),
+                joinedNetworkIds = repository.lastActivatedNetworks().map { n -> n.networkId }.toSet(),
+            )
+        }
         bus.post(NetworkListRequestEvent())
         bus.post(NodeStatusRequestEvent())
         bus.post(IsServiceRunningRequestEvent())
+        requestConfigs()
+    }
+
+    /** 已加入网络的实时配置（MAC、状态、分配地址）。 */
+    fun requestConfigs() {
+        _state.value.joinedNetworkIds.forEach { bus.post(VirtualNetworkConfigRequestEvent(it)) }
     }
 
     fun requestPeers() {
         bus.post(PeerInfoRequestEvent())
     }
 
-    fun requestNetworkConfig(networkId: Long) {
-        bus.post(VirtualNetworkConfigRequestEvent(networkId))
-    }
+    // ---- 隧道 ----
 
-    /** 切换「所有流量走 ZeroTier」，写库并通知服务重建 VPN。 */
-    fun setRouteViaZeroTier(network: Network, enabled: Boolean) {
-        val config = repository.networkConfig(network.networkConfigId) ?: return
-        config.routeViaZeroTier = enabled
-        repository.insertNetworkConfig(config)
-        bus.post(NetworkConfigChangedByUserEvent(network))
-    }
-
-    // ---- 服务控制 ----
-
-    fun startService(networkId: Long) {
+    /** 打开总开关：启动服务，服务会把数据库里所有「已加入」的网络一起 join。 */
+    fun startTunnel() {
         val context = getApplication<Application>()
-        markActive(networkId)
-        runCatching { context.bindService(Intent(context, ZeroTierOneService::class.java), connection, Context.BIND_AUTO_CREATE) }
-        context.startService(
-            Intent(context, ZeroTierOneService::class.java)
-                .putExtra(ZeroTierOneService.ZT1_NETWORK_ID, networkId)
-        )
-        _state.update { it.copy(connectNetworkId = networkId) }
+        runCatching {
+            context.bindService(Intent(context, ZeroTierOneService::class.java), connection, Context.BIND_AUTO_CREATE)
+        }
+        context.startService(Intent(context, ZeroTierOneService::class.java))
+        _state.update { it.copy(tunnelRunning = true) }
         refresh()
     }
 
-    fun stopService() {
+    fun stopTunnel() {
         val context = getApplication<Application>()
         runCatching { service?.stopZeroTier() }
         bus.post(StopEvent())
         context.stopService(Intent(context, ZeroTierOneService::class.java))
         runCatching { context.unbindService(connection) }
         service = null
-        _state.update { it.copy(connectNetworkId = null, online = false) }
+        _state.update {
+            it.copy(tunnelRunning = false, online = false, configs = emptyMap())
+        }
+        refresh()
+    }
+
+    /**
+     * 加入 / 离开一个网络。
+     *
+     * 只改成员资格；隧道没开时仅写库，等下次打开隧道一起 join。
+     */
+    fun setJoined(network: Network, joined: Boolean) {
+        if (network.lastActivated != joined) {
+            network.lastActivated = joined
+            repository.updateNetwork(network)
+        }
+        if (_state.value.tunnelRunning) {
+            if (joined) {
+                val context = getApplication<Application>()
+                context.startService(
+                    Intent(context, ZeroTierOneService::class.java)
+                        .putExtra(ZeroTierOneService.ZT1_NETWORK_ID, network.networkId)
+                )
+            } else {
+                bus.post(LeaveNetworkEvent(network.networkId))
+            }
+        }
+        _state.update {
+            it.copy(
+                networks = repository.networks(),
+                joinedNetworkIds = repository.lastActivatedNetworks().map { n -> n.networkId }.toSet(),
+            )
+        }
+        refresh()
+    }
+
+    /** 全局「所有流量走 ZeroTier」。 */
+    fun setRouteAllTraffic(enabled: Boolean) {
+        prefs.edit { putBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, enabled) }
+        _state.update { it.copy(routeAllTraffic = enabled) }
+        bus.post(TunnelConfigChangedEvent())
+    }
+
+    fun setDnsMode(network: Network, mode: Int) {
+        val config = repository.networkConfig(network.networkConfigId) ?: return
+        config.dnsMode = mode
+        repository.insertNetworkConfig(config)
+        bus.post(TunnelConfigChangedEvent())
         refresh()
     }
 
     // ---- 网络增删 ----
 
+    /** 新增网络：默认就加入（用户加它就是为了连），隧道没开时只写库。 */
     fun joinNetwork(networkId: Long, networkIdStr: String, defaultRoute: Boolean, dnsMode: Int) {
         if (repository.hasNetwork(networkId)) return
         val config = net.sumitm.zotiera.model.NetworkConfig(
             id = networkId,
-            routeViaZeroTier = defaultRoute,
+            routeViaZeroTier = false,
             dnsMode = dnsMode,
         )
         repository.insertNetworkConfig(config)
@@ -152,41 +216,45 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
                 networkId = networkId,
                 networkIdStr = networkIdStr,
                 networkConfigId = networkId,
+                lastActivated = true,
             )
         )
+        if (_state.value.tunnelRunning) {
+            val context = getApplication<Application>()
+            context.startService(
+                Intent(context, ZeroTierOneService::class.java)
+                    .putExtra(ZeroTierOneService.ZT1_NETWORK_ID, networkId)
+            )
+        }
         refresh()
     }
 
     fun deleteNetwork(network: Network) {
+        if (_state.value.tunnelRunning && network.lastActivated) {
+            bus.post(LeaveNetworkEvent(network.networkId))
+        }
         repository.deleteNetwork(network)
-        if (_state.value.connectNetworkId == network.networkId) {
-            stopService()
+        _state.update {
+            it.copy(
+                networks = repository.networks(),
+                joinedNetworkIds = repository.lastActivatedNetworks().map { n -> n.networkId }.toSet(),
+            )
         }
         refresh()
-    }
-
-    private fun markActive(networkId: Long) {
-        repository.networks().forEach { network ->
-            val active = network.networkId == networkId
-            if (network.lastActivated != active) {
-                network.lastActivated = active
-                repository.updateNetwork(network)
-            }
-        }
     }
 
     // ---- 事件 ----
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onNetworkList(event: NetworkListReplyEvent) {
-        val networks = event.networkList
-        val connecting = networks.firstOrNull()?.nwid
-        _state.update {
-            it.copy(
-                networks = repository.networks(),
-                connectNetworkId = connecting ?: it.connectNetworkId,
-            )
-        }
+        // 成员资格以数据库为准；这里只是刷新列表与实时配置
+        _state.update { it.copy(networks = repository.networks()) }
+        requestConfigs()
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onServiceRunning(event: IsServiceRunningReplyEvent) {
+        _state.update { it.copy(tunnelRunning = event.isRunning) }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -197,7 +265,7 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 online = status.isOnline,
                 nodeId = String.format("%10x", status.address),
-                clientVersion = "${version.major}.${version.minor}.${version.revision}",
+                coreVersion = "${version.major}.${version.minor}.${version.revision}",
             )
         }
     }
@@ -209,12 +277,19 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onNodeDestroyed(event: NodeDestroyedEvent) {
-        _state.update { it.copy(online = false) }
+        _state.update { it.copy(online = false, configs = emptyMap()) }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onConfigReply(event: VirtualNetworkConfigReplyEvent) {
-        _detailConfig.value = event.virtualNetworkConfig
+        val config = event.virtualNetworkConfig ?: return
+        _state.update { it.copy(configs = it.configs + (config.nwid to config)) }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onConfigChanged(event: VirtualNetworkConfigChangedEvent) {
+        val config = event.virtualNetworkConfig ?: return
+        _state.update { it.copy(configs = it.configs + (config.nwid to config)) }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

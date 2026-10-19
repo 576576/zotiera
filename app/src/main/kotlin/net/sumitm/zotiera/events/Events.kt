@@ -28,6 +28,12 @@ class IsServiceRunningReplyEvent(val isRunning: Boolean)
 
 class JoinNetworkEvent(val networkId: Long, val defaultRoute: Boolean)
 
+/** 离开某个网络（只影响成员资格，不动隧道开关） */
+class LeaveNetworkEvent(val networkId: Long)
+
+/** 隧道相关配置变了（全局全隧道、DNS 模式），要求服务重建 VPN */
+class TunnelConfigChangedEvent
+
 class AfterJoinNetworkEvent
 
 class StopEvent
@@ -52,9 +58,9 @@ class DefaultRouteChangedEvent(val networkId: Long, val isDefaultRoute: Boolean)
 
 class VirtualNetworkConfigRequestEvent(val networkId: Long)
 
-class VirtualNetworkConfigReplyEvent(val virtualNetworkConfig: VirtualNetworkConfig)
+class VirtualNetworkConfigReplyEvent(val virtualNetworkConfig: VirtualNetworkConfig?)
 
-class VirtualNetworkConfigChangedEvent(val virtualNetworkConfig: VirtualNetworkConfig)
+class VirtualNetworkConfigChangedEvent(val virtualNetworkConfig: VirtualNetworkConfig?)
 
 class PeerInfoRequestEvent
 

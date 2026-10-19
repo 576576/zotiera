@@ -69,6 +69,15 @@ data class ZotieraType(
         textDirection = TextDirection.Ltr,
     ),
     val rowTitle: TextStyle = TextStyle(fontSize = 16.sp, lineHeight = 22.sp),
+    /** 设备卡上的节点 ID：比正文大一档 */
+    val deviceTitle: TextStyle = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.sp,
+        textDirection = TextDirection.Ltr,
+    ),
     val rowSummary: TextStyle = TextStyle(fontSize = 13.sp, lineHeight = 18.sp),
 )
 

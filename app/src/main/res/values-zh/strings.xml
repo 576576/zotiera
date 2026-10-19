@@ -183,4 +183,14 @@
     <string name="color_mode_summary">跟随系统、浅色、深色或纯黑</string>
     <string name="network_name_label">名称</string>
     <string name="mac_address_label">MAC 地址</string>
+    <string name="notification_text_connected_multi">%1$d 个网络</string>
+    <plurals name="network_count">
+        <item quantity="other">%d 个网络</item>
+    </plurals>
+    <string name="status_connecting">正在连接</string>
+    <string name="device_title">设备</string>
+    <string name="client_version">客户端版本</string>
+    <string name="core_version">核心版本</string>
+    <string name="tunnel_mtu">隧道 MTU</string>
+    <string name="tunnel_needs_network">请先加入至少一个网络</string>
 </resources>
