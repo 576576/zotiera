@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat;
 import com.zerotier.sdk.Event;
 import com.zerotier.sdk.EventListener;
 import com.zerotier.sdk.Node;
+import com.zerotier.sdk.Peer;
 import com.zerotier.sdk.ResultCode;
 import com.zerotier.sdk.VirtualNetworkConfig;
 import com.zerotier.sdk.VirtualNetworkConfigListener;
@@ -643,7 +644,8 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
     @Subscribe(threadMode = ThreadMode.BACKGROUND)
     public void onRequestPeerInfo(PeerInfoRequestEvent event) {
         if (this.node == null) {
-            this.eventBus.post(new PeerInfoReplyEvent(null));
+            // PeerInfoReplyEvent 的 peers 是非空数组，传 null 会在构造器里抛 NPE
+            this.eventBus.post(new PeerInfoReplyEvent(new Peer[0]));
             return;
         }
         this.eventBus.post(new PeerInfoReplyEvent(this.node.peers()));

@@ -23,7 +23,7 @@
     <string name="network_default_route">Route Via ZeroTier</string>
     <string name="network_dns_tab_title">Network DNS</string>
     <string name="network_dns_text">DNS configuration managed by network controller.</string>
-    <string name="network_id">Network ID:</string>
+    <string name="network_id">Network ID</string>
     <string name="network_id_string">Network ID:</string>
     <string name="network_ips">Managed IPs</string>
     <string name="network_mac">MAC</string>
@@ -53,7 +53,7 @@
     <string name="no_dns_text">DNS settings will not be configured.</string>
     <string name="planet_settings">Planet Settings</string>
     <string name="preferences_general">General Settings</string>
-    <string name="preferences_general_start_on_boot">Start ZeroTier Fix on Device Startup</string>
+    <string name="preferences_general_start_on_boot">Start Zotiera on device startup</string>
     <string name="preferences_network">Network Settings</string>
     <string name="preferences_network_auto_rejoin">Automatically Re-join Networks on Start</string>
     <string name="preferences_network_disable_ipv6">Disable IPv6</string>
@@ -92,7 +92,6 @@
     <string name="peer_address">Peer Address:</string>
     <string name="peer_role">Role:</string>
     <string name="peer_client_version">Client version:</string>
-    <string name="peer_latency">Latency:</string>
     <string name="peer_preferred_path">Preferred path:</string>
     <string name="invalid_ipv4_dns">Invalid IPv4 DNS address.</string>
     <string name="invalid_ipv6_dns">Invalid IPv6 DNS address</string>
@@ -159,4 +158,31 @@
     <string name="export_moon_file">Export moon file</string>
     <string name="moon_file_exported">Moon file exported</string>
     <string name="cannot_export_moon">Cannot export moon file</string>
+    <string name="ui_style">Interface style</string>
+    <string name="network_list">Overview</string>
+    <string name="ui_style_summary">Choose how the app looks</string>
+    <string name="use_cell_data_summary">Allow ZeroTier to run on mobile data</string>
+    <string name="disable_ipv6_summary">Skip IPv6 addresses and routes from networks</string>
+    <string name="start_on_boot_summary">Reconnect after a reboot</string>
+    <string name="use_custom_planet_summary">Use your own planet instead of the public roots</string>
+    <string name="moon_orbit_summary">Join a moon to speed up first contact</string>
+    <string name="select_a_network">Select a network</string>
+    <string name="color_mode">Color mode</string>
+    <string name="color_mode_system">Follow system</string>
+    <string name="color_mode_light">Light</string>
+    <string name="color_mode_dark">Dark</string>
+    <string name="color_mode_amoled">AMOLED (pure black)</string>
+    <string name="connected_toast">Connected</string>
+    <string name="disconnected_toast">Disconnected</string>
+    <string name="peer_subtitle">Connected peers</string>
+    <string name="network_detail_label">Network</string>
+    <string name="network_status_label">Status</string>
+    <string name="route_all_traffic">Route all traffic</string>
+    <string name="route_all_traffic_summary">Requires routes to be configured on the network</string>
+    <string name="network_status_requesting">Requesting configuration</string>
+    <string name="network_status_auth_required">Authentication required</string>
+    <string name="appearance">Appearance</string>
+    <string name="color_mode_summary">System, light, dark or pure black</string>
+    <string name="network_name_label">Name</string>
+    <string name="mac_address_label">MAC Address</string>
 </resources>

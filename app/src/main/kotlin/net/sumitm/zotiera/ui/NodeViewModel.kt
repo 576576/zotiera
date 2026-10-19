@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.zerotier.sdk.NodeStatus
 import com.zerotier.sdk.Peer
 import com.zerotier.sdk.Version
+import com.zerotier.sdk.VirtualNetworkConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,8 +24,11 @@ import net.sumitm.zotiera.events.NodeDestroyedEvent
 import net.sumitm.zotiera.events.NodeIDEvent
 import net.sumitm.zotiera.events.NodeStatusEvent
 import net.sumitm.zotiera.events.NodeStatusRequestEvent
+import net.sumitm.zotiera.events.NetworkConfigChangedByUserEvent
 import net.sumitm.zotiera.events.PeerInfoReplyEvent
 import net.sumitm.zotiera.events.PeerInfoRequestEvent
+import net.sumitm.zotiera.events.VirtualNetworkConfigReplyEvent
+import net.sumitm.zotiera.events.VirtualNetworkConfigRequestEvent
 import net.sumitm.zotiera.events.StopEvent
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.service.ZeroTierOneService
@@ -57,6 +61,9 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
     private val bus = EventBus.getDefault()
     private val _state = MutableStateFlow(NodeUiState(networks = repository.networks()))
     val state: StateFlow<NodeUiState> = _state.asStateFlow()
+
+    private val _detailConfig = MutableStateFlow<VirtualNetworkConfig?>(null)
+    val detailConfig: StateFlow<VirtualNetworkConfig?> = _detailConfig.asStateFlow()
 
     private var service: ZeroTierOneService? = null
 
@@ -91,6 +98,18 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun requestPeers() {
         bus.post(PeerInfoRequestEvent())
+    }
+
+    fun requestNetworkConfig(networkId: Long) {
+        bus.post(VirtualNetworkConfigRequestEvent(networkId))
+    }
+
+    /** 切换「所有流量走 ZeroTier」，写库并通知服务重建 VPN。 */
+    fun setRouteViaZeroTier(network: Network, enabled: Boolean) {
+        val config = repository.networkConfig(network.networkConfigId) ?: return
+        config.routeViaZeroTier = enabled
+        repository.insertNetworkConfig(config)
+        bus.post(NetworkConfigChangedByUserEvent(network))
     }
 
     // ---- 服务控制 ----
@@ -191,6 +210,11 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onNodeDestroyed(event: NodeDestroyedEvent) {
         _state.update { it.copy(online = false) }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onConfigReply(event: VirtualNetworkConfigReplyEvent) {
+        _detailConfig.value = event.virtualNetworkConfig
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

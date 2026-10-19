@@ -6,6 +6,10 @@ package net.sumitm.zotiera.util;
  * @author kaaass
  */
 public class Constants {
+    /** 界面风格：material / miuix */
+    public static final String PREF_UI_STYLE = "ui_style";
+    /** 配色模式：0 跟随系统 / 1 浅色 / 2 深色 / 3 AMOLED */
+    public static final String PREF_COLOR_MODE = "color_mode";
 
     public static final String PREF_NETWORK_USE_CELLULAR_DATA = "network_use_cellular_data";
 

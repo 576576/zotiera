@@ -42,12 +42,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".ui.view.NetworkDetailActivity"
-            android:label="@string/network_detail" />
-        <activity
-            android:name=".ui.MoonOrbitActivity"
-            android:label="@string/moon_orbit_activity" />
 
         <receiver
             android:name=".service.StartupReceiver"

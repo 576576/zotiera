@@ -22,7 +22,7 @@
     <string name="network_default_route">通过 ZeroTier 路由</string>
     <string name="network_dns_tab_title">网络 DNS</string>
     <string name="network_dns_text">通过网络控制台管理 DNS 配置</string>
-    <string name="network_id">网络 ID:</string>
+    <string name="network_id">网络 ID</string>
     <string name="network_id_string">网络 ID:</string>
     <string name="network_ips">分配 IP</string>
     <string name="network_mac">MAC</string>
@@ -52,7 +52,7 @@
     <string name="no_dns_text">将不会配置 DNS。</string>
     <string name="planet_settings">Planet 设置</string>
     <string name="preferences_general">通用设置</string>
-    <string name="preferences_general_start_on_boot">开机时启动 ZeroTier Fix</string>
+    <string name="preferences_general_start_on_boot">开机时启动 Zotiera</string>
     <string name="preferences_network">网络设置</string>
     <string name="preferences_network_auto_rejoin">打开时自动重新加入网络</string>
     <string name="preferences_network_disable_ipv6">禁用 IPv6</string>
@@ -91,7 +91,6 @@
     <string name="peer_address">结点地址:</string>
     <string name="peer_role">类型:</string>
     <string name="peer_client_version">客户端版本:</string>
-    <string name="peer_latency">延迟:</string>
     <string name="peer_preferred_path">通信路径:</string>
     <string name="invalid_ipv4_dns">IPv4 DNS 地址格式错误</string>
     <string name="invalid_ipv6_dns">IPv6 DNS 地址格式错误</string>
@@ -157,4 +156,31 @@
     <string name="export_moon_file">导出 moon 文件</string>
     <string name="moon_file_exported">moon 文件已导出</string>
     <string name="cannot_export_moon">无法导出 moon 文件</string>
+    <string name="ui_style">界面风格</string>
+    <string name="network_list">概览</string>
+    <string name="ui_style_summary">选择应用的界面风格</string>
+    <string name="use_cell_data_summary">允许在移动网络下运行</string>
+    <string name="disable_ipv6_summary">忽略网络下发的 IPv6 地址与路由</string>
+    <string name="start_on_boot_summary">开机后自动重连</string>
+    <string name="use_custom_planet_summary">用自建 planet 替代公共根节点</string>
+    <string name="moon_orbit_summary">入轨 moon 以加速首回连接</string>
+    <string name="select_a_network">选择一个网络</string>
+    <string name="color_mode">颜色模式</string>
+    <string name="color_mode_system">跟随系统</string>
+    <string name="color_mode_light">浅色</string>
+    <string name="color_mode_dark">深色</string>
+    <string name="color_mode_amoled">AMOLED（纯黑）</string>
+    <string name="connected_toast">已连接</string>
+    <string name="disconnected_toast">已断开</string>
+    <string name="peer_subtitle">已连接节点</string>
+    <string name="network_detail_label">网络</string>
+    <string name="network_status_label">状态</string>
+    <string name="route_all_traffic">所有流量走 ZeroTier</string>
+    <string name="route_all_traffic_summary">需要在网络侧配置好路由</string>
+    <string name="network_status_requesting">正在请求配置</string>
+    <string name="network_status_auth_required">需要认证</string>
+    <string name="appearance">外观</string>
+    <string name="color_mode_summary">跟随系统、浅色、深色或纯黑</string>
+    <string name="network_name_label">名称</string>
+    <string name="mac_address_label">MAC 地址</string>
 </resources>
