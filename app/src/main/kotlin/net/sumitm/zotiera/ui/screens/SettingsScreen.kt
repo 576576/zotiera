@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,8 @@ fun SettingsScreen(
     onUiModeChange: (UiMode) -> Unit,
     colorMode: ColorMode,
     onColorModeChange: (ColorMode) -> Unit,
+    amoled: Boolean,
+    onAmoledChange: (Boolean) -> Unit,
     onOpenMoons: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -91,7 +94,7 @@ fun SettingsScreen(
         )
 
         SectionTitle(stringResource(R.string.appearance))
-        // 外观的两项属于同一组，放在一张卡片里
+        // 外观的几项属于同一组，放在一张卡片里
         PreferenceGroup {
             PreferenceSelect(
                 title = stringResource(R.string.ui_style),
@@ -107,6 +110,15 @@ fun SettingsScreen(
                 selectedIndex = ColorMode.entries.indexOf(colorMode),
                 onSelected = { onColorModeChange(ColorMode.entries[it]) },
             )
+            // 纯黑只是深色的一种画法；不处在深色时没有意义，不显示
+            if (colorMode.isDark(isSystemInDarkTheme())) {
+                PreferenceSwitch(
+                    title = stringResource(R.string.amoled),
+                    summary = stringResource(R.string.amoled_summary),
+                    checked = amoled,
+                    onCheckedChange = onAmoledChange,
+                )
+            }
         }
 
         SectionTitle(stringResource(R.string.preferences_network))
@@ -219,5 +231,4 @@ private fun colorModeLabel(mode: ColorMode): String = when (mode) {
     ColorMode.SYSTEM -> stringResource(R.string.color_mode_system)
     ColorMode.LIGHT -> stringResource(R.string.color_mode_light)
     ColorMode.DARK -> stringResource(R.string.color_mode_dark)
-    ColorMode.AMOLED -> stringResource(R.string.color_mode_amoled)
 }

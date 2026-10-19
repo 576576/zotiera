@@ -57,41 +57,37 @@ import net.sumitm.zotiera.ui.component.isWideLayout
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
+import net.sumitm.zotiera.ui.toast
 import net.sumitm.zotiera.util.NetworkIdUtils
 
 @Composable
-fun OverviewScreen(viewModel: NodeViewModel, onOpenDevice: () -> Unit) {
+fun OverviewScreen(
+    viewModel: NodeViewModel,
+    onOpenDevice: () -> Unit,
+    onOpenNetwork: (Long) -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showJoin by remember { mutableStateOf(false) }
     var selectedId by remember { mutableStateOf<Long?>(null) }
+    val wide = isWideLayout()
 
     val vpnPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
+            toast(context, R.string.connecting_toast)
             viewModel.startTunnel()
         }
     }
 
     LaunchedEffect(Unit) { viewModel.refresh() }
 
-    // 详情展开时，返回键先收起详情，而不是退出应用
-    BackHandler(enabled = selectedId != null) { selectedId = null }
+    // 只有宽屏才在原地展开详情；窄屏是独立页面，返回由导航处理
+    BackHandler(enabled = wide && selectedId != null) { selectedId = null }
 
-    // 隧道状态变化提示
-    var lastRunning by remember { mutableStateOf<Boolean?>(null) }
-    LaunchedEffect(state.tunnelRunning) {
-        val now = state.tunnelRunning
-        val message = when {
-            now && lastRunning == false -> R.string.connected_toast
-            !now && lastRunning == true -> R.string.disconnected_toast
-            else -> null
-        }
-        lastRunning = now
-        message?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
-        }
+    fun openNetwork(id: Long) {
+        if (wide) selectedId = id else onOpenNetwork(id)
     }
 
     fun toggleTunnel(on: Boolean) {
@@ -100,92 +96,80 @@ fun OverviewScreen(viewModel: NodeViewModel, onOpenDevice: () -> Unit) {
             return
         }
         if (state.joinedNetworkIds.isEmpty()) {
-            android.widget.Toast.makeText(
-                context,
-                R.string.tunnel_needs_network,
-                android.widget.Toast.LENGTH_SHORT,
-            ).show()
+            toast(context, R.string.tunnel_needs_network)
             return
         }
         val prepare = VpnService.prepare(context)
         if (prepare != null) {
             vpnPermission.launch(prepare)
         } else {
+            // 连上要等节点上线，这里先给「正在连接」
+            toast(context, R.string.connecting_toast)
             viewModel.startTunnel()
         }
     }
 
-    val wide = isWideLayout()
     val selected = state.networks.firstOrNull { it.networkId == selectedId }
 
-    if (!wide && selected != null) {
-        NetworkDetailScreen(
-            viewModel = viewModel,
-            network = selected,
-            config = state.configs[selected.networkId],
-            onBack = { selectedId = null },
-        )
-    } else {
-        Row(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(if (wide) 0.42f else 1f).fillMaxSize()) {
-                Column(Modifier.fillMaxSize()) {
-                    AppHeader(
-                        title = stringResource(R.string.app_name),
-                        subtitle = stringResource(R.string.network_list),
+    Row(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(if (wide) 0.42f else 1f).fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+                AppHeader(
+                    title = stringResource(R.string.app_name),
+                    subtitle = stringResource(R.string.network_list),
+                )
+                DeviceCard(
+                    state = state,
+                    onOpen = onOpenDevice,
+                    onToggleTunnel = ::toggleTunnel,
+                )
+                if (state.networks.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.no_data),
+                        color = appColors().onSurfaceVariant,
+                        modifier = Modifier.padding(start = 20.dp, top = 16.dp),
                     )
-                    DeviceCard(
-                        state = state,
-                        onOpen = onOpenDevice,
-                        onToggleTunnel = ::toggleTunnel,
-                    )
-                    if (state.networks.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.no_data),
-                            color = appColors().onSurfaceVariant,
-                            modifier = Modifier.padding(start = 20.dp, top = 16.dp),
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(state.networks, key = { it.networkId }) { network ->
-                                NetworkRow(
-                                    network = network,
-                                    joined = network.lastActivated,
-                                    onClick = { selectedId = network.networkId },
-                                    onJoinedChange = { joined -> viewModel.setJoined(network, joined) },
-                                )
-                            }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(state.networks, key = { it.networkId }) { network ->
+                            NetworkRow(
+                                network = network,
+                                joined = network.lastActivated,
+                                onClick = { openNetwork(network.networkId) },
+                                onJoinedChange = { joined -> viewModel.setJoined(network, joined) },
+                            )
                         }
                     }
                 }
-                AppFab(
-                    label = stringResource(R.string.join_network),
-                    icon = Icons.Rounded.Add,
-                    onClick = { showJoin = true },
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-                )
             }
-            if (wide) {
-                Box(Modifier.weight(0.58f).fillMaxSize()) {
-                    if (selected != null) {
-                        NetworkDetailPane(
-                            network = selected,
-                            config = state.configs[selected.networkId],
-                            onDelete = {
-                                viewModel.deleteNetwork(selected)
-                                selectedId = null
-                            },
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.select_a_network),
-                            color = appColors().onSurfaceVariant,
-                            modifier = Modifier.align(Alignment.Center),
-                        )
-                    }
+            AppFab(
+                label = stringResource(R.string.join_network),
+                icon = Icons.Rounded.Add,
+                onClick = { showJoin = true },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
+            )
+        }
+        if (wide) {
+            Box(Modifier.weight(0.58f).fillMaxSize()) {
+                if (selected != null) {
+                    NetworkDetailPane(
+                        network = selected,
+                        config = state.configs[selected.networkId],
+                        onDelete = {
+                            viewModel.deleteNetwork(selected)
+                            selectedId = null
+                        },
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.select_a_network),
+                        color = appColors().onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
                 }
             }
         }

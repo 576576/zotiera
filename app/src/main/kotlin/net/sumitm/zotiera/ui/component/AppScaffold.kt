@@ -1,8 +1,12 @@
 package net.sumitm.zotiera.ui.component
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -168,4 +172,18 @@ fun isWideLayout(): Boolean {
     val widthDp = info.containerSize.width / density
     val heightDp = info.containerSize.height / density
     return widthDp >= 840f || (widthDp >= 600f && heightDp / widthDp < 1.2f)
+}
+
+/**
+ * 目的地的底：铺满且不透明。
+ *
+ * 页面切换时两个目的地会同时在场，缺了这层底色，两页的文字会叠在一起。
+ */
+@Composable
+fun ScreenSurface(content: @Composable BoxScope.() -> Unit) {
+    val color = when (LocalUiMode.current) {
+        UiMode.Miuix -> top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.background
+        UiMode.Material -> MaterialTheme.colorScheme.background
+    }
+    Box(modifier = Modifier.fillMaxSize().background(color), content = content)
 }

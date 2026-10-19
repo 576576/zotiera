@@ -171,9 +171,14 @@
     <string name="color_mode_system">Follow system</string>
     <string name="color_mode_light">Light</string>
     <string name="color_mode_dark">Dark</string>
-    <string name="color_mode_amoled">AMOLED (pure black)</string>
+    <string name="amoled">Pure black</string>
+    <string name="amoled_summary">Use a true black background in dark mode</string>
     <string name="connected_toast">Connected</string>
+    <string name="connecting_toast">Connecting</string>
     <string name="disconnected_toast">Disconnected</string>
+    <string name="tile_on">Connected</string>
+    <string name="tile_off">Disconnected</string>
+    <string name="tile_needs_permission">Authorize the VPN in Zotiera first</string>
     <string name="peer_subtitle">Connected peers</string>
     <string name="network_detail_label">Network</string>
     <string name="network_status_label">Status</string>
@@ -182,7 +187,7 @@
     <string name="network_status_requesting">Requesting configuration</string>
     <string name="network_status_auth_required">Authentication required</string>
     <string name="appearance">Appearance</string>
-    <string name="color_mode_summary">System, light, dark or pure black</string>
+    <string name="color_mode_summary">Follow system, light or dark</string>
     <string name="network_name_label">Name</string>
     <string name="mac_address_label">MAC Address</string>
     <string name="notification_text_connected_multi">%d networks</string>

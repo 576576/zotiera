@@ -90,6 +90,8 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
     private static final String[] DISALLOWED_APPS = {"com.android.vending"};
     private static final String TAG = "ZT1_Service";
     private static final int ZT_NOTIFICATION_TAG = 5919812;
+    /** 服务实例是否在跑。通知栏磁贴读它取开关状态。 */
+    public static volatile boolean isRunning = false;
     private final IBinder mBinder = new ZeroTierBinder();
     private final DataStore dataStore = new DataStore(this);
     private final EventBus eventBus = EventBus.getDefault();
@@ -290,6 +292,8 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
             return START_NOT_STICKY;
         }
         this.mStartID = startId;
+        isRunning = true;
+        ZeroTierTileService.refreshTile(this);
 
         // 注册事件总线监听器
         if (!this.eventBus.isRegistered(this)) {
@@ -315,7 +319,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         }
         if (requested.isEmpty()) {
             Log.e(TAG, "No network to join");
-            stopSelf(startId);
+            abortStart();
             return START_NOT_STICKY;
         }
         this.joinedNetworkIds.addAll(requested);
@@ -330,13 +334,13 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         if (currentNetworkInfo == NetworkInfoUtils.CurrentConnection.CONNECTION_NONE) {
             // 未连接网络
             Toast.makeText(this, R.string.toast_no_network, Toast.LENGTH_SHORT).show();
-            stopSelf(this.mStartID);
+            abortStart();
             return START_NOT_STICKY;
         } else if (currentNetworkInfo == NetworkInfoUtils.CurrentConnection.CONNECTION_MOBILE &&
                 !useCellularData) {
             // 使用移动网络，但未在设置中允许移动网络访问
             Toast.makeText(this, R.string.toast_mobile_data, Toast.LENGTH_LONG).show();
-            stopSelf(this.mStartID);
+            abortStart();
             return START_NOT_STICKY;
         }
 
@@ -368,6 +372,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                         Log.d(TAG, "ZeroTierOne Node Initialized");
                     } else {
                         Log.e(TAG, "Error starting ZT1 Node: " + result);
+                        abortStart();
                         return START_NOT_STICKY;
                     }
                     this.onNodeStatusRequest(null);
@@ -416,6 +421,7 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                 }
             } catch (Exception e) {
                 Log.e(TAG, e.toString(), e);
+                abortStart();
                 return START_NOT_STICKY;
             }
         }
@@ -425,7 +431,21 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         return START_STICKY;
     }
 
+    /**
+     * 启动条件不满足：把开关与磁贴退回未连接，再停掉自己。
+     *
+     * 界面绑着服务时 stopSelf 不会走 onDestroy，不主动通知的话开关会一直停在「正在连接」。
+     */
+    private void abortStart() {
+        isRunning = false;
+        ZeroTierTileService.refreshTile(this);
+        this.eventBus.post(new IsServiceRunningReplyEvent(false));
+        stopSelf(this.mStartID);
+    }
+
     public void stopZeroTier() {
+        isRunning = false;
+        ZeroTierTileService.refreshTile(this);
         this.joinedNetworkIds.clear();
         this.tunnelFingerprint = "";
         if (this.svrSocket != null) {
@@ -498,6 +518,10 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
 
     public void onDestroy() {
         try {
+            isRunning = false;
+            // 服务提前退出（无网络、未允许移动数据、初始化失败）时没有 NodeDestroyedEvent，
+            // 界面会一直停在「正在连接」；这里补一条状态
+            this.eventBus.post(new IsServiceRunningReplyEvent(false));
             stopZeroTier();
             if (this.vpnSocket != null) {
                 try {
@@ -589,7 +613,8 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
 
     @Subscribe(threadMode = ThreadMode.POSTING)
     public void onIsServiceRunningRequest(IsServiceRunningRequestEvent event) {
-        this.eventBus.post(new IsServiceRunningReplyEvent(true));
+        // 服务实例还在（被界面绑着）不代表隧道在跑，按实际状态回
+        this.eventBus.post(new IsServiceRunningReplyEvent(isRunning));
     }
 
     /**

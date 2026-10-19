@@ -86,8 +86,8 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            // 绑定成功只说明服务实例在，不代表隧道在跑；开关状态由服务自己上报
             service = (binder as? ZeroTierOneService.ZeroTierBinder)?.service
-            _state.update { it.copy(tunnelRunning = true) }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -112,6 +112,8 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 networks = repository.networks(),
                 joinedNetworkIds = repository.lastActivatedNetworks().map { n -> n.networkId }.toSet(),
+                // 服务可能已经被通知栏磁贴停掉，这里以服务实例为准
+                tunnelRunning = ZeroTierOneService.isRunning,
             )
         }
         bus.post(NetworkListRequestEvent())
@@ -138,8 +140,9 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
             context.bindService(Intent(context, ZeroTierOneService::class.java), connection, Context.BIND_AUTO_CREATE)
         }
         context.startService(Intent(context, ZeroTierOneService::class.java))
-        _state.update { it.copy(tunnelRunning = true) }
+        // 先按服务实际状态刷新，再把开关置为打开（startService 是异步的，服务还没起来）
         refresh()
+        _state.update { it.copy(tunnelRunning = true) }
     }
 
     fun stopTunnel() {
@@ -159,6 +162,7 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
      * 加入 / 离开一个网络。
      *
      * 只改成员资格；隧道没开时仅写库，等下次打开隧道一起 join。
+     * 一个网络都不剩时把隧道一起关掉——没有成员资格的隧道没有意义。
      */
     fun setJoined(network: Network, joined: Boolean) {
         if (network.lastActivated != joined) {
@@ -176,11 +180,13 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
                 bus.post(LeaveNetworkEvent(network.networkId))
             }
         }
+        val joinedIds = repository.lastActivatedNetworks().map { it.networkId }.toSet()
         _state.update {
-            it.copy(
-                networks = repository.networks(),
-                joinedNetworkIds = repository.lastActivatedNetworks().map { n -> n.networkId }.toSet(),
-            )
+            it.copy(networks = repository.networks(), joinedNetworkIds = joinedIds)
+        }
+        if (joinedIds.isEmpty() && _state.value.tunnelRunning) {
+            stopTunnel()
+            return
         }
         refresh()
     }
@@ -234,11 +240,13 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
             bus.post(LeaveNetworkEvent(network.networkId))
         }
         repository.deleteNetwork(network)
+        val joinedIds = repository.lastActivatedNetworks().map { it.networkId }.toSet()
         _state.update {
-            it.copy(
-                networks = repository.networks(),
-                joinedNetworkIds = repository.lastActivatedNetworks().map { n -> n.networkId }.toSet(),
-            )
+            it.copy(networks = repository.networks(), joinedNetworkIds = joinedIds)
+        }
+        if (joinedIds.isEmpty() && _state.value.tunnelRunning) {
+            stopTunnel()
+            return
         }
         refresh()
     }

@@ -24,21 +24,25 @@ import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 
-/** 配色模式。AMOLED 只在深色下生效。 */
+/**
+ * 配色模式。AMOLED 不是第四种模式，而是深色下的一个开关
+ * （见 [ZotieraTheme] 的 amoled 参数）。
+ */
 enum class ColorMode(val value: Int) {
-    SYSTEM(0), LIGHT(1), DARK(2), AMOLED(3);
+    SYSTEM(0), LIGHT(1), DARK(2);
 
     companion object {
+        /** 旧版本存过 3 = AMOLED，这里退回深色，由调用方补上 AMOLED 开关。 */
+        const val LEGACY_AMOLED = 3
+
         fun fromValue(value: Int) = entries.firstOrNull { it.value == value } ?: SYSTEM
     }
 
     fun isDark(systemDark: Boolean): Boolean = when (this) {
         SYSTEM -> systemDark
         LIGHT -> false
-        DARK, AMOLED -> true
+        DARK -> true
     }
-
-    val isAmoled: Boolean get() = this == AMOLED
 }
 
 /** 语义字体。两套风格共用，切换时排版不跳。 */
@@ -105,9 +109,12 @@ fun ColorScheme.amoled(): ColorScheme = copy(
 fun ZotieraTheme(
     uiMode: UiMode,
     colorMode: ColorMode = ColorMode.SYSTEM,
+    /** 纯黑背景；只在深色下有意义 */
+    amoled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val dark = colorMode.isDark(isSystemInDarkTheme())
+    val amoledDark = amoled && dark
     // enableEdgeToEdge 只按启动时的明暗定一次系统栏图标颜色；运行时切深色后
     // 图标会留在深色上（黑底黑字），所以每次明暗变化都要重新声明
     val view = androidx.compose.ui.platform.LocalView.current
@@ -133,17 +140,16 @@ fun ZotieraTheme(
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
                         if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
                     else -> materialScheme(SeedColor, dark)
-                }.let { if (colorMode.isAmoled) it.amoled() else it }
+                }.let { if (amoledDark) it.amoled() else it }
                 MaterialTheme(colorScheme = scheme, content = content)
             }
 
             UiMode.Miuix -> {
-                val controller = remember(dark, colorMode.isAmoled) {
-                    val amoled = colorMode.isAmoled
+                val controller = remember(dark, amoledDark) {
                     ThemeController(
                         colorSchemeMode = if (dark) ColorSchemeMode.Dark else ColorSchemeMode.Light,
                         // AMOLED 要把面压到纯黑；Miuix 没有内置档位，改它自己的暗色板
-                        darkColors = if (amoled) {
+                        darkColors = if (amoledDark) {
                             top.yukonga.miuix.kmp.theme.darkColorScheme().copy(
                                 background = Color.Black,
                                 surface = Color.Black,
