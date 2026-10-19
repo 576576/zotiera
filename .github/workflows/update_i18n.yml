@@ -2,7 +2,7 @@
 #
 # 悬空：Weblate 服务尚未接入，本文件只保留手动触发，不加 push 触发。
 # 接上之后要做的改动集中在本文件末尾的 guard 处：
-#   1. 增加 push: master 触发，并用 job 级 if 只放行 Weblate 提交
+#   1. 增加 push: main 触发，并用 job 级 if 只放行 Weblate 提交
 #   2. 用真实流程替换 guard：拉取翻译 → 提交 → 推送
 # 在那之前，运行本工作流 = 明确失败，绝不静默成功。
 
