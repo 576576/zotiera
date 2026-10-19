@@ -804,6 +804,13 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         var builder = new VpnService.Builder();
         var assignedAddresses = virtualNetworkConfig.getAssignedAddresses();
         Log.i(TAG, "address length: " + assignedAddresses.length);
+        if (assignedAddresses.length == 0) {
+            // 网络尚未分配地址（未授权或还在配置中）。此时 establish() 会抛
+            // IllegalArgumentException("At least one address must be specified")，
+            // 直接跳过，等下一次配置更新。
+            Log.w(TAG, "No assigned address yet, skip VPN setup");
+            return false;
+        }
         boolean isRouteViaZeroTier = networkConfig.getRouteViaZeroTier();
 
         // 遍历 ZT 网络中当前设备的 IP 地址，组播配置
@@ -911,7 +918,14 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         }
 
         // 建立 VPN 连接
-        this.vpnSocket = builder.establish();
+        try {
+            this.vpnSocket = builder.establish();
+        } catch (IllegalArgumentException e) {
+            // 配置在构建过程中失效（例如地址被回收）时同样不应打断事件分发
+            Log.e(TAG, "Cannot establish VPN: " + e.getMessage(), e);
+            this.eventBus.post(new VPNErrorEvent(getString(R.string.toast_vpn_application_not_prepared)));
+            return false;
+        }
         if (this.vpnSocket == null) {
             this.eventBus.post(new VPNErrorEvent(getString(R.string.toast_vpn_application_not_prepared)));
             return false;
