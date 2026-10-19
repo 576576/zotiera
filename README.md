@@ -1,18 +1,32 @@
 # Zotiera
 
-非官方 ZeroTier Android 客户端。基于官方客户端反编译代码，经
-[kaaass/ZerotierFix](https://github.com/kaaass/ZerotierFix) 修补而来。
+![Zotiera](assets/images/icon-zotiera-128.png)
+
+中文 | [English](docs/en/README.md)
+
+非官方 [ZeroTier](https://www.zerotier.com/) Android 客户端，具有最新的 Material/Miuix 外观和多网络同时在线功能。
 
 ## 功能
 
-- 加入/离开多个 ZeroTier 网络，开机自启，前台服务常驻
-- 自定义 planet（文件或 HTTPS URL）、moon 轨道管理
-- Peers 列表、网络详情、DNS 三种模式（不使用 / 网络下发 / 自定义）
-- 中英文界面，Material 3 深浅色与动态取色
+- 同时加入并连接多个 ZeroTier 网络：网络行的开关表示加入 / 离开，设备卡上的总开关只管隧道
+- 快捷设置磁贴直接开关隧道，连接期间通知常驻
+- 两套界面风格（Miuix / Material 3），深浅色与纯黑背景
+- 自定义 planet（文件或 HTTPS URL）、moon 轨道管理与 `.moon` 导出
+- 网络详情（状态、MAC、MTU、DNS、分配地址）与对等节点列表（角色、版本、延迟、首选路径）
+- DNS 三种模式：不使用 / 网络下发 / 自定义
+- 中英文界面
+
+## 截图
+
+![对等节点](assets/images/screenshots/peers-material-dark.png)
+
+Material 深色风格。模拟器渲染不出 Miuix 风格的字体与控件观感，Miuix 在实机上才是设计的样子。
+其余截图见 [`assets/images/screenshots/`](assets/images/screenshots/readme.md)。
 
 ## 要求
 
-- Android 11（API 30）及以上，仅 64 位（`arm64-v8a`、`x86_64`）
+- Android 11（API 30）及以上
+- 仅 64 位：`arm64-v8a`、`x86_64`
 
 ## 构建
 
@@ -25,7 +39,7 @@ git submodule update --init --recursive
 
 正式签名读取 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、
 `ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`；缺任何一个都不会产出签名包。
-`.pr` 通道使用仓库内的测试密钥，只用于自测，不可分发。
+`.pr` 通道使用 `assets/ci/signing/pr.keystore` 里的公开测试密钥，只用于自测，不可分发。
 
 ## 版本号
 
@@ -33,16 +47,17 @@ git submodule update --init --recursive
 `versionCode = major*1e6 + minor*1e4 + patch*100 + revision`。引擎版本号唯一来源是
 `externals/core/version.h`，修订号在 `version.txt`。
 
-## 许可与来源
-
-- ZeroTier 核心（`externals/core`，1.16.2 起为 MPL-2.0）来自
-  [zerotier/ZeroTierOne](https://github.com/zerotier/ZeroTierOne)。
-- 应用代码源自官方 Android 客户端的反编译结果，原作者 Grant Limberg
-  (glimberg@gmail.com)，详见上游 [AUTHORS.md](https://github.com/zerotier/ZeroTierOne/blob/master/AUTHORS.md#primary-authors)。
-- 应用图标是 `ZeroTier, Inc.` 的商标。
-
-本项目与 ZeroTier, Inc. 无隶属或背书关系。
-
 ## 文档
 
-重构计划与基线对比见 [`docs/agent/`](docs/agent/)。
+- [界面结构](docs/agent/plan/ui-restructure.md)
+- [重构计划与基线对比](docs/agent/)
+- [界面截图](assets/images/screenshots/readme.md)
+
+## 许可与来源
+
+本项目按 **AGPL-3.0-or-later** 授权，见 [LICENSE](LICENSE)。
+
+ZeroTier 核心 `externals/core`（1.16.2 起）为 **MPL-2.0**，来自
+[zerotier/ZeroTierOne](https://github.com/zerotier/ZeroTierOne)。
+
+ZeroTier 是 ZeroTier, Inc. 的商标。本项目与 ZeroTier, Inc. 无隶属或背书关系。
