@@ -76,7 +76,7 @@
     <string name="moon_seed">Moon Seed:</string>
     <string name="moon_orbit_activity">Moon Orbit</string>
     <string name="delete_moon_orbit">Delete</string>
-    <string name="moon_seed_hint">Moon Seed is an arbitrary node that holds Moon information. If you are not sure, it can be the same as Moon World ID.</string>
+    <string name="moon_seed_hint">Any moon member that can serve the moon definition. Leave empty to use the moon address itself (the first 10 digits of the world ID).</string>
     <string name="moon_orbit_info">Moon Orbit Information</string>
     <string name="add">Add</string>
     <string name="no_data">No data</string>
@@ -133,7 +133,7 @@
     <string name="external_file">External file</string>
     <string name="cached">Cached</string>
     <string name="moon_wrong_file_format">Wrong moon file format</string>
-    <string name="moon_world_id_hint">Zerotier address of Moon node. Also filename of its moon file.</string>
+    <string name="moon_world_id_hint">Moon world ID (16 hex digits), i.e. the moon file name without the .moon suffix.</string>
     <string name="cached_moon_file_delete">Cached moon file deleted. Reconnect for this setting to take effect.</string>
     <string name="channel_name">Connection Status Notify</string>
     <string name="channel_description">Connection Status</string>

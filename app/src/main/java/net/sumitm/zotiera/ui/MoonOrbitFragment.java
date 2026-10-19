@@ -163,7 +163,7 @@ public class MoonOrbitFragment extends Fragment {
                 }
                 Log.i(TAG, "Copy planet file successfully");
                 // 加入 Moon
-                onAddMoonOrbitEvent(new AddMoonOrbitEvent(moonWorldId, moonWorldId, true));
+                onAddMoonOrbitEvent(new AddMoonOrbitEvent(moonWorldId, moonWorldId >>> 24, true));
             } else {
                 Toast.makeText(getContext(), R.string.cannot_open_moon, Toast.LENGTH_LONG).show();
             }
@@ -229,23 +229,29 @@ public class MoonOrbitFragment extends Fragment {
                 .setPositiveButton(getString(R.string.add), (dialog, which) -> {
                     long moonWorldId;
                     long moonSeed;
-                    // 解析 Moon 地址
+                    // 解析 Moon 世界 ID：64 位，形如 8056c2e21c000001
+                    String worldIdText = textMoonWorldId.getText().toString().trim();
                     try {
-                        moonWorldId = Long.parseLong(textMoonWorldId.getText().toString(), 16);
-                        if (!(0 <= moonWorldId && moonWorldId <= 0xffffffffffL))
+                        if (worldIdText.isEmpty() || worldIdText.length() > 16)
                             throw new NumberFormatException();
+                        moonWorldId = Long.parseUnsignedLong(worldIdText, 16);
                     } catch (NumberFormatException ignored) {
                         Snackbar.make(requireView(), R.string.moon_world_id_wrong_format, BaseTransientBottomBar.LENGTH_SHORT).show();
                         return;
                     }
-                    // 解析 Seed
-                    try {
-                        moonSeed = Long.parseLong(textMoonSeed.getText().toString(), 16);
-                        if (!(0 <= moonSeed && moonSeed <= 0xffffffffffL))
-                            throw new NumberFormatException();
-                    } catch (NumberFormatException ignored) {
-                        Snackbar.make(requireView(), R.string.moon_seed_wrong_format, BaseTransientBottomBar.LENGTH_SHORT).show();
-                        return;
+                    // 解析 Seed：留空时使用 moon 自身的地址，即世界 ID 的高 40 位
+                    String seedText = textMoonSeed.getText().toString().trim();
+                    if (seedText.isEmpty()) {
+                        moonSeed = moonWorldId >>> 24;
+                    } else {
+                        try {
+                            if (seedText.length() > 10)
+                                throw new NumberFormatException();
+                            moonSeed = Long.parseUnsignedLong(seedText, 16);
+                        } catch (NumberFormatException ignored) {
+                            Snackbar.make(requireView(), R.string.moon_seed_wrong_format, BaseTransientBottomBar.LENGTH_SHORT).show();
+                            return;
+                        }
                     }
                     // 触发事件
                     this.eventBus.post(new AddMoonOrbitEvent(moonWorldId, moonSeed, false));

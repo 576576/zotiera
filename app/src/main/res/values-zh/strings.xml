@@ -76,7 +76,7 @@
     <string name="moon_orbit_activity">Moon 入轨</string>
     <string name="load_planet_summary">需要手动重新连接使配置生效</string>
     <string name="delete_moon_orbit">删除</string>
-    <string name="moon_seed_hint">Moon种子是持有Moon信息的任意节点。若不确定，可以和Moon地址相同。</string>
+    <string name="moon_seed_hint">任意能提供 moon 定义的成员节点。留空则使用 moon 自身地址（世界 ID 的前 10 位）。</string>
     <string name="moon_orbit_info">Moon 入轨信息</string>
     <string name="add">添加</string>
     <string name="no_data">无数据</string>
@@ -131,7 +131,7 @@
     <string name="external_file">外部文件</string>
     <string name="cached">已缓存</string>
     <string name="moon_wrong_file_format">Moon 文件格式错误</string>
-    <string name="moon_world_id_hint">Moon 结点的 Zerotier 地址。即 Moon 文件的文件名（不包含扩展名）。</string>
+    <string name="moon_world_id_hint">Moon 世界 ID（16 位十六进制），即 moon 文件名去掉 .moon 后缀。</string>
     <string name="cached_moon_file_delete">已删除缓存的 Moon 文件。需手动重连使配置生效。</string>
     <string name="channel_name">连接状态通知</string>
     <string name="channel_description">连接状态</string>
