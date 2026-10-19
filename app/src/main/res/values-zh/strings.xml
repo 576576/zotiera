@@ -153,4 +153,5 @@
     <string name="dont_show_again">不再提示</string>
     <string name="planet_url_requires_https">Planet 文件必须通过 HTTPS 下载</string>
     <string name="refresh">刷新</string>
+    <string name="peer_version_unknown" translatable="false">unknown</string>
 </resources>

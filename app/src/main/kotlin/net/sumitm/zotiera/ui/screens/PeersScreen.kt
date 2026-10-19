@@ -87,8 +87,13 @@ private fun PeerRow(peer: Peer) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            val version = if (peer.versionMajor < 0 || peer.versionMinor < 0 || peer.versionRev < 0) {
+                stringResource(R.string.peer_version_unknown)
+            } else {
+                "v${peer.versionMajor}.${peer.versionMinor}.${peer.versionRev}"
+            }
             Text(
-                text = "v${peer.versionMajor}.${peer.versionMinor}.${peer.versionRev} · ${peer.latency} ms",
+                text = "$version · ${peer.latency} ms",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
