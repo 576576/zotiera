@@ -189,11 +189,11 @@ M5 Legacy Central：挂起，待 M4 完成后再评估
 | T2.5 | **GreenDAO → Room，抽出 `:data` 模块**：按新规范设计 schema（`networks` / `network_configs` / `app_node` / `dns_servers` / `moon_orbits` / `assigned_addresses`，snake_case 列名、外键 + 索引、枚举走 `@TypeConverters`），Room schema **v1 全新建库**；删除 `MigrationV18`–`V22` 链式迁移；DAO 只在 `:data` 暴露 | 新装可用；无 GreenDAO 依赖残留；schema JSON 入库 |
 | T2.6 | 系统行为改造：`foregroundServiceType="specialUse"` + `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`（按当前文档核对）；Android 13+ 运行时申请 `POST_NOTIFICATIONS`；`allowBackup="false"`（`identity.secret` 不外泄）；`usesCleartextTraffic` 改 `networkSecurityConfig` 白名单 | Android 14/16 启动 VPN 不抛 `MissingForegroundServiceTypeException`；通知可见；备份不含身份文件 |
 | T2.7 | 删除 minSdk 30 后无用的兼容代码：multidex、desugaring、SDK_INT 分支（§4.1） | 依赖树无 `multidex` / `desugar_jdk_libs` |
-| T2.8 | 双通道签名（D8）：`pr` build type 用仓库内 `ci/signing/pr.keystore` + 固定口令，并加 `.pr` 后缀与 `Zotiera PR` 应用名；`release` build type 从 4 个 `ANDROID_*` 变量读密钥，缺失即失败（不静默降级为未签名）；本地开发用 `local.properties` | `assemblePr` 与 `assembleRelease` 均可直接安装；`aapt dump badging` 的包名/应用名/版本正确 |
+| T2.8 | 双通道签名（D8）：`pr` build type 用仓库内 `assets/ci/signing/pr.keystore` + 固定口令，并加 `.pr` 后缀与 `Zotiera PR` 应用名；`release` build type 从 4 个 `ANDROID_*` 变量读密钥，缺失即失败（不静默降级为未签名）；本地开发用 `local.properties` | `assemblePr` 与 `assembleRelease` 均可直接安装；`aapt dump badging` 的包名/应用名/版本正确 |
 
 关于 Room 建库：新包名下没有历史数据，schema 一次设计到位（D9），不迁就 GreenDAO 的命名。表名列名可自由设计，但**任何后续 schema 变更必须带 Room 迁移**，不允许 `fallbackToDestructiveMigration`。
 
-`pr` 通道的 keystore 会进版本库，因此它是公开的：只能用于签同包名的测试包，绝不能用于正式分发。这一点写进 `ci/signing/README.md`，并在 workflow 里注释。正式包只认 4 个 `ANDROID_*` 变量（`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`）。
+`pr` 通道的 keystore 会进版本库，因此它是公开的：只能用于签同包名的测试包，绝不能用于正式分发。这一点写进 `assets/ci/signing/README.md`，并在 workflow 里注释。正式包只认 4 个 `ANDROID_*` 变量（`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`）。
 
 回滚点：T2.1–T2.8 各自独立提交；T2.1 之后不可回退到旧包名（会与已发布数据分叉），如需回退走分支。
 
@@ -308,7 +308,7 @@ M5 Legacy Central：挂起，待 M4 完成后再评估
 | R9 | symlink 在 Windows/CI 行为不一致 | 高（已发生） | 中 | T0.1 彻底改为显式 srcDirs |
 | R10 | 中文文案在 Compose 迁移中丢失或串行 | 中 | 低 | 字符串留在 `res/values*`，Compose 用 `stringResource` |
 | R11 | 放弃 Android 10 及以下引发用户流失 | 低 | 低 | 已在 D3 接受；发布说明写清 |
-| R12 | `pr` 通道 keystore 公开（入库），他人可签同包名包 | 高（已接受） | 低 | `.pr` 包不用于分发；`ci/signing/README.md` 注明用途与禁令；正式包只认 `ANDROID_*` |
+| R12 | `pr` 通道 keystore 公开（入库），他人可签同包名包 | 高（已接受） | 低 | `.pr` 包不用于分发；`assets/ci/signing/README.md` 注明用途与禁令；正式包只认 `ANDROID_*` |
 | R13 | moon 被上游移除后用户配置静默失效 | 中 | 中 | §8 的分阶段方案：先标注弃用，再退化为只读 + 导出，不静默丢数据 |
 | R14 | CI 矩阵漂移（重复命令、PR 加了 `paths-ignore`、作业改名） | 中 | 中 | 命令只写在 `lint.yml`/`build.yml`；PR 永不 `paths-ignore`；作业名即检查名；推前跑 `verify_workflows.py` |
 | R15 | 去掉 `armeabi-v7a` 后仍有 32 位设备用户 | 低 | 低 | 与 minSdk 30 一起在发布说明中声明 |

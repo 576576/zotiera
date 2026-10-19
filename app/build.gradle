@@ -5,7 +5,7 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
-def prKeystore = file("${rootProject.projectDir}/ci/signing/pr.keystore")
+def prKeystore = file("${rootProject.projectDir}/assets/ci/signing/pr.keystore")
 
 // CI 通过 -P 注入；本地用默认值。必须在 android 块外求值，块内 `project` 会被委托遮蔽。
 def zotieraVersionName = (project.findProperty('zotieraVersionName') ?: '1.16.2-1').toString()
