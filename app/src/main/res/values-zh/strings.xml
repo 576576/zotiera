@@ -199,4 +199,15 @@
     <string name="core_version">核心版本</string>
     <string name="tunnel_mtu">隧道 MTU</string>
     <string name="tunnel_needs_network">请先加入至少一个网络</string>
+    <!-- 设置页尾部的入口与关于页 -->
+    <string name="manage_planet">管理 Planet</string>
+    <string name="manage_planet_summary">自定义 planet 文件或 URL</string>
+    <string name="manage_moon">管理 Moon</string>
+    <string name="about">关于</string>
+    <string name="licenses">组件许可证</string>
+    <string name="licenses_summary">组件名称与许可证标识</string>
+    <string name="licenses_note">完整许可证文本以各组件发布页与本仓库 LICENSE 为准。</string>
+    <string name="open_source_repo">开源仓库</string>
+    <string name="disclaimer">免责声明</string>
+    <string name="disclaimer_body">Zotiera 是第三方客户端，与 ZeroTier, Inc. 无隶属或背书关系；ZeroTier 是 ZeroTier, Inc. 的商标。\n\n本软件按 AGPL-3.0-or-later 提供，不对可用性与适用性作任何担保。接入他人网络时请遵守该网络的规则与当地法律。</string>
 </resources>

@@ -103,7 +103,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
     }
 
     Column(Modifier.fillMaxSize()) {
-        AppTopBar(title = stringResource(R.string.moon_orbit_activity), onBack = onBack)
+        AppTopBar(title = stringResource(R.string.manage_moon), onBack = onBack)
         Box(Modifier.fillMaxSize()) {
             if (moons.isEmpty()) {
                 Text(

@@ -60,7 +60,10 @@ import net.sumitm.zotiera.ui.component.NavDestination
 import net.sumitm.zotiera.ui.component.ScreenSurface
 import net.sumitm.zotiera.ui.component.isWideLayout
 import net.sumitm.zotiera.ui.screens.DeviceScreen
+import net.sumitm.zotiera.ui.screens.AboutScreen
+import net.sumitm.zotiera.ui.screens.LicensesScreen
 import net.sumitm.zotiera.ui.screens.MoonsScreen
+import net.sumitm.zotiera.ui.screens.PlanetScreen
 import net.sumitm.zotiera.ui.screens.NetworkDetailScreen
 import net.sumitm.zotiera.ui.screens.OverviewScreen
 import net.sumitm.zotiera.ui.screens.PeersScreen
@@ -236,7 +239,9 @@ private fun ZotieraApp(
                             onColorModeChange = onColorModeChange,
                             amoled = amoled,
                             onAmoledChange = onAmoledChange,
+                            onOpenPlanet = { navController.navigate("planet") },
                             onOpenMoons = { navController.navigate("moons") },
+                            onOpenAbout = { navController.navigate("about") },
                         )
                     }
 
@@ -270,6 +275,20 @@ private fun ZotieraApp(
                         ScreenSurface {
                             MoonsScreen(viewModel, onBack = { navController.popBackStack() })
                         }
+                    }
+                    composable("planet") {
+                        ScreenSurface { PlanetScreen(onBack = { navController.popBackStack() }) }
+                    }
+                    composable("about") {
+                        ScreenSurface {
+                            AboutScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenLicenses = { navController.navigate("licenses") },
+                            )
+                        }
+                    }
+                    composable("licenses") {
+                        ScreenSurface { LicensesScreen(onBack = { navController.popBackStack() }) }
                     }
                 }
             }

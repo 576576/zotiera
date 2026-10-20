@@ -1,24 +1,17 @@
 package net.sumitm.zotiera.ui.screens
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -26,25 +19,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.sumitm.zotiera.BuildConfig
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.UiMode
-import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppHeader
 import net.sumitm.zotiera.ui.component.preference.PreferenceArrow
 import net.sumitm.zotiera.ui.component.preference.PreferenceGroup
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceSwitch
-import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.component.preference.SectionTitle
 import net.sumitm.zotiera.ui.theme.ColorMode
 import net.sumitm.zotiera.util.Constants
-import java.io.File
-import java.net.URL
 
 @Composable
 fun SettingsScreen(
@@ -55,37 +41,16 @@ fun SettingsScreen(
     onColorModeChange: (ColorMode) -> Unit,
     amoled: Boolean,
     onAmoledChange: (Boolean) -> Unit,
+    onOpenPlanet: () -> Unit,
     onOpenMoons: () -> Unit,
+    onOpenAbout: () -> Unit,
 ) {
     val context = LocalContext.current
-    // 提示文案在组合期取好，回调里不再摸 LocalContext 的资源
-    val planetWrongFormat = stringResource(R.string.planet_wrong_format)
-    val cannotDownloadPlanet = stringResource(R.string.cannot_download_planet_file)
     val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
-    val scope = rememberCoroutineScope()
 
     var cellular by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, false)) }
     var disableIpv6 by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, false)) }
-    var startOnBoot by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, true)) }
-    var customPlanet by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_PLANET_USE_CUSTOM, false)) }
-    var planetMessage by remember { mutableStateOf<String?>(null) }
-    var showUrlDialog by remember { mutableStateOf(false) }
-
-    fun planetLoaded(): Boolean = File(context.filesDir, Constants.FILE_CUSTOM_PLANET).exists()
-
-    fun importPlanet(bytes: ByteArray): Boolean {
-        if (bytes.isEmpty() || bytes[0] != 0x01.toByte()) return false
-        File(context.filesDir, Constants.FILE_CUSTOM_PLANET).writeBytes(bytes)
-        prefs.edit { putBoolean(Constants.PREF_SET_PLANET_FILE, true) }
-        return true
-    }
-
-    val pickPlanet = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        planetMessage = if (bytes != null && importPlanet(bytes)) null
-        else planetWrongFormat
-    }
+    var startOnBoot by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, false)) }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -146,6 +111,20 @@ fun SettingsScreen(
             )
         }
 
+        // 网络相关的两个管理入口，跟着网络设置走，不单独占一栏
+        PreferenceGroup {
+            PreferenceArrow(
+                title = stringResource(R.string.manage_planet),
+                summary = stringResource(R.string.manage_planet_summary),
+                onClick = onOpenPlanet,
+            )
+            PreferenceArrow(
+                title = stringResource(R.string.manage_moon),
+                summary = stringResource(R.string.moon_orbit_summary),
+                onClick = onOpenMoons,
+            )
+        }
+
         SectionTitle(stringResource(R.string.preferences_general))
         PreferenceGroup {
             PreferenceSwitch(
@@ -159,72 +138,16 @@ fun SettingsScreen(
             )
         }
 
-        SectionTitle(stringResource(R.string.planet_settings))
-        PreferenceGroup {
-            PreferenceSwitch(
-                title = stringResource(R.string.use_custom_planet),
-                summary = stringResource(R.string.use_custom_planet_summary),
-                checked = customPlanet,
-                onCheckedChange = {
-                    customPlanet = it
-                    prefs.edit { putBoolean(Constants.PREF_PLANET_USE_CUSTOM, it) }
-                },
-            )
-            PreferenceArrow(
-                title = stringResource(R.string.import_via_file),
-                summary = if (planetLoaded()) stringResource(R.string.load_planet) else null,
-                onClick = { pickPlanet.launch(arrayOf("application/octet-stream", "*/*")) },
-            )
-            PreferenceArrow(
-                title = stringResource(R.string.import_via_url),
-                summary = null,
-                onClick = { showUrlDialog = true },
-            )
-        }
-        planetMessage?.let {
-            Text(it, modifier = Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.error)
-        }
-
-        SectionTitle(stringResource(R.string.moon_orbit_activity))
         PreferenceGroup {
             PreferenceArrow(
-                title = stringResource(R.string.moon_orbit_activity),
-                summary = stringResource(R.string.moon_orbit_summary),
-                onClick = onOpenMoons,
+                title = stringResource(R.string.about),
+                summary = "Zotiera ${BuildConfig.VERSION_NAME}",
+                onClick = onOpenAbout,
             )
         }
 
         // 末尾留白：滚动到底时最后一张卡片不贴住底栏
         Spacer(Modifier.height(24.dp))
-    }
-
-    if (showUrlDialog) {
-        var url by remember { mutableStateOf("") }
-        AppDialog(
-            title = stringResource(R.string.import_via_url),
-            confirmLabel = stringResource(android.R.string.ok),
-            onConfirm = {
-                showUrlDialog = false
-                scope.launch {
-                    planetMessage = runCatching {
-                        require(url.startsWith("https://")) { "https only" }
-                        val bytes = withContext(Dispatchers.IO) {
-                            URL(url).openStream().use { it.readBytes() }
-                        }
-                        if (!importPlanet(bytes)) error("bad header")
-                        null
-                    }.getOrElse { cannotDownloadPlanet }
-                }
-            },
-            onDismiss = { showUrlDialog = false },
-            dismissLabel = stringResource(android.R.string.cancel),
-        ) {
-            PreferenceTextField(
-                value = url,
-                onValueChange = { url = it.trim() },
-                label = stringResource(R.string.enter_planet_file_url),
-            )
-        }
     }
 }
 
