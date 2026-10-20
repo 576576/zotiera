@@ -1,4 +1,4 @@
-name: pr
+name: PR
 
 on:
   pull_request:
@@ -14,11 +14,11 @@ concurrency:
 
 jobs:
   lint:
-    name: check
+    name: 质量门禁
     uses: ./.github/workflows/lint.yml
 
   build:
-    name: build
+    name: 构建
     needs: lint
     uses: ./.github/workflows/build.yml
     with:

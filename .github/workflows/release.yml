@@ -1,4 +1,4 @@
-name: release
+name: Release
 
 on:
   push:
@@ -24,14 +24,14 @@ concurrency:
 
 jobs:
   prep:
-    name: prep
+    name: 准备构建参数
     runs-on: ubuntu-latest
     outputs:
       channel: ${{ steps.vars.outputs.channel }}
       version_name: ${{ steps.vars.outputs.version_name }}
       version_code: ${{ steps.vars.outputs.version_code }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 0
@@ -70,12 +70,12 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   lint:
-    name: check
+    name: 质量门禁
     needs: prep
     uses: ./.github/workflows/lint.yml
 
   build:
-    name: build
+    name: 构建
     needs: [prep, lint]
     uses: ./.github/workflows/build.yml
     with:
@@ -85,15 +85,15 @@ jobs:
     secrets: inherit
 
   publish:
-    name: publish
+    name: 发布
     needs: [prep, build]
     if: needs.prep.outputs.channel == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: zotiera-release
           path: dist
@@ -103,7 +103,13 @@ jobs:
           VERSION: ${{ needs.prep.outputs.version_name }}
         run: |
           set -euo pipefail
-          gh release create "v${VERSION}" dist/*.apk \
+          # 产物在 artifact 里保留相对路径（apk/<variant>/xxx.apk），不能只匹配 dist/*.apk
+          mapfile -t apks < <(find dist -type f -name '*.apk')
+          if [ ${#apks[@]} -eq 0 ]; then
+            echo "dist 里没有 apk" >&2
+            exit 1
+          fi
+          gh release create "v${VERSION}" "${apks[@]}" \
             --title "Zotiera ${VERSION}" \
             --notes "ZeroTier 核心 ${VERSION%%-*}；正式签名包。" \
             --draft

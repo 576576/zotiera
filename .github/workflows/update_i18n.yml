@@ -6,7 +6,7 @@
 #   2. 用真实流程替换 guard：拉取翻译 → 提交 → 推送
 # 在那之前，运行本工作流 = 明确失败，绝不静默成功。
 
-name: update_i18n
+name: Update i18n
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   update-i18n:
-    name: update-i18n
+    name: 检查前置条件
     runs-on: ubuntu-latest
     steps:
       - name: Report missing prerequisites
