@@ -1,7 +1,7 @@
 name: Build
 
 # 可复用构建工作流（workflow_call）：只负责把包装出来，不发布。
-# 产物名固定为 Zotiera-<version>[-<abi>].apk；传了 abi 就只打那一个架构。
+# 产物名固定为 Zotiera-<version>-<abi>.apk；不传 abi 时两个 ABI 合一，abi 记作 all。
 
 on:
   workflow_call:
@@ -84,11 +84,12 @@ jobs:
             echo "没有产出 apk" >&2
             exit 1
           fi
-          NAME="Zotiera-${VERSION_NAME}${ABI:+-$ABI}.apk"
+          # 没指定架构时是两个 ABI 合一的包，名字里记成 all
+          NAME="Zotiera-${VERSION_NAME}-${ABI:-all}.apk"
           mv "$SRC" "$NAME"
           ls -l "$NAME"
       - uses: actions/upload-artifact@v7
         with:
-          name: zotiera-${{ inputs.abi || 'universal' }}
+          name: zotiera-${{ inputs.abi || 'all' }}
           path: Zotiera-*.apk
           if-no-files-found: error
