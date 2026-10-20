@@ -1,8 +1,12 @@
 name: Release
 
+# 发布唯一入口：推送 main 出自动 alpha；手动 dispatch 可选 alpha / beta / release、
+# 勾选要出的架构、填发行说明。三个通道都直接发布（alpha / beta 是 prerelease）。
+
 on:
   push:
     branches: [main]
+    # 纯文档改动不出包
     paths-ignore:
       - 'docs/**'
       - '*.md'
@@ -10,10 +14,22 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: pr 只产出测试包，release 才发布
+        description: 发布通道
         type: choice
-        options: [pr, release]
-        default: pr
+        options: [alpha, beta, release]
+        default: alpha
+      arch_arm64:
+        description: arm64-v8a
+        type: boolean
+        default: true
+      arch_x64:
+        description: x86_64
+        type: boolean
+        default: true
+      release_notes:
+        description: 发行说明（单行，字面量 \n 表示换行）
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -30,6 +46,9 @@ jobs:
       channel: ${{ steps.vars.outputs.channel }}
       version_name: ${{ steps.vars.outputs.version_name }}
       version_code: ${{ steps.vars.outputs.version_code }}
+      tag: ${{ steps.vars.outputs.tag }}
+      prerelease: ${{ steps.vars.outputs.prerelease }}
+      abis: ${{ steps.vars.outputs.abis }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,79 +56,129 @@ jobs:
           fetch-depth: 0
       - name: Compute version
         id: vars
+        shell: bash
         run: |
           set -euo pipefail
           major=$(sed -n 's/^#define ZEROTIER_ONE_VERSION_MAJOR //p' externals/core/version.h)
           minor=$(sed -n 's/^#define ZEROTIER_ONE_VERSION_MINOR //p' externals/core/version.h)
           patch=$(sed -n 's/^#define ZEROTIER_ONE_VERSION_REVISION //p' externals/core/version.h)
-          engine="${major}.${minor}.${patch}"
           revision=$(tr -d '[:space:]' < version.txt)
+          base="${major}.${minor}.${patch}-${revision}"
           commits=$(git rev-list --count HEAD)
 
-          # push 没有 dispatch 输入，必须显式走 pr 通道
-          channel="pr"
+          # dispatch 输入在 push 事件里是空串，按事件分支，不要直接读输入
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             channel="${{ inputs.channel }}"
-          fi
-
-          if [ "$channel" = "release" ]; then
-            version_name="${engine}-${revision}"
-            version_code=$(( major * 1000000 + minor * 10000 + patch * 100 + revision ))
+            abis=""
+            [ "${{ inputs.arch_arm64 }}" = "true" ] && abis="arm64-v8a"
+            [ "${{ inputs.arch_x64 }}" = "true" ] && abis="${abis:+$abis,}x86_64"
           else
-            version_name="${engine}-pr.${commits}"
-            version_code=$(( 100000 + commits ))
+            channel="alpha"
+            abis="arm64-v8a,x86_64"
           fi
 
-          echo "channel=$channel"
-          echo "version_name=$version_name"
-          echo "version_code=$version_code"
+          if [ -z "$abis" ]; then
+            echo "::error::没有勾选任何架构"
+            exit 1
+          fi
+
+          # versionCode 只由引擎版本与修订号决定，三个通道一致；通道差异体现在 versionName 上
+          version_code=$(( major * 1000000 + minor * 10000 + patch * 100 + revision ))
+          case "$channel" in
+            release)
+              version_name="$base"
+              tag="v${base}"
+              prerelease="false" ;;
+            beta)
+              version_name="${base}-beta.${commits}"
+              tag="v${base}-beta.${{ github.run_id }}"
+              prerelease="true" ;;
+            alpha)
+              version_name="${base}-alpha.${commits}"
+              tag="v${base}-alpha.${{ github.run_id }}"
+              prerelease="true" ;;
+            *)
+              echo "::error::未知通道 ${channel}"
+              exit 1 ;;
+          esac
+
+          # 矩阵只在这里算一次，build 按它展开
+          json=""
+          for one in ${abis//,/ }; do
+            json="${json:+$json,}\"$one\""
+          done
+
           {
             echo "channel=$channel"
             echo "version_name=$version_name"
             echo "version_code=$version_code"
+            echo "tag=$tag"
+            echo "prerelease=$prerelease"
+            echo "abis=[$json]"
           } >> "$GITHUB_OUTPUT"
 
   lint:
     name: 质量门禁
     needs: prep
+    permissions:
+      contents: read
     uses: ./.github/workflows/lint.yml
 
   build:
     name: 构建
     needs: [prep, lint]
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: true
+      matrix:
+        abi: ${{ fromJson(needs.prep.outputs.abis) }}
     uses: ./.github/workflows/build.yml
     with:
       channel: ${{ needs.prep.outputs.channel }}
       version_name: ${{ needs.prep.outputs.version_name }}
       version_code: ${{ needs.prep.outputs.version_code }}
+      abi: ${{ matrix.abi }}
     secrets: inherit
 
   publish:
-    name: 发布
+    name: 发布 ${{ needs.prep.outputs.tag }}
     needs: [prep, build]
-    if: needs.prep.outputs.channel == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v8
         with:
-          name: zotiera-release
+          pattern: zotiera-*
+          merge-multiple: true
           path: dist
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prep.outputs.tag }}
           VERSION: ${{ needs.prep.outputs.version_name }}
+          CHANNEL: ${{ needs.prep.outputs.channel }}
+          PRERELEASE: ${{ needs.prep.outputs.prerelease }}
+          NOTES: ${{ inputs.release_notes }}
         run: |
           set -euo pipefail
-          # 产物在 artifact 里保留相对路径（apk/<variant>/xxx.apk），不能只匹配 dist/*.apk
-          mapfile -t apks < <(find dist -type f -name '*.apk')
-          if [ ${#apks[@]} -eq 0 ]; then
+          mapfile -t files < <(find dist -type f -name '*.apk' | sort)
+          if [ ${#files[@]} -eq 0 ]; then
             echo "dist 里没有 apk" >&2
             exit 1
           fi
-          gh release create "v${VERSION}" "${apks[@]}" \
-            --title "Zotiera ${VERSION}" \
-            --notes "ZeroTier 核心 ${VERSION%%-*}；正式签名包。" \
-            --draft
+
+          # 输入框是单行，字面量 \n 在这里还原；粘贴进来的 \r 去掉
+          BODY="${NOTES//$'\r'/}"
+          [ -z "$BODY" ] || BODY="$(printf '%b' "$BODY")"
+
+          gh release create "$TAG" "${files[@]}" \
+            --title "Zotiera ${VERSION} (${CHANNEL})" \
+            --notes "## Zotiera ${VERSION} · ${CHANNEL}
+          ${BODY}" \
+            --prerelease="$PRERELEASE" \
+            --generate-notes

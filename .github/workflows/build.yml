@@ -1,10 +1,13 @@
 name: Build
 
+# 可复用构建工作流（workflow_call）：只负责把包装出来，不发布。
+# 产物名固定为 Zotiera-<version>[-<abi>].apk；传了 abi 就只打那一个架构。
+
 on:
   workflow_call:
     inputs:
       channel:
-        description: pr 或 release
+        description: pr 用测试密钥与 .pr 后缀；alpha / beta / release 都用正式签名
         type: string
         required: true
       version_name:
@@ -13,6 +16,11 @@ on:
       version_code:
         type: string
         required: true
+      abi:
+        description: 只出这一个 ABI（arm64-v8a / x86_64）；留空则两个都打
+        type: string
+        required: false
+        default: ''
     secrets:
       ANDROID_KEYSTORE_BASE64:
         required: false
@@ -28,7 +36,7 @@ permissions:
 
 jobs:
   build:
-    name: 构建
+    name: 构建 ${{ inputs.abi || '全架构' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -47,23 +55,40 @@ jobs:
           # 版本由调用方的 prep 计算，这里不再推导
           VERSION_NAME: ${{ inputs.version_name }}
           VERSION_CODE: ${{ inputs.version_code }}
+          ABI: ${{ inputs.abi }}
           # 正式通道才用到；PR 通道走仓库内的固定密钥
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ "${{ inputs.channel }}" = "release" ]; then
-            TASK=":app:assembleRelease"
-          else
+          set -euo pipefail
+          if [ "${{ inputs.channel }}" = "pr" ]; then
             TASK=":app:assemblePr"
+          else
+            TASK=":app:assembleRelease"
           fi
-          ./gradlew "$TASK" \
+          ABI_ARG=""
+          [ -z "$ABI" ] || ABI_ARG="-PzotieraAbi=$ABI"
+          ./gradlew "$TASK" ${ABI_ARG:+"$ABI_ARG"} \
             -PzotieraVersionName="$VERSION_NAME" \
             -PzotieraVersionCode="$VERSION_CODE" --stacktrace
-      - name: Upload APK
-        uses: actions/upload-artifact@v7
+      - name: Rename APK
+        env:
+          VERSION_NAME: ${{ inputs.version_name }}
+          ABI: ${{ inputs.abi }}
+        run: |
+          set -euo pipefail
+          SRC="$(find app/build/outputs/apk -type f -name '*.apk' | head -1)"
+          if [ -z "$SRC" ]; then
+            echo "没有产出 apk" >&2
+            exit 1
+          fi
+          NAME="Zotiera-${VERSION_NAME}${ABI:+-$ABI}.apk"
+          mv "$SRC" "$NAME"
+          ls -l "$NAME"
+      - uses: actions/upload-artifact@v7
         with:
-          name: zotiera-${{ inputs.channel }}
-          path: app/build/outputs/apk/**/*.apk
+          name: zotiera-${{ inputs.abi || 'universal' }}
+          path: Zotiera-*.apk
           if-no-files-found: error
