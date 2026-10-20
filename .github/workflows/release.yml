@@ -84,20 +84,16 @@ jobs:
 
           # versionCode 只由引擎版本与修订号决定，三个通道一致
           version_code=$(( major * 1000000 + minor * 10000 + patch * 100 + revision ))
-          # 版本名只区分正式与预发布：release 用引擎版本加修订号，alpha / beta 都只用 r<提交数>。
-          # 同一个提交上两个预发布通道版本名相同，tag 再补通道名区分。
+          # 版本名只区分正式与预发布：release 用引擎版本加修订号，alpha / beta 都只用 r<提交数>；
+          # 预发布的 tag 再挂 run_id，同一提交重复发也不会撞。
           case "$channel" in
             release)
               version_name="${engine}-${revision}"
               tag="v${version_name}"
               prerelease="false" ;;
-            beta)
+            beta | alpha)
               version_name="${engine}-r${commits}"
-              tag="v${version_name}-beta"
-              prerelease="true" ;;
-            alpha)
-              version_name="${engine}-r${commits}"
-              tag="v${version_name}-alpha"
+              tag="v${version_name}.${{ github.run_id }}"
               prerelease="true" ;;
             *)
               echo "::error::未知通道 ${channel}"
