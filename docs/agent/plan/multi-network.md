@@ -11,6 +11,9 @@
 | 加入了哪些网络 | 每个网络行自己的开关 | `Network.lastActivated` | N |
 | 正在看哪个网络 | 点哪一行 | UI 局部状态 | 1（与上面两个无关） |
 
+> 2026-10-20 补充：同时在线还有一个前提——**同一个实例**（同 Planet 且同身份）。
+> 跨实例的网络在概览页会被置灰，见 [`planet-identity-instances.md`](planet-identity-instances.md) 的 4.4。
+
 ---
 
 ## 1. 现状：单网络假设分布在哪

@@ -13,6 +13,7 @@
 | 2026-10-19 | v1 | 初稿，M0–M6 全量规划 | — |
 | 2026-10-19 | v2 | 依据决策确认：包名改 `net.sumitm.zotiera`；版本号以引擎版本为主；minSdk 30 / target 36 / compile 37；Legacy Central 降为挂起；接受退掉 fork。据此取消「旧库原地升级」前提，新增 16KB 页对齐与 target 36 行为义务 | M2 任务重写；M5 挂起；风险表与验证矩阵重排 |
 | 2026-10-19 | v2.1 | 文档结构定稿为 README + `plan/` + `notes/`，硬约束并入 README，不单设 AGENTS 文件；新增 [`init-baseline-diff`](../init-baseline-diff.md) 记录重构前后逐项对比 | 文档结构简化 |
+| 2026-10-20 | v4 | Legacy Central 明确移出本仓库，单开 Zotiera Manager（见 [`zotiera-manager`](zotiera-manager.md)）；新增 Planet / 身份 / 实例分组计划（见 [`planet-identity-instances`](planet-identity-instances.md)） | M5 由「挂起」改为「移出」 |
 | 2026-10-19 | v3 | ABI 收敛为 `arm64-v8a` + `x86_64`；双通道签名（`.pr` 固定密钥 / dispatch `ANDROID_*`）；Room schema 命名自由；新增 §8 Moon 迁移方案；CI 改为五文件矩阵（依据 `ci-matrix`） | M1 T1.6、M2 T2.5/T2.8、M6 T6.1 重写；风险与验证矩阵扩充 |
 | 2026-10-19 | v3.1 | 文档名去掉日期（本文件改名 `plan/init-refactor.md`，对比文档移出 plan 为 `init-baseline-diff.md`）；CI 补 `update_i18n.yml`，建文件但阻塞至 Weblate 接上 | 文档命名与 CI 矩阵（六文件） |
 | 2026-10-19 | v3.2 | `update_i18n.yml` 改为悬空：只留 `workflow_dispatch`，暂不加 `push: main` | CI 矩阵 |
@@ -24,9 +25,9 @@
 | --- | --- | --- | --- |
 | G1 | ZeroTier 核心 1.12.2 → 1.16.2（当前 latest stable，commit `fc5c3ec`） | 两个 64 位 ABI 编译通过且 16KB 页对齐；`Version` 返回 1.16.2；IPv4/IPv6/多播/自定义 planet/moon/peers 全部真机回归通过 | 是 |
 | G2 | Java 逐步迁移到 Kotlin，UI 迁到最新 Compose + Material 3 | `app/src/main` 的 Java 文件数归零；旧 Fragment/layout 删除；Android 11–16 真机 UI 一致 | 是 |
-| G3 | 融入 Legacy Central 节点管理 | 登录 token、浏览网络与成员、授权/取消授权、改名；本机节点可识别 | **挂起**，不进本轮交付 |
+| G3 | 融入 Legacy Central 节点管理 | 登录 token、浏览网络与成员、授权/取消授权、改名；本机节点可识别 | **不做**，移到独立 App（`zotiera-manager.md`） |
 
-G3 的边界先钉死：**只支持 Legacy Central**（`my.zerotier.com` 个人 token，`api.zerotier.com/api/v1`），新 Central 的 service account 模型不在范围。本轮只保证架构不被做窄（单 Activity 导航、`:data` 模块），不为它预写代码。
+G3 已移出本仓库：Legacy Central 的管理能力放到独立的 Zotiera Manager App（见 [`zotiera-manager.md`](zotiera-manager.md)），本仓库不再为它建模块、也不预写代码。
 
 非目标：iOS/桌面端、自建 controller、新 Central API、network relays（月亮替代方案）、旧包数据自动迁移。
 
@@ -37,7 +38,7 @@ G3 的边界先钉死：**只支持 Legacy Central**（`my.zerotier.com` 个人 
 | D1 | applicationId 改为 `net.sumitm.zotiera`，与 `namespace` 一致；源码包同步改名 | Q1 答复 |
 | D2 | 版本号以引擎版本为基准：`1.16.2-<修订号>` | Q1 答复 |
 | D3 | minSdk 30 / targetSdk 36 / compileSdk 37，放弃 Android 10 及以下 | Q2 答复 |
-| D4 | Legacy Central 只支持 Legacy，且本轮不引入 | Q3 答复 |
+| D4 | Legacy Central 只支持 Legacy，且不在本 App 实现，单开 Zotiera Manager | Q3 答复 + 2026-10-20 调整 |
 | D5 | 子模块指向上游 tag `1.16.2`，CMake 胶水收回本仓库；必要时再 fork + 打补丁 | Q4 答复 |
 | D6 | 设置项直接用 DataStore Preferences + 新 key 规范，不做旧 key 迁移 | Q5 答复（在 D3 前提下） |
 | D7 | ABI 只保留 64 位：`arm64-v8a` + `x86_64`，去掉 `armeabi-v7a` | 2026-10-19 追加 |
@@ -129,7 +130,7 @@ G3 的边界先钉死：**只支持 Legacy Central**（`my.zerotier.com` 个人 
 M0 基线固化 ──► M1 核心 1.16.2 ──► M2 包名/构建/数据层 ──► M3 Kotlin 业务层 ──► M4 Compose UI ──► M6 发布
    (纯工程)        (C++ 变量)          (工具链变量)              (语言变量)          (UI 变量)
 
-M5 Legacy Central：挂起，待 M4 完成后再评估
+M5 Legacy Central：移出本仓库，见 zotiera-manager.md
 ```
 
 | 里程碑 | 主题 | 主要变量 | 出口条件 |
@@ -139,7 +140,7 @@ M5 Legacy Central：挂起，待 M4 完成后再评估
 | M2 | 包名 + 构建 + 数据层 | 工具链 | 新包名可安装；AGP 9 构建通过；Room 全新库可用 |
 | M3 | Kotlin 业务层 | 语言 | 非 UI 代码 Java 归零 |
 | M4 | Compose UI | UI 框架 | 旧 Activity/Fragment/layout 删除；Android 11–16 表现一致 |
-| M5 | Legacy Central | 新功能 | 挂起 |
+| M5 | Legacy Central | 移出 | 不做，改由独立 App 承担 |
 | M6 | 发布 | 打包/文档 | 签名 release 可直接安装，版本号规则生效 |
 
 ## 7. 里程碑分解
@@ -236,9 +237,9 @@ M5 Legacy Central：挂起，待 M4 完成后再评估
 
 出口条件：无 Fragment、无 `findViewById`、无 `*.xml` layout（`themes.xml` 与 `xml/` 配置除外）。
 
-### M5 Legacy Central（挂起）
+### M5 Legacy Central（移出本仓库）
 
-本轮不实施，保留设计约束以便将来落地时不返工：
+不再在本仓库实施；设计约束留在 [`zotiera-manager.md`](zotiera-manager.md) 里，给独立 App 用：
 
 - 只支持 Legacy Central（D4）；token 走 `Authorization: token <t>`，`GET /status` 校验。
 - 端点：`GET /network`、`GET /network/{id}/member`、`POST /network/{id}/member/{nodeId}`（授权 `{"config":{"authorized":bool}}`、改名 `{"name":...}`）。
