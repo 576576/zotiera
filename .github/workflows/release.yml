@@ -82,24 +82,27 @@ jobs:
             exit 1
           fi
 
-          # versionCode 只由引擎版本与修订号决定，三个通道一致；通道差异体现在 versionName 上
+          # versionCode 只由引擎版本与修订号决定，三个通道一致
           version_code=$(( major * 1000000 + minor * 10000 + patch * 100 + revision ))
-          # 通道号只出现一次：alpha / beta 用引擎版本加提交数，release 用引擎版本加修订号
+          # 版本名只区分正式与预发布：release 用引擎版本加修订号，alpha / beta 都只用 r<提交数>。
+          # 同一个提交上两个预发布通道版本名相同，tag 再补通道名区分。
           case "$channel" in
             release)
               version_name="${engine}-${revision}"
+              tag="v${version_name}"
               prerelease="false" ;;
             beta)
-              version_name="${engine}-beta.${commits}"
+              version_name="${engine}-r${commits}"
+              tag="v${version_name}-beta"
               prerelease="true" ;;
             alpha)
-              version_name="${engine}-alpha.${commits}"
+              version_name="${engine}-r${commits}"
+              tag="v${version_name}-alpha"
               prerelease="true" ;;
             *)
               echo "::error::未知通道 ${channel}"
               exit 1 ;;
           esac
-          tag="v${version_name}"
 
           # 矩阵只在这里算一次，build 按它展开
           json=""
