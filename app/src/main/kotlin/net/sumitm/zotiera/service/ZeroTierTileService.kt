@@ -1,5 +1,6 @@
 package net.sumitm.zotiera.service
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
@@ -67,6 +68,7 @@ class ZeroTierTileService : TileService() {
         stopService(Intent(this, ZeroTierOneService::class.java))
     }
 
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     private fun openApp() {
         val intent = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)

@@ -58,6 +58,9 @@ fun SettingsScreen(
     onOpenMoons: () -> Unit,
 ) {
     val context = LocalContext.current
+    // 提示文案在组合期取好，回调里不再摸 LocalContext 的资源
+    val planetWrongFormat = stringResource(R.string.planet_wrong_format)
+    val cannotDownloadPlanet = stringResource(R.string.cannot_download_planet_file)
     val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
     val scope = rememberCoroutineScope()
 
@@ -81,7 +84,7 @@ fun SettingsScreen(
         if (uri == null) return@rememberLauncherForActivityResult
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
         planetMessage = if (bytes != null && importPlanet(bytes)) null
-        else context.getString(R.string.planet_wrong_format)
+        else planetWrongFormat
     }
 
     Column(
@@ -210,7 +213,7 @@ fun SettingsScreen(
                         }
                         if (!importPlanet(bytes)) error("bad header")
                         null
-                    }.getOrElse { context.getString(R.string.cannot_download_planet_file) }
+                    }.getOrElse { cannotDownloadPlanet }
                 }
             },
             onDismiss = { showUrlDialog = false },

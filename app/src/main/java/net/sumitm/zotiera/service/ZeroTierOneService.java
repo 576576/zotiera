@@ -257,7 +257,9 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
         Log.i(TAG, "Bind Count: " + this.bindCount);
     }
 
+    @android.annotation.SuppressLint("BinderGetCallingInMainThread")
     public IBinder onBind(Intent intent) {
+        // 这一行只为日志；getCallingUid 在 onBind 里查包名属于主线程 Binder 调用
         Log.d(TAG, "Bound by: " + getPackageManager().getNameForUid(Binder.getCallingUid()));
         this.bindCount++;
         logBindCount();

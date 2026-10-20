@@ -22,4 +22,4 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       # 全仓唯一的检查命令副本：release 与 PR 都只会 uses 本文件
       - name: Lint and unit test
-        run: ./gradlew :app:lintPr :app:testPrUnitTest --stacktrace
+        run: ./gradlew :app:lintPr :app:testDebugUnitTest --stacktrace
