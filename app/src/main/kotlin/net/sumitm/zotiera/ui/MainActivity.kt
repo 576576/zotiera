@@ -290,8 +290,11 @@ private fun ZotieraApp(
                         val id = entry.arguments?.getLong("id") ?: 0L
                         val network = state.networks.firstOrNull { it.networkId == id }
                         if (network == null) {
-                            // 网络被删掉了，别停在一个空详情页上
-                            LaunchedEffect(Unit) { navController.popBackStack() }
+                            // 网络被删掉了，别停在一个空详情页上。
+                            // 按 route 退到概览：这一段可能重复进入，只弹一层会连概览一起弹掉；栈里只剩概览时这里是 no-op。
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack(route = "overview", inclusive = false)
+                            }
                         } else {
                             ScreenSurface {
                                 NetworkDetailScreen(

@@ -184,10 +184,9 @@ fun NetworkDetailScreen(
         NetworkDetailPane(
             network = network,
             config = config,
-            onDelete = {
-                viewModel.deleteNetwork(network)
-                onBack()
-            },
+            // 只删数据：网络不在 state 里之后，路由自己会退回概览。
+            // 这里再弹一次就是两层弹栈，会把概览也弹掉、整页变空。
+            onDelete = { viewModel.deleteNetwork(network) },
         )
     }
 }
