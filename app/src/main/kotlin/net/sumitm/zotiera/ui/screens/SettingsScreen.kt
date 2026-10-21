@@ -28,6 +28,7 @@ import net.sumitm.zotiera.ui.component.preference.PreferenceGroup
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceSwitch
 import net.sumitm.zotiera.ui.theme.ColorMode
+import net.sumitm.zotiera.util.AppLanguage
 import net.sumitm.zotiera.util.Constants
 
 @Composable
@@ -37,6 +38,7 @@ fun SettingsScreen(
     onUiModeChange: (UiMode) -> Unit,
     colorMode: ColorMode,
     onColorModeChange: (ColorMode) -> Unit,
+    onLanguageChange: (String) -> Unit,
     onOpenIdentities: () -> Unit,
     onOpenPlanet: () -> Unit,
     onOpenMoons: () -> Unit,
@@ -50,6 +52,10 @@ fun SettingsScreen(
     var startOnBoot by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, false)) }
     var simpleMode by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_SIMPLE_MODE, true)) }
     var hideFromRecents by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_HIDE_FROM_RECENTS, false)) }
+    val language = remember { AppLanguage.current(context) }
+    val languageLabels = AppLanguage.TAGS.map {
+        if (it.isEmpty()) stringResource(R.string.app_language_system) else languageName(it)
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -90,6 +96,13 @@ fun SettingsScreen(
 
         // 外观
         PreferenceGroup {
+            PreferenceSelect(
+                title = stringResource(R.string.app_language),
+                summary = stringResource(R.string.app_language_summary),
+                items = languageLabels,
+                selectedIndex = AppLanguage.TAGS.indexOf(language).coerceAtLeast(0),
+                onSelected = { onLanguageChange(AppLanguage.TAGS[it]) },
+            )
             PreferenceSelect(
                 title = stringResource(R.string.ui_style),
                 summary = stringResource(R.string.ui_style_summary),
@@ -164,6 +177,13 @@ fun SettingsScreen(
     }
 }
 
+
+/** 语言名用各自的写法，切到英文界面也不会把「简体中文」翻掉。 */
+private fun languageName(tag: String): String = when (tag) {
+    "zh" -> "简体中文"
+    "en" -> "English"
+    else -> tag
+}
 
 @Composable
 private fun colorModeLabel(mode: ColorMode): String = when (mode) {

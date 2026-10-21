@@ -198,6 +198,27 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
         refresh()
     }
 
+    /**
+     * 换这条网络用的身份。
+     *
+     * 身份变了，正在跑的节点就不是这条网络该用的那个实例了——隧道在跑时先停掉，由用户重新连接。
+     * 用过的身份记下来，换回去不再二次确认。
+     */
+    fun setNetworkIdentity(network: Network, uid: Long) {
+        if (network.identityUid == uid) return
+        val wasJoined = network.lastActivated
+        network.identityUid = uid
+        repository.updateNetwork(network)
+        repository.markIdentityUsed(network.networkId, uid)
+        if (wasJoined) {
+            InstanceStore(getApplication()).setActive(network.planetId, uid)
+        }
+        if (_state.value.tunnelRunning) {
+            stopTunnel()
+        }
+        refresh()
+    }
+
     /** 全局「所有流量走 ZeroTier」。 */
     fun setRouteAllTraffic(enabled: Boolean) {
         prefs.edit { putBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, enabled) }
@@ -245,6 +266,7 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
                 identityUid = identityUid,
             )
         )
+        repository.markIdentityUsed(networkId, identityUid)
         // 新网络直接是「已加入」，实例跟着它走
         InstanceStore(getApplication()).setActive(planetId, identityUid)
         if (_state.value.tunnelRunning) {

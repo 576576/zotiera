@@ -7,6 +7,7 @@ import net.sumitm.zotiera.model.Identity
 import net.sumitm.zotiera.model.MoonOrbit
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.model.NetworkConfig
+import net.sumitm.zotiera.model.NetworkIdentity
 import net.sumitm.zotiera.model.Planet
 
 /**
@@ -31,9 +32,19 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
 
     fun updateNetwork(network: Network) = db.networkDao().update(network)
 
+    /** 这条网络用过的身份。 */
+    fun usedIdentityUids(networkId: Long): Set<Long> =
+        db.networkIdentityDao().uidsFor(networkId).toSet()
+
+    /** 记下「这条网络用过这个身份」，换回去时不再二次确认。 */
+    fun markIdentityUsed(networkId: Long, uid: Long) = db.networkIdentityDao().insert(
+        NetworkIdentity(networkId = networkId, identityUid = uid, usedAt = System.currentTimeMillis())
+    )
+
     /** 删除网络及其配置；DNS 与地址由外键级联清理。 */
     fun deleteNetwork(network: Network) {
         db.runInTransaction {
+            db.networkIdentityDao().deleteFor(network.networkId)
             db.networkDao().delete(network)
             db.networkConfigDao().deleteById(network.networkConfigId)
         }
@@ -170,8 +181,6 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
     // ---- moons ----
 
     fun moonOrbits(): List<MoonOrbit> = db.moonOrbitDao().all()
-
-    fun moonOrbits(planetId: Long): List<MoonOrbit> = db.moonOrbitDao().forPlanet(planetId)
 
     fun moonOrbit(worldId: Long): MoonOrbit? = db.moonOrbitDao().byWorldId(worldId)
 

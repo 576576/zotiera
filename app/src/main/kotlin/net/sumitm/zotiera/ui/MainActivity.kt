@@ -1,6 +1,7 @@
 package net.sumitm.zotiera.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -75,6 +76,7 @@ import net.sumitm.zotiera.ui.screens.PlanetScreen
 import net.sumitm.zotiera.ui.screens.SettingsScreen
 import net.sumitm.zotiera.ui.theme.ColorMode
 import net.sumitm.zotiera.ui.theme.ZotieraTheme
+import net.sumitm.zotiera.util.AppLanguage
 import net.sumitm.zotiera.util.Constants
 
 /** 页面切换时长：够短，返回手势跟手。 */
@@ -91,6 +93,11 @@ class MainActivity : ComponentActivity() {
 
     /** 本进程内只换一次任务，避免任务标志没带上时反复重开。 */
     private var recentsChecked = false
+
+    override fun attachBaseContext(newBase: Context) {
+        // 应用内语言在资源加载前就要生效
+        super.attachBaseContext(AppLanguage.wrap(newBase))
+    }
 
     override fun onResume() {
         super.onResume()
@@ -148,6 +155,10 @@ class MainActivity : ComponentActivity() {
                         colorMode = mode
                         prefs.edit { putInt(Constants.PREF_COLOR_MODE, mode.value) }
                     },
+                    onLanguageChange = { tag ->
+                        prefs.edit { putString(AppLanguage.PREF, tag) }
+                        recreate()
+                    },
                 )
             }
         }
@@ -173,6 +184,7 @@ private fun ZotieraApp(
     onUiModeChange: (UiMode) -> Unit,
     colorMode: ColorMode,
     onColorModeChange: (ColorMode) -> Unit,
+    onLanguageChange: (String) -> Unit,
 ) {
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
@@ -232,10 +244,10 @@ private fun ZotieraApp(
                     navController = navController,
                     startDestination = "overview",
                     modifier = Modifier.widthIn(max = 840.dp).fillMaxSize(),
-                    // 入栈：新页从右侧滑入；出栈：上面的页整页右移退出，下面的页不动。
-                    // 只做位移不做淡入淡出——每页是不透明的，一旦半透明就会和下面那页叠字。
+                    // 入栈：新页从右侧整屏滑入；出栈：上面的页整屏右移退出，下面的页不动。
+                    // 两个方向幅度一致，系统预测性返回手势走的就是 popExitTransition，手感才对得上。
                     enterTransition = {
-                        slideInHorizontally(tween(NAV_DURATION)) { it / 3 }
+                        slideInHorizontally(tween(NAV_DURATION)) { it }
                     },
                     exitTransition = {
                         slideOutHorizontally(tween(NAV_DURATION)) { -it / 6 }
@@ -261,6 +273,7 @@ private fun ZotieraApp(
                             onUiModeChange = onUiModeChange,
                             colorMode = colorMode,
                             onColorModeChange = onColorModeChange,
+                            onLanguageChange = onLanguageChange,
                             onOpenIdentities = { navController.navigate("identities") },
                             onOpenPlanet = { navController.navigate("planet") },
                             onOpenMoons = { navController.navigate("moons") },

@@ -240,7 +240,15 @@
     <string name="planet_default_tag">默认</string>
     <string name="hide_from_recents">从最近任务中隐藏</string>
     <string name="hide_from_recents_summary">下次启动生效，最近任务里看不到这个应用</string>
+    <string name="app_language">设置界面语言</string>
+    <string name="app_language_summary">只影响本应用</string>
+    <string name="app_language_system">跟随系统</string>
+    <string name="switch_identity">切换身份</string>
+    <string name="identity_current">当前</string>
+    <string name="switch_identity_confirm_title">未在此网络使用过</string>
+    <string name="switch_identity_confirm_body">换身份等于换一个节点：原身份在这条网络上的成员资格不会跟过来，可能需要管理员重新授权。确定切换？</string>
 </resources>
+
 
 
 

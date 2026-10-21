@@ -96,7 +96,7 @@ fun AboutScreen(onBack: () -> Unit, onOpenLicenses: () -> Unit) {
                 )
                 PreferenceArrow(
                     title = stringResource(R.string.open_source_repo),
-                    summary = null,
+                    summary = REPO_URL.removePrefix("https://"),
                     onClick = { openUrl(REPO_URL) },
                 )
             }

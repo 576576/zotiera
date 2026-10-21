@@ -418,11 +418,21 @@ fun AppTunnelSwitch(
 
 /** 对话框里的一行可点操作，三个管理页共用。 */
 @Composable
-fun AppDialogAction(label: String, error: Boolean = false, onClick: () -> Unit) {
+fun AppDialogAction(
+    label: String,
+    error: Boolean = false,
+    muted: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val color = when {
+        error -> appColors().error
+        muted -> appColors().onSurfaceVariant
+        else -> appColors().onSurface
+    }
     Text(
         text = label,
         style = LocalZotieraType.current.rowTitle,
-        color = if (error) appColors().error else appColors().onSurface,
+        color = color,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
@@ -430,14 +440,23 @@ fun AppDialogAction(label: String, error: Boolean = false, onClick: () -> Unit) 
     )
 }
 
-/** 行星与身份各用一谱系，两边颜色不会撞；同一序号永远同一个颜色。 */
-private val PlanetTints = listOf(
-    Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFEF4444),
-)
-private val IdentityTints = listOf(
-    Color(0xFF8B5CF6), Color(0xFFEC4899), Color(0xFF0D9488), Color(0xFF84CC16),
+/** 一个「行星 + 身份」组合固定一种颜色，同一个组合永远是同一色。 */
+private val InstanceTints = listOf(
+    Color(0xFF3B82F6), Color(0xFF8B5CF6), Color(0xFF10B981), Color(0xFFF59E0B),
+    Color(0xFFEC4899), Color(0xFF0D9488), Color(0xFFEF4444), Color(0xFF84CC16),
 )
 
-fun planetChipTint(ordinal: Int): Color = PlanetTints[Math.floorMod(ordinal, PlanetTints.size)]
+fun instanceChipTint(planetOrdinal: Int, identityOrdinal: Int): Color =
+    InstanceTints[Math.floorMod(planetOrdinal * 7 + identityOrdinal * 3, InstanceTints.size)]
 
-fun identityChipTint(ordinal: Int): Color = IdentityTints[Math.floorMod(ordinal, IdentityTints.size)]
+/** 行星序号映射成字母：0 → A、25 → Z、26 → AA，和表格列号一样。 */
+fun planetLetter(ordinal: Int): String {
+    var n = ordinal + 1
+    val out = StringBuilder()
+    while (n > 0) {
+        val rem = (n - 1) % 26
+        out.append(('A' + rem))
+        n = (n - 1) / 26
+    }
+    return out.reverse().toString()
+}

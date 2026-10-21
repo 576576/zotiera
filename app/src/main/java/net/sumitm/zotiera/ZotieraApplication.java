@@ -1,6 +1,7 @@
 package net.sumitm.zotiera;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.Log;
 
 import androidx.preference.PreferenceManager;
@@ -8,6 +9,7 @@ import androidx.preference.PreferenceManager;
 import net.sumitm.zotiera.data.ZotieraDatabase;
 import net.sumitm.zotiera.data.ZotieraRepository;
 import net.sumitm.zotiera.identity.InstanceStore;
+import net.sumitm.zotiera.util.AppLanguage;
 
 /**
  * 主程序入口
@@ -25,6 +27,12 @@ public class ZotieraApplication extends Application {
     };
 
     private ZotieraRepository repository;
+
+    @Override
+    protected void attachBaseContext(Context base) {
+        // 应用内语言：服务、通知这些不走 Activity 的地方也要跟着变
+        super.attachBaseContext(AppLanguage.wrap(base));
+    }
 
     @Override
     public void onCreate() {

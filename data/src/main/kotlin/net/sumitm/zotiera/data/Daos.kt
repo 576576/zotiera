@@ -12,6 +12,7 @@ import net.sumitm.zotiera.model.Identity
 import net.sumitm.zotiera.model.MoonOrbit
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.model.NetworkConfig
+import net.sumitm.zotiera.model.NetworkIdentity
 import net.sumitm.zotiera.model.Planet
 
 @Dao
@@ -37,6 +38,19 @@ interface NetworkDao {
 
     @Delete
     fun delete(network: Network)
+}
+
+@Dao
+interface NetworkIdentityDao {
+
+    @Query("SELECT identity_uid FROM network_identities WHERE network_id = :networkId")
+    fun uidsFor(networkId: Long): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(row: NetworkIdentity)
+
+    @Query("DELETE FROM network_identities WHERE network_id = :networkId")
+    fun deleteFor(networkId: Long)
 }
 
 @Dao
@@ -143,9 +157,6 @@ interface MoonOrbitDao {
 
     @Query("SELECT * FROM moon_orbits ORDER BY ordinal, moon_world_id")
     fun all(): List<MoonOrbit>
-
-    @Query("SELECT * FROM moon_orbits WHERE planet_id = :planetId ORDER BY ordinal, moon_world_id")
-    fun forPlanet(planetId: Long): List<MoonOrbit>
 
     @Query("SELECT IFNULL(MAX(ordinal), 0) + 1 FROM moon_orbits")
     fun nextOrdinal(): Int

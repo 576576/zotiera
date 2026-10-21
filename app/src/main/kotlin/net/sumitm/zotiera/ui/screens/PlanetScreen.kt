@@ -228,8 +228,7 @@ fun PlanetScreen(onBack: () -> Unit) {
 
     deleteTarget?.let { planet ->
         val inUse = remember(planet.worldId) {
-            repository.networks().any { it.planetId == planet.worldId } ||
-                repository.moonOrbits(planet.worldId).isNotEmpty()
+            repository.networks().any { it.planetId == planet.worldId }
         }
         AppDialog(
             title = stringResource(R.string.action_delete),

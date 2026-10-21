@@ -42,10 +42,8 @@ import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppListRow
-import net.sumitm.zotiera.ui.component.AppRoleChip
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
-import net.sumitm.zotiera.ui.component.planetChipTint
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 import org.greenrobot.eventbus.EventBus
@@ -68,11 +66,9 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
         val stored = store.activeIdentityUid
         if (repository.identity(stored) != null) stored else repository.defaultIdentity()?.uid ?: -1L
     }
-    fun dirOf(moon: MoonOrbit) = store.instanceDir(moon.planetId, activeUid)
-    val activeDir = store.instanceDir(store.activePlanetId, activeUid)
-    val planets = remember(refreshKey) { repository.planets() }
+    val instanceDir = store.instanceDir(store.activePlanetId, activeUid)
     val moons = remember(refreshKey) {
-        repository.moonOrbits().onEach { it.checkCacheFile(dirOf(it)) }
+        repository.moonOrbits().onEach { it.checkCacheFile(instanceDir) }
     }
 
     fun addMoon(worldId: Long, seed: Long, fromFile: Boolean) {
@@ -83,8 +79,6 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
             fromFile = fromFile,
             source = if (fromFile) MoonOrbit.SOURCE_FILE else MoonOrbit.SOURCE_MANUAL,
             addedAt = System.currentTimeMillis(),
-            // 文件落在当前实例目录里，所以归属就是当前行星
-            planetId = store.activePlanetId,
         )
         repository.insertMoonOrbit(moon)
         bus.post(OrbitMoonEvent(listOf(moon)))
@@ -99,7 +93,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
         }
         var worldId = 0L
         for (i in 1..8) worldId = (worldId shl 8) + (bytes[i].toLong() and 0xff)
-        val dest = File(activeDir, String.format(MoonOrbit.MOON_FILE_PATH, worldId))
+        val dest = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, worldId))
         dest.parentFile?.mkdirs()
         dest.writeBytes(bytes)
         addMoon(worldId, worldId ushr 24, fromFile = true)
@@ -111,7 +105,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
         val moon = pendingExport
         pendingExport = null
         if (uri == null || moon == null) return@rememberLauncherForActivityResult
-        val source = File(dirOf(moon), String.format(MoonOrbit.MOON_FILE_PATH, moon.moonWorldId))
+        val source = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, moon.moonWorldId))
         runCatching {
             context.contentResolver.openOutputStream(uri)?.use { out ->
                 source.inputStream().use { input -> input.copyTo(out) }
@@ -135,7 +129,6 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(moons, key = { it.moonWorldId }) { moon ->
-                        val planet = planets.firstOrNull { it.worldId == moon.planetId }
                         AppListRow(
                             title = java.lang.Long.toHexString(moon.moonWorldId),
                             subtitle = when {
@@ -145,15 +138,6 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
                             },
                             leading = Icons.Rounded.DarkMode,
                             leadingTint = if (moon.isCacheFile) appColors().primary else Color.Unspecified,
-                            // 卫星在协议上不绑定行星，这枚胶囊只说明文件落在哪颗行星的实例里
-                            trailing = {
-                                if (planet != null) {
-                                    AppRoleChip(
-                                        planet.ordinal.toString(),
-                                        planetChipTint(planet.ordinal),
-                                    )
-                                }
-                            },
                             onClick = { menuMoon = moon },
                             onLongClick = { menuMoon = moon },
                         )
@@ -192,7 +176,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
                 }
                 if (moon.isCacheFile && !moon.fromFile) {
                     AppDialogAction(stringResource(R.string.delete_cache)) {
-                        moon.deleteCacheFile(dirOf(moon))
+                        moon.deleteCacheFile(instanceDir)
                         refreshKey++
                         menuMoon = null
                     }
@@ -210,7 +194,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
             title = stringResource(R.string.delete_moon_orbit),
             confirmLabel = stringResource(android.R.string.ok),
             onConfirm = {
-                moon.deleteCacheFile(dirOf(moon))
+                moon.deleteCacheFile(instanceDir)
                 repository.deleteMoonOrbit(moon)
                 bus.post(RemoveMoonOrbitEvent(moon.moonWorldId, moon.moonSeed))
                 deleteMoon = null

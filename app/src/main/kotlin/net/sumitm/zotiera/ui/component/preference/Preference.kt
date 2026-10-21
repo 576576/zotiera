@@ -1,21 +1,25 @@
 package net.sumitm.zotiera.ui.component.preference
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,6 +37,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
+import net.sumitm.zotiera.ui.component.appColors
+import net.sumitm.zotiera.ui.theme.LocalZotieraType
 import top.yukonga.miuix.kmp.basic.Card as MiuixCard
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
@@ -237,5 +243,73 @@ fun PreferenceTextField(
             singleLine = true,
             modifier = modifier.fillMaxWidth(),
         )
+    }
+}
+
+/**
+ * 对话框里的紧凑下拉：没有副标题，行高压到 44dp，标题垂直居中。
+ *
+ * 常规 [PreferenceSelect] 是设置页的列表行，带 summary 位、高度随风格走，塞进对话框会显得很空。
+ */
+@Composable
+fun PreferenceSelectCompact(
+    title: String,
+    items: List<String>,
+    selectedIndex: Int,
+    onSelected: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val colors = appColors()
+    val type = LocalZotieraType.current
+    val shape = RoundedCornerShape(12.dp)
+    Box(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp)
+                .border(1.dp, colors.onSurfaceVariant.copy(alpha = 0.24f), shape)
+                .clickable { expanded = true }
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                style = type.rowTitle,
+                color = colors.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = items.getOrElse(selectedIndex) { "" },
+                style = type.rowSummary,
+                color = colors.onSurfaceVariant,
+            )
+            Icon(
+                Icons.Rounded.KeyboardArrowDown,
+                contentDescription = null,
+                tint = colors.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            items.forEachIndexed { index, item ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = item,
+                            color = if (index == selectedIndex) colors.primary else colors.onSurface,
+                        )
+                    },
+                    trailingIcon = {
+                        if (index == selectedIndex) {
+                            Icon(Icons.Rounded.Check, contentDescription = null)
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelected(index)
+                    },
+                )
+            }
+        }
     }
 }

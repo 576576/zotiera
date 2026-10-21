@@ -53,6 +53,7 @@ import net.sumitm.zotiera.ui.NodeUiState
 import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.component.AppCard
 import net.sumitm.zotiera.ui.component.AppDialog
+import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppHeader
 import net.sumitm.zotiera.ui.component.AppListRow
@@ -60,10 +61,10 @@ import net.sumitm.zotiera.ui.component.AppRoleChip
 import net.sumitm.zotiera.ui.component.AppSwitch
 import net.sumitm.zotiera.ui.component.AppTunnelSwitch
 import net.sumitm.zotiera.ui.component.appColors
-import net.sumitm.zotiera.ui.component.identityChipTint
+import net.sumitm.zotiera.ui.component.instanceChipTint
 import net.sumitm.zotiera.ui.component.isWideLayout
-import net.sumitm.zotiera.ui.component.planetChipTint
-import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
+import net.sumitm.zotiera.ui.component.planetLetter
+import net.sumitm.zotiera.ui.component.preference.PreferenceSelectCompact
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 import net.sumitm.zotiera.ui.toast
@@ -83,6 +84,9 @@ fun OverviewScreen(
     val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
     val simpleMode = remember { prefs.getBoolean(Constants.PREF_SIMPLE_MODE, true) }
     var showJoin by remember { mutableStateOf(false) }
+    // 点胶囊换身份：先选身份，没用过的再确认一次
+    var identityTarget by remember { mutableStateOf<Network?>(null) }
+    var pendingSwitch by remember { mutableStateOf<Pair<Network, Identity>?>(null) }
     var selectedId by remember { mutableStateOf<Long?>(null) }
     val wide = isWideLayout()
 
@@ -174,10 +178,11 @@ fun OverviewScreen(
                             // 胶囊只在非「默认行星 + 默认身份」时出现，简单模式下不显示
                             val planet = planets.firstOrNull { it.worldId == network.planetId }
                             val identity = identities.firstOrNull { it.uid == network.identityUid }
-                            val capsules = if (!simpleMode && planet != null && identity != null &&
+                            val chip = if (!simpleMode && planet != null && identity != null &&
                                 !(planet.isDefault && identity.isDefault)
                             ) {
-                                planet.ordinal to identity.ordinal
+                                "${planetLetter(planet.ordinal)}${identity.ordinal}" to
+                                    instanceChipTint(planet.ordinal, identity.ordinal)
                             } else {
                                 null
                             }
@@ -190,7 +195,8 @@ fun OverviewScreen(
                                     instanceHint,
                                     if (network.planetId == activePlanetId) activeIdentityAlias else activeAlias,
                                 ),
-                                capsules = capsules,
+                                chip = chip,
+                                onChipClick = { identityTarget = network },
                                 onClick = { openNetwork(network.networkId) },
                                 onJoinedChange = { joined -> viewModel.setJoined(network, joined) },
                             )
@@ -242,6 +248,60 @@ fun OverviewScreen(
                 showJoin = false
             },
         )
+    }
+
+    // 点胶囊：换这条网络用哪个身份（行星不动）
+    identityTarget?.let { network ->
+        val used = remember(network.networkId) { repository.usedIdentityUids(network.networkId) }
+        val letter = planetLetter(planets.firstOrNull { it.worldId == network.planetId }?.ordinal ?: 0)
+        AppDialog(
+            title = stringResource(R.string.switch_identity),
+            confirmLabel = stringResource(android.R.string.cancel),
+            onConfirm = { identityTarget = null },
+            onDismiss = { identityTarget = null },
+        ) {
+            Column {
+                identities.forEach { identity ->
+                    val known = identity.uid in used
+                    val name = identity.alias.ifEmpty {
+                        stringResource(R.string.identity_default_alias, identity.ordinal)
+                    }
+                    val current = identity.uid == network.identityUid
+                    AppDialogAction(
+                        label = "$letter${identity.ordinal}  $name" +
+                            if (current) "  ·  ${stringResource(R.string.identity_current)}" else "",
+                        muted = !known,
+                        onClick = {
+                            identityTarget = null
+                            when {
+                                current -> Unit
+                                known -> viewModel.setNetworkIdentity(network, identity.uid)
+                                else -> pendingSwitch = network to identity
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    // 没在这条网络上用过的身份：换过去就是新节点，先讲清楚
+    pendingSwitch?.let { (network, identity) ->
+        AppDialog(
+            title = stringResource(R.string.switch_identity_confirm_title),
+            confirmLabel = stringResource(android.R.string.ok),
+            onConfirm = {
+                viewModel.setNetworkIdentity(network, identity.uid)
+                pendingSwitch = null
+            },
+            onDismiss = { pendingSwitch = null },
+            dismissLabel = stringResource(android.R.string.cancel),
+        ) {
+            Text(
+                text = stringResource(R.string.switch_identity_confirm_body),
+                color = appColors().onSurface,
+            )
+        }
     }
 }
 
@@ -315,8 +375,8 @@ private fun DeviceCard(
 /**
  * 网络行：开关 = 加入/离开该网络；点行 = 看详情。
  *
- * 已经连着别的实例时 [enabled] 为 false，副标题换成提示；[capsules] 非空时在开关左边
- * 显示「行星序号 | 身份序号」两枚胶囊。
+ * 已经连着别的实例时 [enabled] 为 false，副标题换成提示；[chip] 非空时在开关左边显示
+ * 「行星字母 + 身份序号」一枚胶囊，点它换这条网络用的身份。
  */
 @Composable
 private fun NetworkRow(
@@ -324,7 +384,8 @@ private fun NetworkRow(
     joined: Boolean,
     enabled: Boolean,
     hint: String?,
-    capsules: Pair<Int, Int>?,
+    chip: Pair<String, Color>?,
+    onChipClick: () -> Unit,
     onClick: () -> Unit,
     onJoinedChange: (Boolean) -> Unit,
 ) {
@@ -342,10 +403,12 @@ private fun NetworkRow(
         leadingTint = if (joined) appColors().primary else Color.Unspecified,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (capsules != null) {
-                    AppRoleChip(capsules.first.toString(), planetChipTint(capsules.first))
-                    Spacer(Modifier.width(4.dp))
-                    AppRoleChip(capsules.second.toString(), identityChipTint(capsules.second))
+                if (chip != null) {
+                    AppRoleChip(
+                        label = chip.first,
+                        tint = chip.second,
+                        modifier = Modifier.clickable(onClick = onChipClick),
+                    )
                     Spacer(Modifier.width(10.dp))
                 }
                 AppSwitch(checked = joined, onCheckedChange = onJoinedChange, enabled = enabled)
@@ -400,9 +463,8 @@ private fun JoinNetworkDialog(
             )
             // 非简易模式：这条网络挂到哪个 Planet x 身份；已有网络在连时锁死同一个实例
             if (!simpleMode && !locked && planets.isNotEmpty() && identities.isNotEmpty()) {
-                PreferenceSelect(
+                PreferenceSelectCompact(
                     title = stringResource(R.string.planet_label),
-                    summary = null,
                     items = planets.map {
                         when {
                             it.builtIn -> stringResource(R.string.official_planet)
@@ -413,9 +475,8 @@ private fun JoinNetworkDialog(
                     selectedIndex = planetIndex,
                     onSelected = { planetIndex = it },
                 )
-                PreferenceSelect(
+                PreferenceSelectCompact(
                     title = stringResource(R.string.identity_label),
-                    summary = null,
                     items = identities.map {
                         it.alias.ifEmpty { stringResource(R.string.identity_default_alias, it.ordinal) }
                     },
@@ -423,9 +484,8 @@ private fun JoinNetworkDialog(
                     onSelected = { identityIndex = it },
                 )
             }
-            PreferenceSelect(
+            PreferenceSelectCompact(
                 title = stringResource(R.string.network_dns_mode),
-                summary = null,
                 items = listOf(
                     stringResource(R.string.network_dns_mode_no_dns),
                     stringResource(R.string.network_dns_mode_network_dns),

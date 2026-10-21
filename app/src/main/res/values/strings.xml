@@ -243,7 +243,15 @@
     <string name="planet_default_tag">Default</string>
     <string name="hide_from_recents">Hide from recents</string>
     <string name="hide_from_recents_summary">Takes effect on the next launch; the app disappears from the recents list</string>
+    <string name="app_language">Interface language</string>
+    <string name="app_language_summary">Applies to this app only</string>
+    <string name="app_language_system">System default</string>
+    <string name="switch_identity">Switch identity</string>
+    <string name="identity_current">current</string>
+    <string name="switch_identity_confirm_title">Not used on this network</string>
+    <string name="switch_identity_confirm_body">Changing the identity swaps the node: membership of the old node on this network does not carry over, and an admin may have to authorize the new node. Continue?</string>
 </resources>
+
 
 
 

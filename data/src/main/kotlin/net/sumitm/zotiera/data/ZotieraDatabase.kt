@@ -11,6 +11,7 @@ import net.sumitm.zotiera.model.Identity
 import net.sumitm.zotiera.model.MoonOrbit
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.model.NetworkConfig
+import net.sumitm.zotiera.model.NetworkIdentity
 import net.sumitm.zotiera.model.Planet
 
 @Database(
@@ -22,8 +23,9 @@ import net.sumitm.zotiera.model.Planet
         Planet::class,
         Identity::class,
         MoonOrbit::class,
+        NetworkIdentity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -42,6 +44,8 @@ abstract class ZotieraDatabase : RoomDatabase() {
     abstract fun identityDao(): IdentityDao
 
     abstract fun moonOrbitDao(): MoonOrbitDao
+
+    abstract fun networkIdentityDao(): NetworkIdentityDao
 
     companion object {
         const val NAME = "zotiera.db"

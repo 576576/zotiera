@@ -10,6 +10,7 @@
     <application
         android:name="net.sumitm.zotiera.ZotieraApplication"
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="${appLabel}"
         android:networkSecurityConfig="@xml/network_security_config"
