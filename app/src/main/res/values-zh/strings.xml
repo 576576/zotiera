@@ -236,7 +236,12 @@
     <string name="official_planet">官方行星</string>
     <string name="identity_badge_default">默认</string>
     <string name="identity_set_default">设为默认</string>
+    <string name="action_set_default">设为默认</string>
+    <string name="planet_default_tag">默认</string>
+    <string name="hide_from_recents">从最近任务中隐藏</string>
+    <string name="hide_from_recents_summary">下次启动生效，最近任务里看不到这个应用</string>
 </resources>
+
 
 
 

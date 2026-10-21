@@ -78,7 +78,7 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
 
     fun planet(worldId: Long): Planet? = db.planetDao().byId(worldId)
 
-    /** 官方行星是内置行，没有就补一条（序号固定 0）。 */
+    /** 官方行星是内置行，没有就补一条（序号固定 0，默认行星也归它）。 */
     fun ensureOfficialPlanet() {
         if (planet(Planet.OFFICIAL_WORLD_ID) == null) {
             insertPlanet(
@@ -87,9 +87,28 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
                     alias = "",
                     builtIn = true,
                     ordinal = Planet.OFFICIAL_ORDINAL,
+                    isDefault = true,
                 )
             )
         }
+        ensureDefaultPlanet()
+    }
+
+    fun defaultPlanet(): Planet? = db.planetDao().defaultRow()
+
+    /** 设为默认行星：先清掉旧的，再标记这一条。 */
+    fun setDefaultPlanet(worldId: Long) = db.runInTransaction {
+        db.planetDao().clearDefault()
+        planet(worldId)?.let {
+            it.isDefault = true
+            db.planetDao().update(it)
+        }
+    }
+
+    /** 没有默认行星时把序号最小的那颗扶正。 */
+    fun ensureDefaultPlanet() {
+        if (defaultPlanet() != null) return
+        planets().firstOrNull()?.let { setDefaultPlanet(it.worldId) }
     }
 
     fun insertPlanet(planet: Planet) {
@@ -151,6 +170,8 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
     // ---- moons ----
 
     fun moonOrbits(): List<MoonOrbit> = db.moonOrbitDao().all()
+
+    fun moonOrbits(planetId: Long): List<MoonOrbit> = db.moonOrbitDao().forPlanet(planetId)
 
     fun moonOrbit(worldId: Long): MoonOrbit? = db.moonOrbitDao().byWorldId(worldId)
 

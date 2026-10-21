@@ -49,6 +49,7 @@ fun SettingsScreen(
     var disableIpv6 by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, false)) }
     var startOnBoot by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, false)) }
     var simpleMode by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_SIMPLE_MODE, true)) }
+    var hideFromRecents by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_HIDE_FROM_RECENTS, false)) }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -74,6 +75,15 @@ fun SettingsScreen(
                 onCheckedChange = {
                     startOnBoot = it
                     prefs.edit { putBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, it) }
+                },
+            )
+            PreferenceSwitch(
+                title = stringResource(R.string.hide_from_recents),
+                summary = stringResource(R.string.hide_from_recents_summary),
+                checked = hideFromRecents,
+                onCheckedChange = {
+                    hideFromRecents = it
+                    prefs.edit { putBoolean(Constants.PREF_HIDE_FROM_RECENTS, it) }
                 },
             )
         }
@@ -118,14 +128,9 @@ fun SettingsScreen(
             )
         }
 
-        // 网络相关的管理入口；简易模式只留 Moon
+        // 网络相关的管理入口：行星 → 卫星 → 身份；简易模式只留卫星
         PreferenceGroup {
             if (!simpleMode) {
-                PreferenceArrow(
-                    title = stringResource(R.string.manage_identity),
-                    summary = stringResource(R.string.manage_identity_summary),
-                    onClick = onOpenIdentities,
-                )
                 PreferenceArrow(
                     title = stringResource(R.string.manage_planet),
                     summary = stringResource(R.string.manage_planet_summary),
@@ -137,6 +142,13 @@ fun SettingsScreen(
                 summary = stringResource(R.string.moon_orbit_summary),
                 onClick = onOpenMoons,
             )
+            if (!simpleMode) {
+                PreferenceArrow(
+                    title = stringResource(R.string.manage_identity),
+                    summary = stringResource(R.string.manage_identity_summary),
+                    onClick = onOpenIdentities,
+                )
+            }
         }
 
         PreferenceGroup {

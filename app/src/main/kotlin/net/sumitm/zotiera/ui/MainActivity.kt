@@ -1,6 +1,7 @@
 package net.sumitm.zotiera.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -12,7 +13,10 @@ import androidx.activity.viewModels
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -59,15 +63,15 @@ import net.sumitm.zotiera.ui.component.AppScaffold
 import net.sumitm.zotiera.ui.component.NavDestination
 import net.sumitm.zotiera.ui.component.ScreenSurface
 import net.sumitm.zotiera.ui.component.isWideLayout
-import net.sumitm.zotiera.ui.screens.DeviceScreen
 import net.sumitm.zotiera.ui.screens.AboutScreen
+import net.sumitm.zotiera.ui.screens.DeviceScreen
 import net.sumitm.zotiera.ui.screens.IdentityScreen
 import net.sumitm.zotiera.ui.screens.LicensesScreen
 import net.sumitm.zotiera.ui.screens.MoonsScreen
-import net.sumitm.zotiera.ui.screens.PlanetScreen
 import net.sumitm.zotiera.ui.screens.NetworkDetailScreen
 import net.sumitm.zotiera.ui.screens.OverviewScreen
 import net.sumitm.zotiera.ui.screens.PeersScreen
+import net.sumitm.zotiera.ui.screens.PlanetScreen
 import net.sumitm.zotiera.ui.screens.SettingsScreen
 import net.sumitm.zotiera.ui.theme.ColorMode
 import net.sumitm.zotiera.ui.theme.ZotieraTheme
@@ -76,11 +80,45 @@ import net.sumitm.zotiera.util.Constants
 /** 页面切换时长：够短，返回手势跟手。 */
 private const val NAV_DURATION = 220
 
+/** 顶层页切换：略慢一点，淡入淡出才看得出来。 */
+private const val TAB_DURATION = 240
+
 class MainActivity : ComponentActivity() {
 
     private val viewModel: NodeViewModel by viewModels()
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    /** 本进程内只换一次任务，避免任务标志没带上时反复重开。 */
+    private var recentsChecked = false
+
+    override fun onResume() {
+        super.onResume()
+        applyRecentsExclusion()
+    }
+
+    /**
+     * 「从最近任务中隐藏」只能靠 [Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS]，而它只在任务创建时生效，
+     * 启动器的 Intent 又不带这个标志，所以发现当前任务没带标志时换一个新任务。
+     *
+     * 必须带 [Intent.FLAG_ACTIVITY_MULTIPLE_TASK]，否则系统会把新 Activity 塞回已有任务；
+     * 旧任务用 finishAndRemoveTask 清掉，不然它会一直留在最近任务里。
+     */
+    private fun applyRecentsExclusion() {
+        if (recentsChecked) return
+        recentsChecked = true
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        if (!prefs.getBoolean(Constants.PREF_HIDE_FROM_RECENTS, false)) return
+        if (intent.flags and Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS != 0) return
+        startActivity(
+            Intent(this, MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS,
+            )
+        )
+        finishAndRemoveTask()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -284,12 +322,18 @@ private fun ZotieraApp(
     }
 }
 
-/** 顶层页：进出都不做位移动画。 */
+/**
+ * 顶层页：切换时淡入淡出，新页从下方轻微上浮。
+ *
+ * 详情页之间仍走横向位移；从详情页返回顶层页不做动画，否则会看到两套位移叠在一起。
+ */
 private fun NavGraphBuilder.tab(route: String, content: @Composable () -> Unit) {
     composable(
         route = route,
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None },
+        enterTransition = {
+            fadeIn(tween(TAB_DURATION)) + slideInVertically(tween(TAB_DURATION)) { it / 32 }
+        },
+        exitTransition = { fadeOut(tween(TAB_DURATION / 2)) },
         popEnterTransition = { EnterTransition.None },
         popExitTransition = { ExitTransition.None },
     ) {

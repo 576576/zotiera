@@ -1,15 +1,7 @@
 package net.sumitm.zotiera.ui.component
 
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,8 +10,15 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -31,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -429,3 +429,15 @@ fun AppDialogAction(label: String, error: Boolean = false, onClick: () -> Unit) 
             .padding(vertical = 12.dp),
     )
 }
+
+/** 行星与身份各用一谱系，两边颜色不会撞；同一序号永远同一个颜色。 */
+private val PlanetTints = listOf(
+    Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFEF4444),
+)
+private val IdentityTints = listOf(
+    Color(0xFF8B5CF6), Color(0xFFEC4899), Color(0xFF0D9488), Color(0xFF84CC16),
+)
+
+fun planetChipTint(ordinal: Int): Color = PlanetTints[Math.floorMod(ordinal, PlanetTints.size)]
+
+fun identityChipTint(ordinal: Int): Color = IdentityTints[Math.floorMod(ordinal, IdentityTints.size)]

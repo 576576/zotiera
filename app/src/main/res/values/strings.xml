@@ -239,7 +239,12 @@
     <string name="official_planet">Official planet</string>
     <string name="identity_badge_default">Default</string>
     <string name="identity_set_default">Set as default</string>
+    <string name="action_set_default">Set as default</string>
+    <string name="planet_default_tag">Default</string>
+    <string name="hide_from_recents">Hide from recents</string>
+    <string name="hide_from_recents_summary">Takes effect on the next launch; the app disappears from the recents list</string>
 </resources>
+
 
 
 

@@ -23,7 +23,7 @@ import net.sumitm.zotiera.model.Planet
         Identity::class,
         MoonOrbit::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

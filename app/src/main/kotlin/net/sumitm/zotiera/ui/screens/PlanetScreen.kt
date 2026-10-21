@@ -38,6 +38,7 @@ import net.sumitm.zotiera.ui.component.AppListRow
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
+import net.sumitm.zotiera.ui.theme.LocalZotieraType
 
 /**
  * 管理 Planet：官方 planet 固定在最上面，自定义的从文件导入并起别名。
@@ -98,6 +99,15 @@ fun PlanetScreen(onBack: () -> Unit) {
                             stringResource(if (planet.builtIn) R.string.planet_builtin else R.string.planet_from_file),
                         leading = Icons.Rounded.Public,
                         leadingTint = if (planet.builtIn) appColors().primary else Color.Unspecified,
+                        trailing = {
+                            if (planet.isDefault) {
+                                Text(
+                                    text = stringResource(R.string.planet_default_tag),
+                                    style = LocalZotieraType.current.rowSummary,
+                                    color = appColors().primary,
+                                )
+                            }
+                        },
                         onClick = { menuPlanet = planet },
                         onLongClick = { menuPlanet = planet },
                     )
@@ -170,6 +180,13 @@ fun PlanetScreen(onBack: () -> Unit) {
             onDismiss = { menuPlanet = null },
         ) {
             Column {
+                if (!planet.isDefault) {
+                    AppDialogAction(stringResource(R.string.action_set_default)) {
+                        repository.setDefaultPlanet(planet.worldId)
+                        refreshKey++
+                        menuPlanet = null
+                    }
+                }
                 if (!planet.builtIn) {
                     AppDialogAction(stringResource(R.string.action_rename)) {
                         aliasDraft = planet.alias
@@ -210,7 +227,10 @@ fun PlanetScreen(onBack: () -> Unit) {
     }
 
     deleteTarget?.let { planet ->
-        val inUse = remember(planet.worldId) { repository.networks().any { it.planetId == planet.worldId } }
+        val inUse = remember(planet.worldId) {
+            repository.networks().any { it.planetId == planet.worldId } ||
+                repository.moonOrbits(planet.worldId).isNotEmpty()
+        }
         AppDialog(
             title = stringResource(R.string.action_delete),
             confirmLabel = stringResource(android.R.string.ok),
@@ -220,6 +240,7 @@ fun PlanetScreen(onBack: () -> Unit) {
                 } else {
                     store.planetFile(planet.worldId).delete()
                     repository.deletePlanet(planet)
+                    repository.ensureDefaultPlanet()
                     refreshKey++
                 }
                 deleteTarget = null

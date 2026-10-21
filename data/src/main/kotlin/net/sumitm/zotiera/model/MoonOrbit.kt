@@ -28,6 +28,14 @@ class MoonOrbit @JvmOverloads constructor(
     /** 序号，从 1 起按加入顺序分配。 */
     @ColumnInfo(name = "ordinal")
     var ordinal: Int = 0,
+    /**
+     * 所属行星：导入时引擎所在的那一颗。
+     *
+     * 协议上 moon 不绑定 planet（它是独立的根，文件在 `moons.d/`），这里记的是文件
+     * 落在哪个实例目录里，界面据此显示行星胶囊。
+     */
+    @ColumnInfo(name = "planet_id", defaultValue = "149604618")
+    var planetId: Long = Planet.OFFICIAL_WORLD_ID,
 ) {
     /** moon 文件是否已缓存，运行期状态，不持久化。 */
     @Ignore

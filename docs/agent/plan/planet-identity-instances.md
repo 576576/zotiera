@@ -9,6 +9,10 @@
 
 > 2026-10-21 追加：行星/卫星本地化、三处序号、网络行胶囊；默认身份改为 `is_default` 标记；
 > 行为稳定前不做数据接续（旧库与旧文件在首次启动时丢弃）。
+>
+> 2026-10-21 再追加：行星可设默认（`planets.is_default`），胶囊的隐藏判据从「官方行星 + 默认身份」
+> 改成「默认行星 + 默认身份」；卫星页每行带所属行星的序号胶囊（`moon_orbits.planet_id`，导入时按当前行星记录）；
+> 设置页入口顺序改为 行星 → 卫星 → 身份；新增「从最近任务中隐藏」；清掉三个不再读的偏好键。
 
 S1–S7 全部落地：Room v2 + `InstanceStore` + 服务按实例建数据源 + 两个管理页 +
 简易模式（默认开，隐藏两个入口）+ 概览页跨实例禁用 + 添加网络选实例。
@@ -16,6 +20,19 @@ S1–S7 全部落地：Room v2 + `InstanceStore` + 服务按实例建数据源 +
 实测过一条完整链路：在「Identity 2」上加入一条网络 → 概览页另外两条（默认身份）立刻置灰并提示
 「需先断开 默认身份」→ 打开隧道后节点 ID 从 `58cc8b1ce7` 变成 `d7aab982c2`，实例目录
 `instances/149604618-2` 与 `identities/2/identity.*` 都生成了。
+
+### 卫星与行星的关系（事实核对）
+
+核心里的 moon 是独立的根，不归任何 planet：
+
+| 事实 | 出处 |
+| --- | --- |
+| moon 是 `World::TYPE_MOON`，planet 是 `TYPE_PLANET`，两者平级 | `externals/core/node/World.hpp:81` |
+| moon 定义存 `moons.d/<16 位 hex>.moon`，属于**节点数据目录**，不是 planet | `com_zerotierone_sdk_Node.cpp:414`、`include/ZeroTierOne.h:1475` |
+| 入轨只调 `orbit(moonWorldId, seed)`，与当前 planet 无关 | `Topology::addMoon`（`node/Topology.cpp:366`） |
+
+所以界面上「卫星属于哪颗行星」不是协议概念，而是**文件落在哪个实例目录**：`planet_id` 记的是导入时
+引擎所在的行星。换行星要连同 `.moon` 文件一起搬，本轮不做。
 
 ## 1. 为什么必须是「实例」而不是两个独立列表
 

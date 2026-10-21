@@ -94,6 +94,12 @@ interface PlanetDao {
     @Query("SELECT * FROM planets WHERE world_id = :worldId")
     fun byId(worldId: Long): Planet?
 
+    @Query("SELECT * FROM planets WHERE is_default = 1 LIMIT 1")
+    fun defaultRow(): Planet?
+
+    @Query("UPDATE planets SET is_default = 0")
+    fun clearDefault()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(planet: Planet)
 
@@ -137,6 +143,9 @@ interface MoonOrbitDao {
 
     @Query("SELECT * FROM moon_orbits ORDER BY ordinal, moon_world_id")
     fun all(): List<MoonOrbit>
+
+    @Query("SELECT * FROM moon_orbits WHERE planet_id = :planetId ORDER BY ordinal, moon_world_id")
+    fun forPlanet(planetId: Long): List<MoonOrbit>
 
     @Query("SELECT IFNULL(MAX(ordinal), 0) + 1 FROM moon_orbits")
     fun nextOrdinal(): Int

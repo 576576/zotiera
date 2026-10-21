@@ -43,13 +43,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.preference.PreferenceManager
-import net.sumitm.zotiera.util.Constants
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.identity.InstanceStore
 import net.sumitm.zotiera.model.Identity
-import net.sumitm.zotiera.model.Planet
 import net.sumitm.zotiera.model.Network
+import net.sumitm.zotiera.model.Planet
 import net.sumitm.zotiera.ui.NodeUiState
 import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.component.AppCard
@@ -61,11 +60,14 @@ import net.sumitm.zotiera.ui.component.AppRoleChip
 import net.sumitm.zotiera.ui.component.AppSwitch
 import net.sumitm.zotiera.ui.component.AppTunnelSwitch
 import net.sumitm.zotiera.ui.component.appColors
+import net.sumitm.zotiera.ui.component.identityChipTint
 import net.sumitm.zotiera.ui.component.isWideLayout
+import net.sumitm.zotiera.ui.component.planetChipTint
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 import net.sumitm.zotiera.ui.toast
+import net.sumitm.zotiera.util.Constants
 import net.sumitm.zotiera.util.NetworkIdUtils
 
 @Composable
@@ -169,11 +171,11 @@ fun OverviewScreen(
                             // 已经连着某个实例时，别的实例的网络不能同时开
                             val enabled = activePlanetId == null ||
                                 (network.planetId == activePlanetId && network.identityUid == activeIdentityUid)
-                            // 胶囊只在非「官方行星 + 默认身份」时出现，简单模式下不显示
+                            // 胶囊只在非「默认行星 + 默认身份」时出现，简单模式下不显示
                             val planet = planets.firstOrNull { it.worldId == network.planetId }
                             val identity = identities.firstOrNull { it.uid == network.identityUid }
                             val capsules = if (!simpleMode && planet != null && identity != null &&
-                                !(planet.builtIn && identity.isDefault)
+                                !(planet.isDefault && identity.isDefault)
                             ) {
                                 planet.ordinal to identity.ordinal
                             } else {
@@ -341,9 +343,9 @@ private fun NetworkRow(
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (capsules != null) {
-                    AppRoleChip(capsules.first.toString(), planetTint(capsules.first))
+                    AppRoleChip(capsules.first.toString(), planetChipTint(capsules.first))
                     Spacer(Modifier.width(4.dp))
-                    AppRoleChip(capsules.second.toString(), identityTint(capsules.second))
+                    AppRoleChip(capsules.second.toString(), identityChipTint(capsules.second))
                     Spacer(Modifier.width(10.dp))
                 }
                 AppSwitch(checked = joined, onCheckedChange = onJoinedChange, enabled = enabled)
@@ -352,18 +354,6 @@ private fun NetworkRow(
         onClick = onClick,
     )
 }
-
-/** 行星与身份各用一谱系，两边颜色不会撞；同一序号永远同一个颜色。 */
-private val PlanetTints = listOf(
-    Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFEF4444),
-)
-private val IdentityTints = listOf(
-    Color(0xFF8B5CF6), Color(0xFFEC4899), Color(0xFF0D9488), Color(0xFF84CC16),
-)
-
-private fun planetTint(ordinal: Int): Color = PlanetTints[Math.floorMod(ordinal, PlanetTints.size)]
-
-private fun identityTint(ordinal: Int): Color = IdentityTints[Math.floorMod(ordinal, IdentityTints.size)]
 
 @Composable
 private fun JoinNetworkDialog(

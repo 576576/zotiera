@@ -24,6 +24,9 @@ class Planet @JvmOverloads constructor(
     /** 序号：官方固定 0，自定义从 1 起按加入顺序分配。 */
     @ColumnInfo(name = "ordinal")
     var ordinal: Int = 0,
+    /** 默认行星：新建网络与简易模式都用它，全局只有一个。 */
+    @ColumnInfo(name = "is_default")
+    var isDefault: Boolean = false,
 ) {
     /** 16 位 hex 去掉前导 0，与卫星的显示方式一致。 */
     val worldIdHex: String
