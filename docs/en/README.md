@@ -60,6 +60,8 @@ Versions follow the ZeroTier engine: `versionName = <engine>-<revision>` (e.g. `
 
 ## License and credits
 
+UI layout follows [KernelSU](https://github.com/tiann/KernelSU).
+
 This project is licensed under **AGPL-3.0-or-later**, see [LICENSE](../../LICENSE).
 
 The ZeroTier core in `externals/core` (since 1.16.2) is **MPL-2.0**, taken from

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,7 +56,7 @@ import net.sumitm.zotiera.ui.component.AppCard
 import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
-import net.sumitm.zotiera.ui.component.AppHeader
+import net.sumitm.zotiera.ui.component.AppLargeTitlePage
 import net.sumitm.zotiera.ui.component.AppListRow
 import net.sumitm.zotiera.ui.component.AppRoleChip
 import net.sumitm.zotiera.ui.component.AppSwitch
@@ -158,53 +159,55 @@ fun OverviewScreen(
 
     Row(Modifier.fillMaxSize()) {
         Box(Modifier.weight(if (wide) 0.42f else 1f).fillMaxSize()) {
-            Column(Modifier.fillMaxSize()) {
-                AppHeader(title = stringResource(R.string.app_name))
-                DeviceCard(
-                    state = state,
-                    onOpen = onOpenDevice,
-                    onToggleTunnel = ::toggleTunnel,
-                )
-                if (state.networks.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.no_data),
-                        color = appColors().onSurfaceVariant,
-                        modifier = Modifier.padding(start = 20.dp, top = 16.dp),
+            AppLargeTitlePage(title = stringResource(R.string.app_name)) {
+                Column(Modifier.fillMaxSize()) {
+                    Spacer(Modifier.height(8.dp))
+                    DeviceCard(
+                        state = state,
+                        onOpen = onOpenDevice,
+                        onToggleTunnel = ::toggleTunnel,
                     )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        // 简易模式只服务默认实例，别的行星上的网络在这里没有意义
-                        items(visibleNetworks, key = { it.networkId }) { network ->
-                            // 已经连着某个实例时，别的实例的网络不能同时开
-                            val enabled = activePlanetId == null ||
-                                (network.planetId == activePlanetId && network.identityUid == activeIdentityUid)
-                            // 简易模式不显示胶囊（那里只有默认实例），其余情况常显
-                            val planet = planets.firstOrNull { it.worldId == network.planetId }
-                            val identity = identities.firstOrNull { it.uid == network.identityUid }
-                            val chip = if (!simpleMode && planet != null && identity != null) {
-                                "${planetLetter(planet.ordinal)}${identity.ordinal}" to
-                                    instanceChipTint(planet.ordinal, identity.ordinal)
-                            } else {
-                                null
+                    if (state.networks.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.no_data),
+                            color = appColors().onSurfaceVariant,
+                            modifier = Modifier.padding(start = 20.dp, top = 16.dp),
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            // 简易模式只服务默认实例，别的行星上的网络在这里没有意义
+                            items(visibleNetworks, key = { it.networkId }) { network ->
+                                // 已经连着某个实例时，别的实例的网络不能同时开
+                                val enabled = activePlanetId == null ||
+                                    (network.planetId == activePlanetId && network.identityUid == activeIdentityUid)
+                                // 简易模式不显示胶囊（那里只有默认实例），其余情况常显
+                                val planet = planets.firstOrNull { it.worldId == network.planetId }
+                                val identity = identities.firstOrNull { it.uid == network.identityUid }
+                                val chip = if (!simpleMode && planet != null && identity != null) {
+                                    "${planetLetter(planet.ordinal)}${identity.ordinal}" to
+                                        instanceChipTint(planet.ordinal, identity.ordinal)
+                                } else {
+                                    null
+                                }
+                                NetworkRow(
+                                    network = network,
+                                    joined = network.lastActivated,
+                                    enabled = enabled,
+                                    // 同行星时差异在身份上，提示就报身份名
+                                    hint = if (enabled) null else String.format(
+                                        instanceHint,
+                                        if (network.planetId == activePlanetId) activeIdentityAlias else activeAlias,
+                                    ),
+                                    chip = chip,
+                                    onChipClick = { identityTarget = network },
+                                    onClick = { openNetwork(network.networkId) },
+                                    onJoinedChange = { joined -> viewModel.setJoined(network, joined) },
+                                )
                             }
-                            NetworkRow(
-                                network = network,
-                                joined = network.lastActivated,
-                                enabled = enabled,
-                                // 同行星时差异在身份上，提示就报身份名
-                                hint = if (enabled) null else String.format(
-                                    instanceHint,
-                                    if (network.planetId == activePlanetId) activeIdentityAlias else activeAlias,
-                                ),
-                                chip = chip,
-                                onChipClick = { identityTarget = network },
-                                onClick = { openNetwork(network.networkId) },
-                                onJoinedChange = { joined -> viewModel.setJoined(network, joined) },
-                            )
                         }
                     }
                 }

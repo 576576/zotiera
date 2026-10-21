@@ -22,7 +22,7 @@ import net.sumitm.zotiera.BuildConfig
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.UiMode
-import net.sumitm.zotiera.ui.component.AppHeader
+import net.sumitm.zotiera.ui.component.AppLargeTitlePage
 import net.sumitm.zotiera.ui.component.preference.PreferenceArrow
 import net.sumitm.zotiera.ui.component.preference.PreferenceGroup
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
@@ -57,123 +57,125 @@ fun SettingsScreen(
         if (it.isEmpty()) stringResource(R.string.app_language_system) else languageName(it)
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        AppHeader(title = stringResource(R.string.settings))
+    AppLargeTitlePage(title = stringResource(R.string.settings)) {
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Spacer(Modifier.height(8.dp))
 
-        // 通用
-        PreferenceGroup {
-            PreferenceSwitch(
-                title = stringResource(R.string.simple_mode),
-                summary = stringResource(R.string.simple_mode_summary),
-                checked = simpleMode,
-                onCheckedChange = {
-                    simpleMode = it
-                    prefs.edit { putBoolean(Constants.PREF_SIMPLE_MODE, it) }
-                },
-            )
-            PreferenceSwitch(
-                title = stringResource(R.string.preferences_general_start_on_boot),
-                summary = stringResource(R.string.start_on_boot_summary),
-                checked = startOnBoot,
-                onCheckedChange = {
-                    startOnBoot = it
-                    prefs.edit { putBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, it) }
-                },
-            )
-            PreferenceSwitch(
-                title = stringResource(R.string.hide_from_recents),
-                summary = stringResource(R.string.hide_from_recents_summary),
-                checked = hideFromRecents,
-                onCheckedChange = {
-                    hideFromRecents = it
-                    prefs.edit { putBoolean(Constants.PREF_HIDE_FROM_RECENTS, it) }
-                },
-            )
-        }
-
-        // 外观
-        PreferenceGroup {
-            PreferenceSelect(
-                title = stringResource(R.string.app_language),
-                summary = stringResource(R.string.app_language_summary),
-                items = languageLabels,
-                selectedIndex = AppLanguage.TAGS.indexOf(language).coerceAtLeast(0),
-                onSelected = { onLanguageChange(AppLanguage.TAGS[it]) },
-            )
-            PreferenceSelect(
-                title = stringResource(R.string.ui_style),
-                summary = stringResource(R.string.ui_style_summary),
-                items = UiMode.entries.map { it.label },
-                selectedIndex = UiMode.entries.indexOf(uiMode),
-                onSelected = { onUiModeChange(UiMode.entries[it]) },
-            )
-            PreferenceSelect(
-                title = stringResource(R.string.color_mode),
-                summary = stringResource(R.string.color_mode_summary),
-                items = ColorMode.entries.map { colorModeLabel(it) },
-                selectedIndex = ColorMode.entries.indexOf(colorMode),
-                onSelected = { onColorModeChange(ColorMode.entries[it]) },
-            )
-        }
-
-        // 网络
-        PreferenceGroup {
-            PreferenceSwitch(
-                title = stringResource(R.string.preferences_network_use_cell_data),
-                summary = stringResource(R.string.use_cell_data_summary),
-                checked = cellular,
-                onCheckedChange = {
-                    cellular = it
-                    prefs.edit { putBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, it) }
-                },
-            )
-            PreferenceSwitch(
-                title = stringResource(R.string.preferences_network_disable_ipv6),
-                summary = stringResource(R.string.disable_ipv6_summary),
-                checked = disableIpv6,
-                onCheckedChange = {
-                    disableIpv6 = it
-                    prefs.edit { putBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, it) }
-                },
-            )
-        }
-
-        // 网络相关的管理入口：行星 → 卫星 → 身份；简易模式只留卫星
-        PreferenceGroup {
-            if (!simpleMode) {
-                PreferenceArrow(
-                    title = stringResource(R.string.manage_planet),
-                    summary = stringResource(R.string.manage_planet_summary),
-                    onClick = onOpenPlanet,
+            // 通用
+            PreferenceGroup {
+                PreferenceSwitch(
+                    title = stringResource(R.string.simple_mode),
+                    summary = stringResource(R.string.simple_mode_summary),
+                    checked = simpleMode,
+                    onCheckedChange = {
+                        simpleMode = it
+                        prefs.edit { putBoolean(Constants.PREF_SIMPLE_MODE, it) }
+                    },
+                )
+                PreferenceSwitch(
+                    title = stringResource(R.string.preferences_general_start_on_boot),
+                    summary = stringResource(R.string.start_on_boot_summary),
+                    checked = startOnBoot,
+                    onCheckedChange = {
+                        startOnBoot = it
+                        prefs.edit { putBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, it) }
+                    },
+                )
+                PreferenceSwitch(
+                    title = stringResource(R.string.hide_from_recents),
+                    summary = stringResource(R.string.hide_from_recents_summary),
+                    checked = hideFromRecents,
+                    onCheckedChange = {
+                        hideFromRecents = it
+                        prefs.edit { putBoolean(Constants.PREF_HIDE_FROM_RECENTS, it) }
+                    },
                 )
             }
-            PreferenceArrow(
-                title = stringResource(R.string.manage_moon),
-                summary = stringResource(R.string.moon_orbit_summary),
-                onClick = onOpenMoons,
-            )
-            if (!simpleMode) {
-                PreferenceArrow(
-                    title = stringResource(R.string.manage_identity),
-                    summary = stringResource(R.string.manage_identity_summary),
-                    onClick = onOpenIdentities,
+
+            // 外观
+            PreferenceGroup {
+                PreferenceSelect(
+                    title = stringResource(R.string.app_language),
+                    summary = stringResource(R.string.app_language_summary),
+                    items = languageLabels,
+                    selectedIndex = AppLanguage.TAGS.indexOf(language).coerceAtLeast(0),
+                    onSelected = { onLanguageChange(AppLanguage.TAGS[it]) },
+                )
+                PreferenceSelect(
+                    title = stringResource(R.string.ui_style),
+                    summary = stringResource(R.string.ui_style_summary),
+                    items = UiMode.entries.map { it.label },
+                    selectedIndex = UiMode.entries.indexOf(uiMode),
+                    onSelected = { onUiModeChange(UiMode.entries[it]) },
+                )
+                PreferenceSelect(
+                    title = stringResource(R.string.color_mode),
+                    summary = stringResource(R.string.color_mode_summary),
+                    items = ColorMode.entries.map { colorModeLabel(it) },
+                    selectedIndex = ColorMode.entries.indexOf(colorMode),
+                    onSelected = { onColorModeChange(ColorMode.entries[it]) },
                 )
             }
-        }
 
-        PreferenceGroup {
-            PreferenceArrow(
-                title = stringResource(R.string.about),
-                summary = "Zotiera ${BuildConfig.VERSION_NAME}",
-                onClick = onOpenAbout,
-            )
-        }
+            // 网络
+            PreferenceGroup {
+                PreferenceSwitch(
+                    title = stringResource(R.string.preferences_network_use_cell_data),
+                    summary = stringResource(R.string.use_cell_data_summary),
+                    checked = cellular,
+                    onCheckedChange = {
+                        cellular = it
+                        prefs.edit { putBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, it) }
+                    },
+                )
+                PreferenceSwitch(
+                    title = stringResource(R.string.preferences_network_disable_ipv6),
+                    summary = stringResource(R.string.disable_ipv6_summary),
+                    checked = disableIpv6,
+                    onCheckedChange = {
+                        disableIpv6 = it
+                        prefs.edit { putBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, it) }
+                    },
+                )
+            }
 
-        // 末尾留白：滚动到底时最后一张卡片不贴住底栏
-        Spacer(Modifier.height(24.dp))
+            // 网络相关的管理入口：行星 → 卫星 → 身份；简易模式只留卫星
+            PreferenceGroup {
+                if (!simpleMode) {
+                    PreferenceArrow(
+                        title = stringResource(R.string.manage_planet),
+                        summary = stringResource(R.string.manage_planet_summary),
+                        onClick = onOpenPlanet,
+                    )
+                }
+                PreferenceArrow(
+                    title = stringResource(R.string.manage_moon),
+                    summary = stringResource(R.string.moon_orbit_summary),
+                    onClick = onOpenMoons,
+                )
+                if (!simpleMode) {
+                    PreferenceArrow(
+                        title = stringResource(R.string.manage_identity),
+                        summary = stringResource(R.string.manage_identity_summary),
+                        onClick = onOpenIdentities,
+                    )
+                }
+            }
+
+            PreferenceGroup {
+                PreferenceArrow(
+                    title = stringResource(R.string.about),
+                    summary = "Zotiera ${BuildConfig.VERSION_NAME}",
+                    onClick = onOpenAbout,
+                )
+            }
+
+            // 末尾留白：滚动到底时最后一张卡片不贴住底栏
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }
 

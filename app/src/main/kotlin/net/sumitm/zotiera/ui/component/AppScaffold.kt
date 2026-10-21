@@ -5,14 +5,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -21,13 +19,14 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
-import net.sumitm.zotiera.ui.theme.LocalZotieraType
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 import top.yukonga.miuix.kmp.basic.NavigationRail as MiuixNavigationRail
@@ -82,18 +81,31 @@ fun AppTopBar(
 }
 
 /**
- * 页面大标题：标题 + 一行说明。
+ * 顶层页：大标题贴在顶部，内容往上滚时标题收缩成一条，始终停在屏幕顶端。
  *
- * 这是 Material 与 Miuix 共用的排版，字号来自 [LocalZotieraType]，切换风格不跳。
+ * 页面内容自己负责滚动；滚动事件冒泡到顶栏，标题才会跟着收缩。
  */
 @Composable
-fun AppHeader(title: String) {
-    Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp)) {
-        val color = when (LocalUiMode.current) {
-            UiMode.Miuix -> top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface
-            UiMode.Material -> MaterialTheme.colorScheme.onSurface
+fun AppLargeTitlePage(title: String, content: @Composable () -> Unit) {
+    when (LocalUiMode.current) {
+        UiMode.Miuix -> {
+            val behavior = MiuixScrollBehavior()
+            Column(Modifier.fillMaxSize()) {
+                MiuixTopAppBar(title = title, scrollBehavior = behavior)
+                Box(Modifier.fillMaxSize().nestedScroll(behavior.nestedScrollConnection)) { content() }
+            }
         }
-        Text(text = title, style = LocalZotieraType.current.titleLarge, color = color)
+
+        UiMode.Material -> {
+            val behavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+            Column(Modifier.fillMaxSize()) {
+                LargeTopAppBar(
+                    title = { Text(title) },
+                    scrollBehavior = behavior,
+                )
+                Box(Modifier.fillMaxSize().nestedScroll(behavior.nestedScrollConnection)) { content() }
+            }
+        }
     }
 }
 

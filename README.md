@@ -53,6 +53,10 @@ git submodule update --init --recursive
 - [重构计划与基线对比](docs/agent/)
 - [界面截图](assets/images/screenshots/readme.md)
 
+## 鸣谢
+
+界面布局参考 [KernelSU](https://github.com/tiann/KernelSU)。
+
 ## 许可与来源
 
 本项目按 **AGPL-3.0-or-later** 授权，见 [LICENSE](LICENSE)。
