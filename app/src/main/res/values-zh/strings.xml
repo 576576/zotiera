@@ -231,6 +231,12 @@
     <string name="identity_in_use">还有网络在用这个身份，先删掉那些网络</string>
     <string name="identity_delete_confirm">删除会把这个身份的密钥从本机移除</string>
     <string name="identity_default_name">默认身份</string>
+    <string name="simple_mode">简易模式</string>
+    <string name="simple_mode_summary">隐藏 Planet 与身份管理，只用默认实例</string>
+    <string name="planet_label">Planet</string>
+    <string name="identity_label">身份</string>
+    <string name="instance_busy_hint">需先断开 %1$s</string>
 </resources>
+
 
 

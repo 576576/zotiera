@@ -35,6 +35,7 @@ import net.sumitm.zotiera.events.TunnelConfigChangedEvent
 import net.sumitm.zotiera.events.VirtualNetworkConfigChangedEvent
 import net.sumitm.zotiera.events.VirtualNetworkConfigReplyEvent
 import net.sumitm.zotiera.events.VirtualNetworkConfigRequestEvent
+import net.sumitm.zotiera.identity.InstanceStore
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.service.ZeroTierOneService
 import net.sumitm.zotiera.util.Constants
@@ -165,6 +166,12 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
      * 一个网络都不剩时把隧道一起关掉——没有成员资格的隧道没有意义。
      */
     fun setJoined(network: Network, joined: Boolean) {
+        if (joined) {
+            val store = InstanceStore(getApplication())
+            if (store.activePlanetId != network.planetId || store.activeIdentityUid != network.identityUid) {
+                store.setActive(network.planetId, network.identityUid)
+            }
+        }
         if (network.lastActivated != joined) {
             network.lastActivated = joined
             repository.updateNetwork(network)
@@ -209,8 +216,19 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
     // ---- 网络增删 ----
 
     /** 新增网络：默认就加入（用户加它就是为了连），隧道没开时只写库。 */
-    fun joinNetwork(networkId: Long, networkIdStr: String, defaultRoute: Boolean, dnsMode: Int) {
+    fun joinNetwork(
+        networkId: Long,
+        networkIdStr: String,
+        defaultRoute: Boolean,
+        dnsMode: Int,
+        planetId: Long,
+        identityUid: Long,
+    ) {
         if (repository.hasNetwork(networkId)) return
+        // 一个实例在连着时，别的实例的网络不能同时加入
+        if (repository.lastActivatedNetworks().any { it.planetId != planetId || it.identityUid != identityUid }) {
+            return
+        }
         val config = net.sumitm.zotiera.model.NetworkConfig(
             id = networkId,
             routeViaZeroTier = false,
@@ -223,8 +241,12 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
                 networkIdStr = networkIdStr,
                 networkConfigId = networkId,
                 lastActivated = true,
+                planetId = planetId,
+                identityUid = identityUid,
             )
         )
+        // 新网络直接是「已加入」，实例跟着它走
+        InstanceStore(getApplication()).setActive(planetId, identityUid)
         if (_state.value.tunnelRunning) {
             val context = getApplication<Application>()
             context.startService(

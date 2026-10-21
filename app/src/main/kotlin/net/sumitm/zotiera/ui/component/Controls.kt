@@ -348,16 +348,18 @@ fun AppFab(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modi
 
 /** 开关。 */
 @Composable
-fun AppSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+fun AppSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
     when (LocalUiMode.current) {
         UiMode.Miuix -> top.yukonga.miuix.kmp.basic.Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
         )
 
         UiMode.Material -> androidx.compose.material3.Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
         )
     }
 }

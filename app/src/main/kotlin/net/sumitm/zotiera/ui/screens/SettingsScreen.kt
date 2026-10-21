@@ -52,6 +52,7 @@ fun SettingsScreen(
     var cellular by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, false)) }
     var disableIpv6 by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, false)) }
     var startOnBoot by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, false)) }
+    var simpleMode by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_SIMPLE_MODE, true)) }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -112,18 +113,20 @@ fun SettingsScreen(
             )
         }
 
-        // 网络相关的三个管理入口，跟着网络设置走，不单独占一栏
+        // 网络相关的管理入口，跟着网络设置走，不单独占一栏；简易模式只留 Moon
         PreferenceGroup {
-            PreferenceArrow(
-                title = stringResource(R.string.manage_identity),
-                summary = stringResource(R.string.manage_identity_summary),
-                onClick = onOpenIdentities,
-            )
-            PreferenceArrow(
-                title = stringResource(R.string.manage_planet),
-                summary = stringResource(R.string.manage_planet_summary),
-                onClick = onOpenPlanet,
-            )
+            if (!simpleMode) {
+                PreferenceArrow(
+                    title = stringResource(R.string.manage_identity),
+                    summary = stringResource(R.string.manage_identity_summary),
+                    onClick = onOpenIdentities,
+                )
+                PreferenceArrow(
+                    title = stringResource(R.string.manage_planet),
+                    summary = stringResource(R.string.manage_planet_summary),
+                    onClick = onOpenPlanet,
+                )
+            }
             PreferenceArrow(
                 title = stringResource(R.string.manage_moon),
                 summary = stringResource(R.string.moon_orbit_summary),
@@ -133,6 +136,15 @@ fun SettingsScreen(
 
         SectionTitle(stringResource(R.string.preferences_general))
         PreferenceGroup {
+            PreferenceSwitch(
+                title = stringResource(R.string.simple_mode),
+                summary = stringResource(R.string.simple_mode_summary),
+                checked = simpleMode,
+                onCheckedChange = {
+                    simpleMode = it
+                    prefs.edit { putBoolean(Constants.PREF_SIMPLE_MODE, it) }
+                },
+            )
             PreferenceSwitch(
                 title = stringResource(R.string.preferences_general_start_on_boot),
                 summary = stringResource(R.string.start_on_boot_summary),

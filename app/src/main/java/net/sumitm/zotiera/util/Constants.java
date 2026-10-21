@@ -25,6 +25,9 @@ public class Constants {
 
     public static final String PREF_GENERAL_START_ZEROTIER_ON_BOOT = "general_start_zerotier_on_boot";
 
+    /** 简易模式：隐藏 Planet / 身份管理，只用默认实例。 */
+    public static final String PREF_SIMPLE_MODE = "simple_mode";
+
     public static final String PREF_DISABLE_NO_NOTIFICATION_ALERT = "disable_no_notification_alert";
 
     public static final String FILE_CUSTOM_PLANET = "planet.custom";

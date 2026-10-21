@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,7 +42,13 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.preference.PreferenceManager
+import net.sumitm.zotiera.util.Constants
 import net.sumitm.zotiera.R
+import net.sumitm.zotiera.ZotieraApplication
+import net.sumitm.zotiera.identity.InstanceStore
+import net.sumitm.zotiera.model.Identity
+import net.sumitm.zotiera.model.Planet
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.ui.NodeUiState
 import net.sumitm.zotiera.ui.NodeViewModel
@@ -68,6 +75,10 @@ fun OverviewScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val repository = remember { (context.applicationContext as ZotieraApplication).getRepository() }
+    val store = remember { InstanceStore(context) }
+    val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
+    val simpleMode = remember { prefs.getBoolean(Constants.PREF_SIMPLE_MODE, true) }
     var showJoin by remember { mutableStateOf(false) }
     var selectedId by remember { mutableStateOf<Long?>(null) }
     val wide = isWideLayout()
@@ -111,6 +122,19 @@ fun OverviewScreen(
 
     val selected = state.networks.firstOrNull { it.networkId == selectedId }
 
+    // 当前实例由「已加入」的网络决定；一条都没加入时用上次用过的那个
+    val joinedNetworks = state.networks.filter { it.lastActivated }
+    val activePlanetId: Long? = joinedNetworks.firstOrNull()?.planetId
+    val activeIdentityUid: Long? = joinedNetworks.firstOrNull()?.identityUid
+    val planets = remember(state.networks) { repository.planets() }
+    val identities = remember(state.networks) { repository.identities() }
+    val activeAlias = planets.firstOrNull { it.worldId == activePlanetId }?.alias?.takeIf { it.isNotEmpty() }
+        ?: stringResource(R.string.identity_default_name)
+    val activeIdentityAlias = identities.firstOrNull { it.uid == activeIdentityUid }
+        ?.alias?.takeIf { it.isNotEmpty() } ?: stringResource(R.string.identity_default_name)
+    val instanceHint = stringResource(R.string.instance_busy_hint)
+    val defaultIdentityName = stringResource(R.string.identity_default_name)
+
     Row(Modifier.fillMaxSize()) {
         Box(Modifier.weight(if (wide) 0.42f else 1f).fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
@@ -136,9 +160,22 @@ fun OverviewScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(state.networks, key = { it.networkId }) { network ->
+                            // 已经连着某个实例时，别的实例的网络不能同时开
+                            val enabled = activePlanetId == null ||
+                                (network.planetId == activePlanetId && network.identityUid == activeIdentityUid)
+                            val planetAlias = planets.firstOrNull { it.worldId == network.planetId }?.alias.orEmpty()
+                            val identityAlias = identities.firstOrNull { it.uid == network.identityUid }
+                                ?.alias?.takeIf { it.isNotEmpty() } ?: defaultIdentityName
                             NetworkRow(
                                 network = network,
                                 joined = network.lastActivated,
+                                enabled = enabled,
+                                // 同 planet 时差异在身份上，提示就报身份名
+                                hint = if (enabled) null else String.format(
+                                    instanceHint,
+                                    if (network.planetId == activePlanetId) activeIdentityAlias else activeAlias,
+                                ),
+                                instanceLabel = if (simpleMode) null else "$planetAlias · $identityAlias",
                                 onClick = { openNetwork(network.networkId) },
                                 onJoinedChange = { joined -> viewModel.setJoined(network, joined) },
                             )
@@ -177,9 +214,16 @@ fun OverviewScreen(
 
     if (showJoin) {
         JoinNetworkDialog(
+            simpleMode = simpleMode,
+            planets = planets,
+            identities = identities,
+            defaultPlanetId = activePlanetId ?: store.activePlanetId,
+            defaultIdentityUid = activeIdentityUid ?: store.activeIdentityUid,
+            // 已经有网络在连时，新网络只能挂同一个实例
+            locked = activePlanetId != null && activeIdentityUid != null,
             onDismiss = { showJoin = false },
-            onConfirm = { id, dnsMode ->
-                viewModel.joinNetwork(NetworkIdUtils.hexStringToLong(id), id, false, dnsMode)
+            onConfirm = { id, dnsMode, planetId, uid ->
+                viewModel.joinNetwork(NetworkIdUtils.hexStringToLong(id), id, false, dnsMode, planetId, uid)
                 showJoin = false
             },
         )
@@ -253,39 +297,76 @@ private fun DeviceCard(
     }
 }
 
-/** 网络行：开关 = 加入/离开该网络；点行 = 看详情。 */
+/**
+ * 网络行：开关 = 加入/离开该网络；点行 = 看详情。
+ *
+ * 已经连着别的实例时 [enabled] 为 false，副标题换成提示。
+ */
 @Composable
 private fun NetworkRow(
     network: Network,
     joined: Boolean,
+    enabled: Boolean,
+    hint: String?,
+    instanceLabel: String?,
     onClick: () -> Unit,
     onJoinedChange: (Boolean) -> Unit,
 ) {
     val displayName = network.networkName?.takeIf { it.isNotBlank() }
+    val hex = java.lang.Long.toHexString(network.networkId)
     AppListRow(
-        title = displayName ?: java.lang.Long.toHexString(network.networkId),
-        subtitle = if (displayName != null) java.lang.Long.toHexString(network.networkId) else null,
-        monoSubtitle = true,
+        title = displayName ?: hex,
+        subtitle = when {
+            hint != null -> hint
+            // 没有网络名时标题就是 hex，副标题不再重复一遍
+            instanceLabel != null && displayName == null -> instanceLabel
+            instanceLabel != null -> "$hex · $instanceLabel"
+            displayName != null -> hex
+            else -> null
+        },
+        monoSubtitle = hint == null,
         leading = Icons.Rounded.Language,
         leadingTint = if (joined) appColors().primary else Color.Unspecified,
-        trailing = { AppSwitch(checked = joined, onCheckedChange = onJoinedChange) },
+        trailing = { AppSwitch(checked = joined, onCheckedChange = onJoinedChange, enabled = enabled) },
         onClick = onClick,
     )
 }
 
 @Composable
 private fun JoinNetworkDialog(
+    simpleMode: Boolean,
+    planets: List<Planet>,
+    identities: List<Identity>,
+    defaultPlanetId: Long,
+    defaultIdentityUid: Long,
+    locked: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (String, Int) -> Unit,
+    onConfirm: (String, Int, Long, Long) -> Unit,
 ) {
     var networkId by remember { mutableStateOf("") }
     var dnsMode by remember { mutableStateOf(1) }
+    var planetIndex by remember {
+        mutableIntStateOf(planets.indexOfFirst { it.worldId == defaultPlanetId }.coerceAtLeast(0))
+    }
+    var identityIndex by remember {
+        mutableIntStateOf(identities.indexOfFirst { it.uid == defaultIdentityUid }.coerceAtLeast(0))
+    }
+    val defaultIdentityName = stringResource(R.string.identity_default_name)
     val valid = networkId.length == 16 && networkId.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
 
     AppDialog(
         title = stringResource(R.string.join_network),
         confirmLabel = stringResource(android.R.string.ok),
-        onConfirm = { if (valid) onConfirm(networkId.lowercase(), dnsMode) },
+        onConfirm = {
+            if (valid && planets.isNotEmpty() && identities.isNotEmpty()) {
+                onConfirm(
+                    networkId.lowercase(),
+                    dnsMode,
+                    planets[planetIndex].worldId,
+                    identities[identityIndex].uid,
+                )
+            }
+        },
         onDismiss = onDismiss,
         dismissLabel = stringResource(android.R.string.cancel),
     ) {
@@ -295,6 +376,23 @@ private fun JoinNetworkDialog(
                 onValueChange = { networkId = it.trim() },
                 label = stringResource(R.string.network_id),
             )
+            // 非简易模式：这条网络挂到哪个 Planet x 身份；已有网络在连时锁死同一个实例
+            if (!simpleMode && !locked && planets.isNotEmpty() && identities.isNotEmpty()) {
+                PreferenceSelect(
+                    title = stringResource(R.string.planet_label),
+                    summary = null,
+                    items = planets.map { it.alias },
+                    selectedIndex = planetIndex,
+                    onSelected = { planetIndex = it },
+                )
+                PreferenceSelect(
+                    title = stringResource(R.string.identity_label),
+                    summary = null,
+                    items = identities.map { it.alias.ifEmpty { defaultIdentityName } },
+                    selectedIndex = identityIndex,
+                    onSelected = { identityIndex = it },
+                )
+            }
             PreferenceSelect(
                 title = stringResource(R.string.network_dns_mode),
                 summary = null,

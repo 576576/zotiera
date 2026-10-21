@@ -234,7 +234,13 @@
     <string name="identity_in_use">Networks still use this identity. Remove them first.</string>
     <string name="identity_delete_confirm">Deleting removes its keys from this device.</string>
     <string name="identity_default_name">Default identity</string>
+    <string name="simple_mode">Simple mode</string>
+    <string name="simple_mode_summary">Hide planet and identity management; only the default instance is used</string>
+    <string name="planet_label">Planet</string>
+    <string name="identity_label">Identity</string>
+    <string name="instance_busy_hint">Disconnect %1$s first</string>
 </resources>
+
 
 
 
