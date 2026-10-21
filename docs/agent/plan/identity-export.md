@@ -1,5 +1,9 @@
 # 身份导入导出（identity.secret）
 
+- 状态：执行中（导入已落地；导出未做）
+- 建立日期：2026-10-19
+- 事实依据：[`architecture.md`](../architecture.md) 的「身份文件」小节
+
 ## 0. 结论
 
 **能导出，也能导入。** 身份就是两个普通文件，落在应用私有目录，路径由 `DataStore` 决定：
@@ -12,7 +16,7 @@
 debug 包实测（`adb shell run-as net.sumitm.zotiera.debug ls -l files/`）两个文件都在，
 `identity.public` 的首段就是 App 里显示的节点 ID。
 
-在 [planet-identity-instances.md](planet-identity-instances.md) 的模型里，身份是**多条**的，
+在 [`architecture.md`](../architecture.md) 的实例模型里，身份是**多条**的，
 所以这两个文件不再是「全局一份」，而是归到「管理身份」页的某一条下面。
 
 ## 1. 事实：身份是怎么落盘的

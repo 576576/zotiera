@@ -1,5 +1,9 @@
 # Zotiera Manager（独立的 Legacy Central 管理 App）
 
+- 状态：挂起（本轮不做，独立 App）
+- 建立日期：2026-10-20
+- 事实依据：[`architecture.md`](../architecture.md) 的来源与能力清单
+
 ## 0. 一句话
 
 Legacy Central 的成员管理**不在 Zotiera 里做**，单开一个不含 VPN 的 App：贴 token，管理

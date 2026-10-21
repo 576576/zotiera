@@ -2,7 +2,7 @@
 
 - 状态：**执行中**（M0/M1/M2/M6 已完成，M3/M4 部分完成）
 - 建立日期：2026-10-19
-- 事实依据：[`notes/baseline-audit.md`](../notes/baseline-audit.md)
+- 事实依据：[`architecture.md`](../architecture.md)
 - 基线提交：`0373a58`（`origin/master`，工作区干净）
 - 适用版本：Zotiera 1.16.2-x 起
 
@@ -12,12 +12,13 @@
 | --- | --- | --- | --- |
 | 2026-10-19 | v1 | 初稿，M0–M6 全量规划 | — |
 | 2026-10-19 | v2 | 依据决策确认：包名改 `net.sumitm.zotiera`；版本号以引擎版本为主；minSdk 30 / target 36 / compile 37；Legacy Central 降为挂起；接受退掉 fork。据此取消「旧库原地升级」前提，新增 16KB 页对齐与 target 36 行为义务 | M2 任务重写；M5 挂起；风险表与验证矩阵重排 |
-| 2026-10-19 | v2.1 | 文档结构定稿为 README + `plan/` + `notes/`，硬约束并入 README，不单设 AGENTS 文件；新增 [`init-baseline-diff`](../init-baseline-diff.md) 记录重构前后逐项对比 | 文档结构简化 |
-| 2026-10-20 | v4 | Legacy Central 明确移出本仓库，单开 Zotiera Manager（见 [`zotiera-manager`](zotiera-manager.md)）；新增 Planet / 身份 / 实例分组计划（见 [`planet-identity-instances`](planet-identity-instances.md)） | M5 由「挂起」改为「移出」 |
+| 2026-10-19 | v2.1 | 文档结构定稿为 README + `plan/` + `notes/`，硬约束并入 README，不单设 AGENTS 文件；新增 `init-baseline-diff` 记录重构前后逐项对比（已并入 [`architecture.md`](../architecture.md)） | 文档结构简化 |
+| 2026-10-20 | v4 | Legacy Central 明确移出本仓库，单开 Zotiera Manager（见 [`zotiera-manager`](zotiera-manager.md)）；新增 Planet / 身份 / 实例分组计划（已落地，见 [`architecture.md`](../architecture.md) 的实例模型） | M5 由「挂起」改为「移出」 |
 | 2026-10-19 | v3 | ABI 收敛为 `arm64-v8a` + `x86_64`；双通道签名（`.pr` 固定密钥 / dispatch `ANDROID_*`）；Room schema 命名自由；新增 §8 Moon 迁移方案；CI 改为五文件矩阵（依据 `ci-matrix`） | M1 T1.6、M2 T2.5/T2.8、M6 T6.1 重写；风险与验证矩阵扩充 |
 | 2026-10-19 | v3.1 | 文档名去掉日期（本文件改名 `plan/init-refactor.md`，对比文档移出 plan 为 `init-baseline-diff.md`）；CI 补 `update_i18n.yml`，建文件但阻塞至 Weblate 接上 | 文档命名与 CI 矩阵（六文件） |
 | 2026-10-19 | v3.2 | `update_i18n.yml` 改为悬空：只留 `workflow_dispatch`，暂不加 `push: main` | CI 矩阵 |
 | 2026-10-19 | v4 | 实际执行：核心 1.16.2 + AGP 9 + Room + 包名切换 + 双通道签名 + CI 六文件落地；Compose 覆盖主界面，详情/月亮仍为 Fragment | 里程碑状态回填，剩余项见 §13 |
+| 2026-10-21 | v5 | 文档重组：`notes/` 移除，已完成的计划与基线对比并入 [`architecture.md`](../architecture.md)，`plan/` 只留未完成项 | 文档结构 |
 
 ## 1. 目标
 
@@ -153,7 +154,7 @@ M5 Legacy Central：移出本仓库，见 zotiera-manager.md
 | --- | --- | --- |
 | T0.1 | 删 `core/src/main/java` 这个 symlink 条目，`core/build.gradle` 改显式 `sourceSets { main { java.srcDirs += "../../externals/core/java/src" } }` | Windows 本地 `:core:compileDebugJavaWithJavac` 通过 |
 | T0.2 | 引入 version catalog（`gradle/libs.versions.toml`），依赖版本集中管理；暂不升版本 | 产物与基线等价 |
-| T0.3 | 固化基线 APK（旧包名 `1.0.10-baseline`）与冒烟清单（§9） | 真机跑通，结果写入 `notes/` |
+| T0.3 | 固化基线 APK（旧包名 `1.0.10-baseline`）与冒烟清单（§9） | 真机跑通，结果写入 `architecture.md` |
 | T0.4 | 确认工具链组合：本机 JDK 25 跑 Gradle、NDK r28 在 AGP 7.4 下是否可用、CMake 来源 | 记录结论；若 NDK r28 不可用，把 M2 的工具链部分前移到 M1 之前 |
 | T0.5 | 建立 `.editorconfig` 与 ktlint/detekt 位置（仅占位，不启强制） | 文件入库 |
 
@@ -316,7 +317,7 @@ M5 Legacy Central：移出本仓库，见 zotiera-manager.md
 
 ## 10. 验证矩阵
 
-每完成一个里程碑跑一遍，结果写入 `docs/agent/notes/`。
+每完成一个里程碑跑一遍，结果写入 `docs/agent/architecture.md`。
 
 | 维度 | 用例 |
 | --- | --- |
@@ -340,10 +341,10 @@ M5 Legacy Central：移出本仓库，见 zotiera-manager.md
 
 ## 12. 文档约定
 
-- 计划文档：`docs/agent/plan/YYYY-MM-DD-<topic>.md`，文首必须有 `状态`、日期、基线提交；重大变更追加「变更记录」，不覆盖历史。
-- 审计与验证：`docs/agent/notes/YYYY-MM-DD-<topic>.md`，只记事实与命令输出。
+- 计划文档：`docs/agent/plan/<topic>.md`（文件名不带日期），文首必须有 `状态`、日期、基线提交；重大变更追加「变更记录」，不覆盖历史。
+- 事实与验证：写进 `docs/agent/architecture.md`，只记事实与命令输出。
 - 硬约束（包名、版本号规则、minSdk、子模块纪律）只写在 README 的「硬约束」小节，计划与笔记引用而不复述。
-- 重构前后逐项对照见 [`../init-baseline-diff.md`](../init-baseline-diff.md)。
+- 重构前后逐项对照见 [`../architecture.md`](../architecture.md)。
 - 详细规范见 [`docs/agent/README.md`](../README.md)。
 
 ## 13. 执行记录（2026-10-19）

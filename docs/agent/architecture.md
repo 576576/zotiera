@@ -1,0 +1,214 @@
+# Zotiera 现状
+
+- 状态：事实文档（随代码更新）
+- 更新日期：2026-10-21
+- 基线提交：`7c4cd69`
+- 适用版本：1.16.2-x
+
+本文件描述当前代码的事实：架构、数据、网络行为与界面约定。计划与未完成项在 [`plan/`](plan/)。
+
+## 1. 项目标识
+
+| 项 | 值 |
+| --- | --- |
+| 来源 | fork 自 `kaaass/ZerotierFix`（上游 1.0.10），引擎升级到 1.16.2 |
+| applicationId / namespace | `net.sumitm.zotiera` |
+| 测试通道 | `net.sumitm.zotiera.pr`，应用名 `Zotiera PR`，仓库内固定 keystore，不分发 |
+| 版本号 | `versionName = <engine>-<revision>`（如 `1.16.2-1`）；`versionCode = major*1e6 + minor*1e4 + patch*100 + revision` |
+| 测试包版本 | `versionName = <engine>-r<提交数>` |
+| 许可 | 本仓库 AGPL-3.0-or-later；`externals/core` 自 1.16 起 MPL-2.0 |
+
+## 2. 模块与工具链
+
+```
+:app   Compose UI + 服务（Kotlin，少量 Java 服务类）
+:core  JNI 胶水 + com.zerotier.sdk.*
+:data  Room 实体、DAO、Repository
+```
+
+| 项 | 值 |
+| --- | --- |
+| Gradle / AGP | 9.7.1 / 9.4.1（AGP 9 自带 Kotlin 支持） |
+| Kotlin / KSP | Compose 插件 2.3.21 / KSP 2.3.12 |
+| JDK | 21（Android Studio JBR） |
+| SDK | compileSdk 37 / targetSdk 36 / minSdk 30 |
+| NDK | 28.2.13676358，CMake 由 AGP 提供 |
+| ABI | `arm64-v8a` + `x86_64`，16KB 页对齐 |
+| 依赖要点 | Compose BOM 2026.09.00、Material3 1.5.0-alpha29、Miuix 0.9.4、Room 2.8.5 |
+| 签名 | `.pr` 通道仓库内固定 keystore；正式包读 4 个 `ANDROID_*` 变量 |
+| CI | `.github/workflows/` 六文件矩阵：`lint` / `build` / `release` / `pr` / `clear` / `update_i18n` |
+
+## 3. 引擎与 JNI
+
+| 项 | 值 |
+| --- | --- |
+| 引擎版本 | 1.16.2（tag `1.16.2`，commit `fc5c3ec22090b5b2a0f274e863651fe9ca489bf4`） |
+| 子模块 | `externals/core` 指上游 `zerotier/ZeroTierOne`，不使用 fork |
+| JNI 构建 | 自持 `core/src/main/cpp/CMakeLists.txt`（上游 `java/CMakeLists.txt` 在 1.16.2 引用了已删除的源文件，无法 configure） |
+| JNI Java API | `com.zerotier.sdk.*` 8 个核心类与 1.12.2 逐行一致；`ZT_Node_new` 的 config 参数由上游 JNI 适配 |
+| 用到源码 | `node/`、`include/`、`osdep/`；不构建 `controller/` |
+| 线程附着 | 上游 `ScopedJNIThreadAttacher`（修复 ICMPv6 NS 触发的 JNI 崩溃） |
+| 核心常量 | `ZT_MIN_PHYSMTU` 510；`ZT_MAX_NETWORK_SPECIALISTS` 512；metrics 默认关闭 |
+
+`com.zerotier.sdk` 的包名与类名不可改：JNI 符号 `Java_com_zerotier_sdk_Node_*` 与之绑死。
+
+## 4. 数据层
+
+Room 2.8.5，schema **v6**，`exportSchema = true`。
+
+| 表 | 内容 |
+| --- | --- |
+| `planets` | 行星：worldId、别名、是否内置、是否默认、是否启用 |
+| `identities` | 身份：别名、序号、是否默认、是否启用 |
+| `networks` | 网络：networkId、名称、`planet_id`、`identity_uid`、`last_activated` |
+| `network_identities` | 某条网络用过哪些身份（换身份时的二次确认依据） |
+| `network_configs` | 网络配置缓存 |
+| `dns_servers` | 每个网络的 DNS |
+| `assigned_addresses` | 每个网络分配到的地址 |
+| `moon_orbits` | moon 轨道 |
+
+- 行为稳定前不做数据接续：`fallbackToDestructiveMigration(dropAllTables = true)`，首启由「没有身份就建一条」兜底。
+- 设置项是 `PreferenceManager`（SharedPreferences），键集中在 `util/Constants.kt`；启动时 `pruneObsoletePrefs` 删除已废弃的键。
+
+## 5. 实例模型
+
+实例 = 行星 × 身份。引擎的数据目录里同时放着身份、planet 与已加入网络，所以「换实例」等于换一套目录。
+
+```
+files/
+├── planets/<worldId>.planet          自定义行星的字节
+├── identities/<uid>/identity.*        身份密钥正本
+└── instances/<planetId>-<uid>/        引擎数据目录
+    ├── identity.secret / identity.public
+    ├── planet                         （非官方行星时写入）
+    ├── networks.d/  peers.d/
+```
+
+- `InstanceStore`：`ensure()` 把身份正本下发到实例目录，`syncUp()` 把引擎生成的密钥收回正本。
+- `DataStore(baseDir, planetOverride)` 按实例目录构造；`hookPlanetFile()` 只在实例内有 planet 文件时顶替。
+- 同一时刻只有一个节点在线（UDP 9993/9994 只能绑一次）；切换实例 = 停节点 → 重建 DataStore/Node → 重新 join。
+- 概览页只允许同一 `(planetId, identityUid)` 的网络同时开启；其它网络置灰并提示需先断开当前实例。
+- 简易模式默认开：隐藏「管理行星」「管理身份」，只用默认行星 + 默认身份；默认项不能停用。
+
+## 6. 隧道与网络
+
+`ZeroTierOneService`（`VpnService`）按所有已加入网络聚合出一个 tun：
+
+| 项 | 规则 |
+| --- | --- |
+| 地址 | 每个网络的 `assignedAddresses` 全部加入 |
+| 路由 | 所有网络下发的路由取并集；同一 CIDR 冲突先到先得 |
+| 默认路由 | 全局「所有流量走 ZeroTier」开关决定，不按网络区分 |
+| DNS | 每网络各自配置，建隧道时取并集 |
+| MTU | 所有网络的最小值，0 视为 2800 |
+| 分应用代理 | 仅在未开全隧道时按 `DISALLOWED_APPS` 放行 |
+| 重建 | 配置指纹（地址 + 路由 + DNS + MTU + 全隧道）不变就跳过，避免 `CONFIG_UPDATE` 反复拆隧道 |
+
+- 出站包按目的地址反查网络；每个网络有自己的 MAC 与 ARP/NDP 表。
+- 网络行开关 = 加入/离开该网络；设备卡单击 = 开关隧道，长按 = 进设备页。
+- DNS 三模式：不使用 / 网络下发 / 自定义。
+- moon 保留但标为弃用：界面提示 + 支持导出 `.moon`；moon 是独立根，不与行星关联。
+
+## 7. 界面
+
+单 Activity + Navigation Compose。风格分 Miuix（默认）与 Material 3 两套，分支只出现在 `ui/component/`。
+
+**顶层页**：概览（`overview`）、结点列表（`peers`）、设置（`settings`），窄屏底部导航、宽屏导航栏。
+**推入页**：`device`、`network/{id}`、`moons`、`planet`、`identities`、`about`、`licenses`。
+
+| 组件 | 行为 |
+| --- | --- |
+| `AppLargeTitlePage` | 顶层页顶栏：大标题随内容上滑收缩成一条并停顶（Miuix `MiuixScrollBehavior` / Material `exitUntilCollapsedScrollBehavior`，Material 固定 56/104dp 与 Miuix 同高） |
+| `AppTopBar` | 详情页顶栏：返回键 + 标题，固定 |
+| `BarWithoutTopInset` | 顶栏内部把 `systemBars` 顶部标成已消费，状态栏留白只让一次 |
+| `AppStatusCard` | 概览设备卡：单击开关隧道、长按进设备页；三态配色 + 右下角大图标 |
+| `AppRoleChip` / `AppSwitch` / `AppListRow` / `AppDialog` / `AppFab` | 列表、开关、弹窗、浮动按钮 |
+
+设备卡状态：
+
+| 状态 | 条件 | 外观 | 底行 |
+| --- | --- | --- | --- |
+| 工作中 | 隧道运行且节点在线 | 绿底 + 空心大对勾 | `A1 · N 个网络` |
+| 连接中 | 隧道运行、节点未上线 | 绿底 + 空心大对勾 | 同上 |
+| 未连接 | 有网络、隧道关闭 | 黄底 + 空心停止图标 | 同上 |
+| 没有网络 | 未加入任何网络 | 红底 + 空心大叉 | 空 |
+
+卡片三行文字固定为：状态 / `版本：<versionName>` / `实例 · N 个网络`。
+
+设置页分组顺序：通用（简易模式、开机自启、从最近任务隐藏）→ 外观（界面语言、界面风格、颜色模式）→
+网络（移动网络、IPv6）→ 管理入口（行星 → 卫星 → 身份，简易模式下只留卫星）→ 关于。
+
+**语言**：`values`（英文）+ `values-zh`；`res/xml/locales_config.xml` 声明 `en` / `zh-Hans` 并挂到
+`android:localeConfig`，API 33+ 可在系统设置里改本应用语言。`AppLanguage` 以系统值为准并回写偏好，
+应用内切换同时写系统；30–32 只有偏好。
+
+## 8. 身份文件
+
+| 文件 | 大小 | 内容 |
+| --- | --- | --- |
+| `identity.public` | 141 字节 | `<10 位节点 ID>:0:<公钥 hex>` |
+| `identity.secret` | 270 字节 | 私钥记录，泄露即可冒充该节点 |
+
+- 正本在 `files/identities/<uid>/`，实例目录里是副本；导入按 zip（两个文件）或单个 `identity.secret` 写入，
+  校验节点 ID 且不覆盖已有身份。
+- 导出未实现（见 [`plan/identity-export.md`](plan/identity-export.md)）。
+- Android 11+ 不能跨应用读私有目录，换包名后旧版身份无法自动继承。
+
+## 9. 能力清单
+
+| 能力 | 状态 |
+| --- | --- |
+| 多网络同时加入 / 连接 | 有（同一实例内） |
+| 多行星 / 多身份 / 实例切换 | 有 |
+| 自定义行星（文件、HTTPS URL） | 有 |
+| moon 轨道管理 | 有，标注弃用并提供导出 |
+| DNS 三模式 | 有 |
+| 全隧道 / 分应用放行 | 有 |
+| 开机自启、快捷设置磁贴、前台通知 | 有 |
+| 身份导入 | 有；导出待做 |
+| Legacy Central 成员管理 | 不在本仓库，见 [`plan/zotiera-manager.md`](plan/zotiera-manager.md) |
+| 与其它 VPN 同时运行 | 不支持：Android 每个用户只有一个活动 VPN |
+
+## 10. 重构前后对照
+
+| 维度 | 重构前（`0373a58`） | 现在 |
+| --- | --- | --- |
+| 引擎 | 1.12.2（fork 子模块） | 1.16.2（上游子模块） |
+| 包名 | `net.kaaass.zerotierfix` | `net.sumitm.zotiera` |
+| UI | 6 Activity + Fragment + 18 个 XML layout | 单 Activity + Compose |
+| 数据 | GreenDAO 3.3.0，schema 22 | Room，schema 6 |
+| 事件 | EventBus，27 个事件类 | `sealed interface NodeEvent` + `SharedFlow` |
+| 并发 | 裸 `Thread` + `runOnUiThread` | 协程 + `StateFlow` |
+| 构建 | Gradle 7.5 / AGP 7.4.2 / JDK 11 | Gradle 9.7.1 / AGP 9.4.1 / JDK 21 |
+| SDK | 33 / 33 / 19 | 37 / 36 / 30 |
+| ABI | 4 个 | `arm64-v8a` + `x86_64` |
+| 备份 / 明文 | `allowBackup=true`、全局明文 | `allowBackup=false`、`networkSecurityConfig` 白名单 |
+| 签名 | 仅 CI 后置签名 | 双通道签名 |
+
+代码规模从 76 个 Java 文件 / 7386 行迁移到 Kotlin + Compose；行数不作为验收指标。
+
+## 11. 不变项
+
+| 不变项 | 原因 |
+| --- | --- |
+| `com.zerotier.sdk` 包名、类名、方法签名 | JNI 符号绑死 |
+| VPN 行为语义（路由、MTU、DNS、多播、planet/moon 机制） | 用户依赖的功能面 |
+| 中英文文案 key 与语义 | 已发布文案 |
+| 上游版权与 MPL-2.0 声明义务 | 合规 |
+| `externals/core` 工作区 | 核心源码只在 fork 分支演化 |
+
+## 12. 已知限制
+
+- 系统只允许一个活动 `VpnService`：本应用启动会停掉其它 VPN，反之亦然（共存方案见 [`plan/coexist-mode.md`](plan/coexist-mode.md)）。
+- 旧包数据（含 `identity.secret`）无法自动继承，只能人工导出导入。
+- Room 在行为稳定前使用破坏式迁移，升级会清空本应用数据库与文件。
+- Legacy Central 与新 Central（service account）均不支持。
+
+## 13. 相关计划
+
+| 文档 | 状态 |
+| --- | --- |
+| [`plan/init-refactor.md`](plan/init-refactor.md) | 执行中（M0/M1/M2/M6 完成，M3/M4 部分完成） |
+| [`plan/coexist-mode.md`](plan/coexist-mode.md) | 草案（root 模式 tun + 策略路由，待 P0 验证） |
+| [`plan/identity-export.md`](plan/identity-export.md) | 执行中（导入已落地，导出待做） |
+| [`plan/zotiera-manager.md`](plan/zotiera-manager.md) | 挂起（独立 App） |
