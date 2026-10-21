@@ -20,7 +20,7 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 
 - `app/src/main/java` 还有 22 个文件（工具类 9、服务 11、`DNSMode` 1、Application/Receiver 2）。
 - 事件总线仍是 EventBus 3.2.0（服务、磁贴、ViewModel、三个页面共 6 处）。
-- 旧 UI 依赖仍挂在 `app/build.gradle`；`minifyEnabled false`，单 ABI 包约 60MB。
+- 旧 UI 依赖仍挂在 `app/build.gradle`；`minifyEnabled false`，单 ABI 包约 38MB。
 
 ## R1 服务与工具层迁到 Kotlin
 
@@ -50,8 +50,7 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 | 项 | 内容 |
 | --- | --- |
 | 旧依赖 | 确认无引用后移除 `appcompat`、`material 1.9`、`constraintlayout`、`navigation-fragment`、`recyclerview`、`swiperefreshlayout`、`legacy-support-v4` |
-| R8 | `minifyEnabled false` → 开 R8 + `shrinkResources`，补 JNI / Room / EventBus 保留规则；当前单 ABI 约 60MB |
-| 图标 | `material-icons-core` / `material-icons-extended` 一并移出，改内置 vector drawable，见 [`material-icons.md`](material-icons.md) |
+| R8 | `minifyEnabled false` → 开 R8 + `shrinkResources`，补 JNI / Room / EventBus 保留规则；当前单 ABI 约 38MB |
 
 验收：依赖树无旧 UI 库；`assemblePr` 包体明显下降；UI 回归通过。
 

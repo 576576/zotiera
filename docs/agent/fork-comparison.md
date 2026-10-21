@@ -24,9 +24,9 @@
 | 签名 | CI 后置签名 | 双通道：`.pr` 固定 keystore / 正式包 `ANDROID_*` |
 | 许可 | GPL-2.0 | AGPL-3.0-or-later；核心 MPL-2.0 |
 
-包体：上游 release 8.3 MB，本仓库单 ABI 约 60 MB。差异来自 Miuix + Material 3 两套 UI、
-`material-icons-extended` 与 `minifyEnabled false`。收敛见 [`plan/init-refactor.md`](plan/init-refactor.md) 的 R3
-与 [`plan/material-icons.md`](plan/material-icons.md)。
+包体：上游 release 8.3 MB，本仓库单 ABI 约 38 MB（双 ABI 约 40 MB，其中 dex 占 35 MB）。
+差异来自 Miuix + Material 3 两套 UI 与 `minifyEnabled false`；继续收敛见
+[`plan/init-refactor.md`](plan/init-refactor.md) 的 R3。
 
 ## 2. 能力差异
 

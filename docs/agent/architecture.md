@@ -37,6 +37,7 @@
 | 依赖要点 | Compose BOM 2026.09.00、Material3 1.5.0-alpha29、Miuix 0.9.4、Room 2.8.5 |
 | 签名 | `.pr` 通道仓库内固定 keystore；正式包读 4 个 `ANDROID_*` 变量 |
 | CI | `.github/workflows/` 六文件矩阵：`lint` / `build` / `release` / `pr` / `clear` / `update_i18n` |
+| 包体 | 单 ABI 约 38 MB（dex 约 35 MB，未开 R8）；双 ABI 约 40 MB |
 
 ## 3. 引擎与 JNI
 
@@ -137,6 +138,10 @@ files/
 
 设置页分组顺序：通用（简易模式、开机自启、从最近任务隐藏）→ 外观（界面语言、界面风格、颜色模式）→
 网络（移动网络、IPv6）→ 管理入口（行星 → 卫星 → 身份，简易模式下只留卫星）→ 关于。
+
+**图标**：15 个图标以 vector drawable 放在 `res/drawable/ic_*.xml`（Material Symbols Rounded，Apache-2.0），
+组件参数用 `@DrawableRes Int`，内部按框架能力取 `painterResource` 或 `ImageVector.vectorResource`。
+项目不依赖 `material-icons-core` / `material-icons-extended`，`UiConventionsTest` 会拦住重新引入。
 
 **语言**：`values`（英文）+ `values-zh`；`res/xml/locales_config.xml` 声明 `en` / `zh-Hans` 并挂到
 `android:localeConfig`，API 33+ 可在系统设置里改本应用语言。`AppLanguage` 以系统值为准并回写偏好，
