@@ -1,5 +1,6 @@
 package net.sumitm.zotiera.ui.component
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -17,8 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,10 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
@@ -134,7 +134,7 @@ fun AppListRow(
     title: String,
     subtitle: String? = null,
     monoSubtitle: Boolean = false,
-    leading: ImageVector? = null,
+    @DrawableRes leading: Int? = null,
     leadingTint: Color = Color.Unspecified,
     trailing: @Composable () -> Unit = {},
     onClick: (() -> Unit)? = null,
@@ -155,7 +155,7 @@ fun AppListRow(
                 ) {
                     if (leading != null) {
                         MiuixIcon(
-                            imageVector = leading,
+                            painter = painterResource(leading),
                             contentDescription = null,
                             tint = if (leadingTint == Color.Unspecified) scheme.onSurfaceVariantSummary else leadingTint,
                         )
@@ -199,7 +199,7 @@ fun AppListRow(
             leadingContent = leading?.let { icon ->
                 {
                     Icon(
-                        icon,
+                        painter = painterResource(icon),
                         contentDescription = null,
                         tint = if (leadingTint == Color.Unspecified) {
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -287,7 +287,7 @@ fun AppRoleChip(label: String, tint: Color, modifier: Modifier = Modifier) {
 @Composable
 fun AppDangerCard(
     label: String,
-    icon: ImageVector,
+    @DrawableRes icon: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -308,7 +308,12 @@ fun AppDangerCard(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = colors.onError, modifier = Modifier.size(18.dp))
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = colors.onError,
+            modifier = Modifier.size(18.dp),
+        )
         Spacer(Modifier.width(8.dp))
         Text(label, style = type.rowTitle, color = colors.onError, fontWeight = FontWeight.Medium)
     }
@@ -338,10 +343,10 @@ fun AppKeyValueRow(label: String, value: String, mono: Boolean = false) {
 
 /** 浮动按钮。 */
 @Composable
-fun AppFab(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun AppFab(label: String, @DrawableRes icon: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     when (LocalUiMode.current) {
         UiMode.Miuix -> MiuixButton(onClick = onClick, modifier = modifier) {
-            MiuixIcon(imageVector = icon, contentDescription = null)
+            MiuixIcon(painter = painterResource(icon), contentDescription = null)
             Spacer(Modifier.width(8.dp))
             MiuixText(label)
         }
@@ -349,7 +354,7 @@ fun AppFab(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modi
         UiMode.Material -> androidx.compose.material3.ExtendedFloatingActionButton(
             onClick = onClick,
             modifier = modifier,
-            icon = { Icon(icon, contentDescription = null) },
+            icon = { Icon(painterResource(icon), contentDescription = null) },
             text = { Text(label) },
         )
     }
@@ -406,7 +411,7 @@ fun AppTunnelSwitch(
     ) {
         if (checked) {
             Icon(
-                imageVector = Icons.Rounded.Check,
+                painter = painterResource(R.drawable.ic_check),
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier

@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Badge
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -126,7 +123,7 @@ fun IdentityScreen(onBack: () -> Unit) {
                         title = identity.alias.ifEmpty { stringResource(R.string.identity_default_alias, identity.ordinal) },
                         subtitle = identity.nodeIdString.ifEmpty { stringResource(R.string.identity_not_generated) },
                         monoSubtitle = true,
-                        leading = Icons.Rounded.Badge,
+                        leading = R.drawable.ic_badge,
                         leadingTint = if (active) appColors().primary else Color.Unspecified,
                         trailing = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -156,7 +153,7 @@ fun IdentityScreen(onBack: () -> Unit) {
             }
             AppFab(
                 label = stringResource(R.string.add_identity),
-                icon = Icons.Rounded.Add,
+                icon = R.drawable.ic_add,
                 onClick = { showAdd = true },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             )

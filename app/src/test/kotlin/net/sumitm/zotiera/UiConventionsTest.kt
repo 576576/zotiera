@@ -40,4 +40,29 @@ class UiConventionsTest {
 
         assertTrue(offenders.joinToString("\n"), offenders.isEmpty())
     }
+
+    /**
+     * 图标不走 `material-icons-*` 依赖。
+     *
+     * 这两个库已被上游停止维护，extended 一个包就带进上万个图标类；图标以 vector drawable
+     * 放在 `res/drawable`，由 `Icon(painter = ...)` 使用。重新引入依赖会让包体直接涨回去。
+     */
+    @Test
+    fun iconsAreBundledDrawables() {
+        val gradle = File("build.gradle")
+        assertTrue("找不到 build.gradle", gradle.isFile)
+        assertTrue(
+            "build.gradle 里不应再出现 material-icons 依赖",
+            !gradle.readText().contains("androidx.compose.material:material-icons"),
+        )
+
+        val dir = File("src/main/kotlin")
+        assertTrue("找不到源码目录：${dir.absolutePath}", dir.isDirectory)
+        val offenders = dir.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .filter { it.readText().contains("androidx.compose.material.icons") }
+            .map { it.name }
+            .toList()
+        assertTrue("这些文件仍在使用 material-icons：$offenders", offenders.isEmpty())
+    }
 }

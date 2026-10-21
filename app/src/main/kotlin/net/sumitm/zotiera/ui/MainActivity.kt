@@ -29,10 +29,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Devices
-import androidx.compose.material.icons.rounded.Dns
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -215,9 +211,9 @@ private fun ZotieraApp(
     }
 
     val items = listOf(
-        NavDestination("overview", stringResource(R.string.network_list), Icons.Rounded.Dns),
-        NavDestination("peers", stringResource(R.string.peer_list), Icons.Rounded.Devices),
-        NavDestination("settings", stringResource(R.string.settings), Icons.Rounded.Settings),
+        NavDestination("overview", stringResource(R.string.network_list), R.drawable.ic_dns),
+        NavDestination("peers", stringResource(R.string.peer_list), R.drawable.ic_devices),
+        NavDestination("settings", stringResource(R.string.settings), R.drawable.ic_settings),
     )
 
     AppScaffold(

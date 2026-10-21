@@ -1,5 +1,6 @@
 package net.sumitm.zotiera.ui.component.preference
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,9 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenu
@@ -29,8 +27,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
 import top.yukonga.miuix.kmp.basic.Card as MiuixCard
@@ -100,7 +99,7 @@ fun PreferenceArrow(
         UiMode.Material -> ListItem(
             headlineContent = { Text(title) },
             supportingContent = summary?.let { { Text(it) } },
-            trailingContent = { Icon(Icons.Rounded.KeyboardArrowRight, contentDescription = null) },
+            trailingContent = { Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             modifier = Modifier.clickable(onClick = onClick),
         )
@@ -173,7 +172,7 @@ fun PreferenceSelect(
                             },
                             trailingIcon = {
                                 if (index == selectedIndex) {
-                                    Icon(Icons.Rounded.Check, contentDescription = null)
+                                    Icon(painterResource(R.drawable.ic_check), contentDescription = null)
                                 }
                             },
                             onClick = {
@@ -204,9 +203,9 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 
 /** 分组内带图标的标题行（用于需要额外说明的设置项）。 */
 @Composable
-fun PreferenceIcon(icon: ImageVector, tint: androidx.compose.ui.graphics.Color) {
+fun PreferenceIcon(@DrawableRes icon: Int, tint: androidx.compose.ui.graphics.Color) {
     Box(Modifier, contentAlignment = Alignment.Center) {
-        Icon(icon, contentDescription = null, tint = tint)
+        Icon(painterResource(icon), contentDescription = null, tint = tint)
     }
 }
 

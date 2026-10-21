@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -139,7 +137,7 @@ fun NetworkDetailPane(
             item {
                 AppDangerCard(
                     label = stringResource(R.string.delete_network),
-                    icon = Icons.Rounded.Delete,
+                    icon = R.drawable.ic_delete,
                     onClick = { confirmDelete = true },
                 )
             }

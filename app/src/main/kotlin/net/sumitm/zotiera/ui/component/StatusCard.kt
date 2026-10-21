@@ -1,5 +1,6 @@
 package net.sumitm.zotiera.ui.component
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -12,10 +13,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircleOutline
-import androidx.compose.material.icons.rounded.HighlightOff
-import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -24,10 +21,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
 import net.sumitm.zotiera.ui.theme.LocalDarkTheme
@@ -41,7 +39,11 @@ enum class AppStatusTone { WORKING, CONNECTING, STOPPED, EMPTY }
 /** 卡片高度：三行文字上下排开，右下角图标超出边界被裁掉一角。 */
 private val CardHeight = 104.dp
 
-private data class StatusStyle(val container: Color, val icon: Color, val glyph: ImageVector)
+private data class StatusStyle(
+    val container: Color,
+    val icon: Color,
+    @param:DrawableRes val glyph: Int,
+)
 
 /**
  * 状态卡：左上「状态 + 版本」，左下「实例 · 网络数」，右下角一枚大图标透出卡片边缘。
@@ -63,7 +65,7 @@ fun AppStatusCard(
     val body: @Composable () -> Unit = {
         Box(Modifier.fillMaxWidth().height(CardHeight)) {
             Icon(
-                imageVector = style.glyph,
+                painter = painterResource(style.glyph),
                 contentDescription = null,
                 tint = style.icon,
                 modifier = Modifier
@@ -134,24 +136,24 @@ private fun statusStyle(tone: AppStatusTone, dark: Boolean): StatusStyle = when 
     AppStatusTone.WORKING -> StatusStyle(
         container = if (dark) Color(0xFF1A3825) else Color(0xFFDFFAE4),
         icon = if (dark) Color(0xFF4BE07C) else Color(0xFF36D167),
-        glyph = Icons.Rounded.CheckCircleOutline,
+        glyph = R.drawable.ic_check_circle_outline,
     )
 
     AppStatusTone.CONNECTING -> StatusStyle(
         container = if (dark) Color(0xFF3A2E12) else Color(0xFFFFF4D1),
         icon = if (dark) Color(0xFFFFC940) else Color(0xFFE0A100),
-        glyph = Icons.Rounded.CheckCircleOutline,
+        glyph = R.drawable.ic_check_circle_outline,
     )
 
     AppStatusTone.STOPPED -> StatusStyle(
         container = if (dark) Color(0xFF3A2E12) else Color(0xFFFFF4D1),
         icon = if (dark) Color(0xFFFFC940) else Color(0xFFE0A100),
-        glyph = Icons.Rounded.RemoveCircleOutline,
+        glyph = R.drawable.ic_remove_circle_outline,
     )
 
     AppStatusTone.EMPTY -> StatusStyle(
         container = if (dark) Color(0xFF3B1D1D) else Color(0xFFFFE3E3),
         icon = if (dark) Color(0xFFFF6B6B) else Color(0xFFD93A3A),
-        glyph = Icons.Rounded.HighlightOff,
+        glyph = R.drawable.ic_highlight_off,
     )
 }

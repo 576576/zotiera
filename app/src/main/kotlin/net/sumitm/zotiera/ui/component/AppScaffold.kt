@@ -1,5 +1,6 @@
 package net.sumitm.zotiera.ui.component
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -11,8 +12,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -29,7 +28,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -40,7 +42,11 @@ import top.yukonga.miuix.kmp.basic.NavigationRailItem as MiuixNavigationRailItem
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
 
-data class NavDestination(val route: String, val label: String, val icon: ImageVector)
+data class NavDestination(
+    val route: String,
+    val label: String,
+    @param:DrawableRes val icon: Int,
+)
 
 @Composable
 fun AppScaffold(
@@ -67,7 +73,7 @@ fun AppTopBar(
     val back: @Composable () -> Unit = {
         if (onBack != null) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = tint)
+                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = null, tint = tint)
             }
         }
     }
@@ -146,7 +152,7 @@ fun AppBottomBar(items: List<NavDestination>, current: String?, onSelect: (Strin
                 MiuixNavigationBarItem(
                     selected = item.route == current,
                     onClick = { onSelect(item.route) },
-                    icon = item.icon,
+                    icon = ImageVector.vectorResource(item.icon),
                     label = item.label,
                 )
             }
@@ -157,7 +163,7 @@ fun AppBottomBar(items: List<NavDestination>, current: String?, onSelect: (Strin
                 NavigationBarItem(
                     selected = item.route == current,
                     onClick = { onSelect(item.route) },
-                    icon = { Icon(item.icon, contentDescription = null) },
+                    icon = { Icon(painterResource(item.icon), contentDescription = null) },
                     label = { Text(item.label) },
                 )
             }
@@ -173,7 +179,7 @@ fun AppNavigationRail(items: List<NavDestination>, current: String?, onSelect: (
                 MiuixNavigationRailItem(
                     selected = item.route == current,
                     onClick = { onSelect(item.route) },
-                    icon = item.icon,
+                    icon = ImageVector.vectorResource(item.icon),
                     label = item.label,
                 )
             }
@@ -184,7 +190,7 @@ fun AppNavigationRail(items: List<NavDestination>, current: String?, onSelect: (
                 NavigationRailItem(
                     selected = item.route == current,
                     onClick = { onSelect(item.route) },
-                    icon = { Icon(item.icon, contentDescription = null) },
+                    icon = { Icon(painterResource(item.icon), contentDescription = null) },
                     label = { Text(item.label) },
                 )
             }

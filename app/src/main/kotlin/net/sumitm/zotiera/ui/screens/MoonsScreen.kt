@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -139,7 +136,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
                                 moon.isCacheFile -> stringResource(R.string.cached)
                                 else -> stringResource(R.string.wait_to_fetch)
                             },
-                            leading = Icons.Rounded.DarkMode,
+                            leading = R.drawable.ic_dark_mode,
                             leadingTint = if (moon.isCacheFile) appColors().primary else Color.Unspecified,
                             trailing = {
                                 AppSwitch(
@@ -166,7 +163,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
             }
             AppFab(
                 label = stringResource(R.string.add),
-                icon = Icons.Rounded.Add,
+                icon = R.drawable.ic_add,
                 onClick = { showAdd = true },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             )

@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -121,7 +118,7 @@ fun PlanetScreen(onBack: () -> Unit) {
                         title = if (planet.builtIn) stringResource(R.string.official_planet) else planet.alias,
                         subtitle = planet.worldIdHex + " · " +
                             stringResource(if (planet.builtIn) R.string.planet_builtin else R.string.planet_from_file),
-                        leading = Icons.Rounded.Public,
+                        leading = R.drawable.ic_public,
                         leadingTint = if (planet.builtIn) appColors().primary else Color.Unspecified,
                         trailing = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -151,7 +148,7 @@ fun PlanetScreen(onBack: () -> Unit) {
             }
             AppFab(
                 label = stringResource(R.string.add_planet),
-                icon = Icons.Rounded.Add,
+                icon = R.drawable.ic_add,
                 onClick = { showAdd = true },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             )

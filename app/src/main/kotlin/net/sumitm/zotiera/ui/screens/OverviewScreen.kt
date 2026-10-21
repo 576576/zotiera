@@ -18,9 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -207,7 +204,7 @@ fun OverviewScreen(
             }
             AppFab(
                 label = stringResource(R.string.join_network),
-                icon = Icons.Rounded.Add,
+                icon = R.drawable.ic_add,
                 onClick = { showJoin = true },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             )
@@ -378,7 +375,7 @@ private fun NetworkRow(
             else -> null
         },
         monoSubtitle = hint == null,
-        leading = Icons.Rounded.Language,
+        leading = R.drawable.ic_language,
         leadingTint = if (joined) appColors().primary else Color.Unspecified,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
