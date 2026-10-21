@@ -1,135 +1,155 @@
-# 服务与工具层迁到 Kotlin（R1）
+# 服务层重写：Kotlin + Flow + 协程（R1 + R2）
 
 - 状态：草案（待确认）
 - 建立日期：2026-10-21
-- 基线提交：`437e1c8`
+- 修订：v2（并入原 R2：EventBus → Flow、裸线程 → 协程）
+- 基线提交：`938e7e6`
 - 事实依据：
   - `find app/src/main/java -name '*.java' | xargs wc -l`：22 个文件、3059 行
-  - [`plan/init-refactor.md`](init-refactor.md) 的 R1（服务与工具层迁到 Kotlin）
+  - `events/Events.kt`：27 个事件类 —— 两侧都在用的 17 个、只有单侧引用的 7 个、零引用 3 个
+  - `ZeroTierOneService`：12 个 `@Subscribe`（`POSTING` 3、`BACKGROUND` 6、`ASYNC` 2、默认 1）
+  - 线程：`vpnThread`（`new Thread(this, "ZeroTier Service Thread")`）、`udpThread`（`new Thread(udpCom, …)`）、
+    `v4MulticastScanner` / `v6MulticastScanner`、`TunTapAdapter.receiveThread`、`ARPTable` / `NDPTable` 的 1 秒清理线程
   - `app/src/main/AndroidManifest.xml`：`.service.ZeroTierOneService`、`.service.StartupReceiver`、
-    `net.sumitm.zotiera.ZotieraApplication` 三个组件按类名注册
+    `net.sumitm.zotiera.ZotieraApplication` 按类名注册
 
-## 现状
+## 为什么要合并做
 
-| 文件 | 行数 | 职责 |
+原计划分两轮：R1 迁 Kotlin、R2 换事件与并发。实际是同一批方法改两遍 —— `rebuildTunnel`、12 个事件处理、
+7 个线程循环都要先翻译一次、再重写一次。更麻烦的是 R1 为了让扩展函数够得着服务字段，得把 `node`、`vpnSocket`
+从 `private` 提到 `internal`；而 R2 一换 Flow，这些字段本来就该收进状态对象，`internal` 白放宽一次。
+
+合并后每段代码只改一次：**语言、事件、并发在同一批里换完**，也不再需要放宽可见性。
+
+## 目标形态
+
+```
+UI / 磁贴 ──Intent（命令）──▶ ZeroTierOneService
+UI ◀──StateFlow（状态）──── NodeState（进程内单例）
+```
+
+### 命令：Intent + `action`
+
+命令必须能在服务没起来时生效（磁贴、页面里加网络）；Flow 需要消费者在场，靠它发命令会丢。所以命令走
+`startService` + `action`：
+
+| action | extra | 替代 |
 | --- | --- | --- |
-| `service/ZeroTierOneService.java` | 1220 | `VpnService`：启停、隧道建立/拆除、通知、EventBus 订阅、JNI 回调转发、组播扫描线程 |
-| `service/TunTapAdapter.java` | 550 | tun 包泵：读写线程、ARP/NDP 表、按网络分路由、IPv4/IPv6 报文处理 |
-| `service/ARPTable.java` | 221 | IPv4 邻居缓存与应答 |
-| `service/NDPTable.java` | 167 | IPv6 邻居发现缓存与应答 |
-| `util/NetworkInfoUtils.java` | 109 | 网卡/组播组枚举（`tun0` 上的 join 列表） |
-| `util/InetAddressUtils.java` | 103 | 地址↔路由、广播/MAC 换算 |
-| `service/DataStore.java` | 96 | 核心的数据目录读写回调（`DataStoreGet/PutListener`） |
-| `util/IPPacketUtils.java` | 87 | IPv4/IPv6 报头解析 |
-| `util/StringUtils.java` | 79 | hex/MAC/字符串工具 |
-| `service/UdpCom.java` | 78 | 核心的 UDP 发包回调（`PacketSender`） |
-| `ZotieraApplication.java` | 65 | Application：Repository/偏好初始化、废弃键清理 |
-| `model/type/DNSMode.java` | 45 | DNS 模式枚举 |
-| `util/Constants.java` | 38 | 通道 ID、Intent action 等常量 |
-| `util/FileUtil.java` | 30 | 临时文件（**当前无引用**） |
-| `service/NDPEntry.java` | 28 | NDP 表项 |
-| `service/ARPEntry.java` | 28 | ARP 表项 |
-| `service/StartupReceiver.java` | 24 | 开机自启广播接收 |
-| `util/DebugLog.java` | 23 | 用 `BuildConfig.DEBUG` 收口的日志 |
-| `util/DatabaseUtils.java` | 21 | 静态读写锁 |
-| `service/Route.java` | 21 | 路由条目（`belongsToRoute`） |
-| `service/ARPReplyData.java` | 14 | ARP 应答数据 |
-| `util/NetworkIdUtils.java` | 12 | 网络 ID hex→long |
+| `ACTION_STOP` | — | `StopEvent` |
+| `ACTION_JOIN` | `networkId` | 现有裸 `startService`（`ZT1_NETWORK_ID`） |
+| `ACTION_LEAVE` | `networkId` | `LeaveNetworkEvent` |
+| `ACTION_RECONFIGURE` | — | `TunnelConfigChangedEvent` |
+| `ACTION_ORBIT` / `ACTION_DEORBIT` | `worldId`、`seed` | `OrbitMoonEvent` / `RemoveMoonOrbitEvent` |
+| `ACTION_REFRESH_PEERS` | — | `PeerInfoRequestEvent` |
 
-`app/src/main/java` 之外已经全是 Kotlin；引用这些 Java 类的 Kotlin 文件有 5 个：`NodeViewModel`（服务、`isRunning`、
-`ZT1_NETWORK_ID`）、`ZeroTierTileService`（`isRunning`）、`MainActivity` / `SettingsScreen` / `OverviewScreen`
-（`Constants`，`OverviewScreen` 另用到 `NetworkIdUtils`）。
+`ServiceCommands.kt` 提供 `stop(context)`、`join(context, id)` 这类构造器，UI 与磁贴都不手拼 Intent。
+`onStartCommand` 按 `intent?.action` 分发；action 为空表示「启动并把数据库里已加入的网络全部 join」（保持现状）。
 
-## 目标
+### 状态：`NodeState` 单例
 
-- `find app/src/main/java -name '*.java' | wc -l` 为 0，空目录一并删掉。
-- 行为不变：连接时序、日志内容、EventBus 事件、Intent extra 全部照旧。
-
-## 迁移约束（先看这里）
-
-1. **EventBus 订阅方法必须是类成员**。EventBus 3 反射扫描注册对象的类找 `@Subscribe`；Kotlin 扩展函数编译成静态方法
-   （首参是接收者），扫描不到。12 个 `@Subscribe` 方法留在 `ZeroTierOneService` 的类体里。
-2. **JNI 回调方法同理**：`EventListener.onEvent/onTrace`、`VirtualNetworkConfigListener.onNetworkConfigurationUpdated`、
-   `VirtualNetworkFrameListener.onVirtualNetworkFrame` 是接口实现，必须留在类体内。
-3. **跨文件的扩展函数只能访问 `internal` 成员**。要把隧道与扫描拆出去，就得把被它们用到的字段
-   （`node`、`vpnSocket`、`tunTapAdapter`、`tunnelFingerprint`、`disableIPv6`、`routeAllTraffic` …）从 `private` 提到
-   `internal`。只在本模块可见，可以接受。
-4. **静态成员的调用写法不能变**：`ZeroTierOneService.isRunning`（`ZeroTierTileService`、`NodeViewModel` 在用）、
-   `ZT1_NETWORK_ID` / `ZT1_USE_DEFAULT_ROUTE` 的**字符串值**是 Intent 契约，`MSG_*` 的值参与 `what` 分发。
-   实现上用 `companion object` + `@JvmField` / `const val`。
-5. **类名与包名不能变**：三个组件在清单里按名字注册。
-6. 一批一提交；每批都要 `assemblePr` + `:app:testDebugUnitTest` + 下面写的模拟器回归项。
-
-## 拆分方案
-
-### ZeroTierOneService：1220 行 → 4 个文件（同包 `net.sumitm.zotiera.service`）
-
-| 新文件 | 内容 | 原行范围 |
+| 属性 | 类型 | 替代 |
 | --- | --- | --- |
-| `ZeroTierOneService.kt` | 类本体：常量与字段、生命周期、`run`、Binder、`joinNetwork`/`leaveNetwork`/`orbitNetwork`/`getJoinedNetworkIds`、12 个 `@Subscribe`、JNI 回调 | 85–120、237–291、454–830、1181–1220 |
-| `ZeroTierOneTunnel.kt` | `rebuildTunnel` / `teardownTunnel` / `addDnsServers` 作为 `internal` 扩展函数；`tunnelFingerprint(configs)` 作为顶层纯函数 | 857–1180 |
-| `MulticastScanner.kt` | 组播扫描循环，v4/v6 共用一个类：`MulticastScanner(ipv6, node: () -> Node?, networkIds: () -> LongArray)`，保留 1 秒轮询、订阅差异比对、v4 的字节序反转 | 121–235 |
-| `ServiceNotifications.kt` | 前台通知：通道创建、`updateConnectedNotification(configs)`、`cancelNotification()` | 1091–1123、526–528 |
+| `running` | `StateFlow<Boolean>` | `isRunning` 静态布尔 + `IsServiceRunningRequest/ReplyEvent` |
+| `status` | `StateFlow<NodeStatus?>` | `NodeStatusEvent`、`NodeIDEvent`、`NodeDestroyedEvent` |
+| `configs` | `StateFlow<Map<Long, VirtualNetworkConfig>>` | `NetworkListReplyEvent`、`VirtualNetworkConfig{Request,Reply,Changed}Event` |
+| `peers` | `StateFlow<List<Peer>>` | `PeerInfoReplyEvent` |
+| `moonOrbits` | `StateFlow<List<MoonOrbit>>` | `OrbitMoonEvent` 的入参侧 |
 
-`rebuildTunnel` 与 `teardownTunnel` 之间共享 `vpnSocket`、`tunnelFingerprint` 与 `virtualNetworkConfigMap`，
-所以这两个必须落在同一个文件里，不能再拆。
+`ZeroTierOneService.isRunning` 保留为兼容读法（磁贴在用），内部读 `NodeState.running.value`。
 
-### TunTapAdapter：550 行 → 2 个文件
+### 删除的事件与理由
 
-| 新文件 | 内容 | 原行范围 |
+| 事件 | 现状 | 处理 |
 | --- | --- | --- |
-| `TunTapAdapter.kt` | 读写线程、`vpnSocket`、路由表与组播路由、`onVirtualNetworkFrame`、中断/join | 31–197、400–550 |
-| `TunTapPackets.kt` | IPv4/IPv6 报文处理与邻居缓存应答（`handleIPv4Packet` / `handleIPv6Packet` / `isNeighborSolicitation` / `isNeighborAdvertisement`），作为 `internal` 扩展函数 | 198–399 |
+| `JoinNetworkEvent`、`DefaultRouteChangedEvent`、`AddMoonOrbitEvent` | 零引用 | 删 |
+| `AfterJoinNetworkEvent` | 服务自己 post，无人订阅 | 删 |
+| `ErrorEvent`、`VPNErrorEvent` | 服务 post，无人订阅（这些错误用户看不到） | 删，只留日志 |
+| `NetworkReconfigureEvent` | 服务 post 又订阅自己 | 改成直接调用 |
+| `NetworkConfigChangedByUserEvent`、`ManualDisconnectEvent` | 只订阅，没人 post | 删 |
+| `RemoveMoonOrbitEvent` | 月页 post，服务没有订阅者 —— **撤轨从来没到过引擎** | 改走 `ACTION_DEORBIT`，顺带修掉 |
+
+换完后 `events/Events.kt` 只剩 UI 要展示的快照类型，或直接清空。
+
+### 并发：协程
+
+| 现在 | 之后 |
+| --- | --- |
+| `vpnThread`（`run()` 里按 100ms / 剩余时间 `Thread.sleep` 的后台任务循环） | `serviceScope.launch { while (isActive) { … ; delay(…) } }` |
+| 两个组播扫描线程（1 秒轮询） | `MulticastScanner` 内部 `while (isActive) { scan(); delay(1000) }` |
+| `UdpCom implements Runnable` + `udpThread` | `UdpCom.receiveLoop()`，阻塞 `receive` 用 `runInterruptible` 包住 |
+| `TunTapAdapter.receiveThread` + `Thread.sleep(10)` | 同上，`runInterruptible { input.read(buf) }` |
+| `ARPTable` / `NDPTable` 的 1 秒清理线程 | 表只留数据结构与 `sweep()`，由持有方在 scope 里定时调 |
+| EventBus 的 `POSTING` / `BACKGROUND` / `ASYNC` | 命令分发（主线程）+ IO 协程显式表达；JNI 回调直接写 `StateFlow`（线程安全） |
+
+`serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)`，`onDestroy` 里 `cancel()`；
+`TunTapAdapter` 用自己的子 scope，随 `interrupt()` 一起取消。
+
+## 文件拆分
+
+服务状态收进 `NodeState` 之后，拆分靠构造参数注入，不需要放宽可见性。
+
+### `ZeroTierOneService`：1220 行 → 4 个文件（`net.sumitm.zotiera.service`）
+
+| 新文件 | 内容 |
+| --- | --- |
+| `ZeroTierOneService.kt` | 生命周期、`onStartCommand` 的命令分发、`stopSelf` 收尾、JNI 回调（`onTrace` / `onNetworkConfigurationUpdated`）→ 写 `NodeState` |
+| `TunnelController.kt` | `rebuild()` / `teardown()` / `addDnsServers()` / `tunnelFingerprint()`；持有 `vpnSocket`、`virtualNetworkConfigMap`、`tunnelFingerprint`；前台通知文案也在这里 |
+| `MulticastScanner.kt` | `class MulticastScanner(scope, ipv6, node: () -> Node?, networkIds: () -> LongArray)` |
+| `ServiceCommands.kt` | action 常量 + Intent 构造器（UI 与磁贴共用） |
+
+`ZeroTierBinder` / `bindCount` / `onBind` / `onUnbind` 一并删除：命令走 Intent，状态走 Flow，没人再需要 binder。
+
+### `TunTapAdapter`：550 行 → 2 个文件
+
+| 新文件 | 内容 |
+| --- | --- |
+| `TunTapAdapter.kt` | 读协程、`vpnSocket`、路由表与组播路由、`onVirtualNetworkFrame` |
+| `TunTapPackets.kt` | IPv4/IPv6 报文处理与邻居应答（`handleIPv4Packet` / `handleIPv6Packet` / `isNeighbor*`） |
 
 ### 其余 20 个文件 1:1 换成 `.kt`
 
-不改名、不合并、不拆：`util/` 9 个、`service/` 里的 `ARPTable` / `NDPTable` / `ARPEntry` / `NDPEntry` /
-`ARPReplyData` / `Route` / `UdpCom` / `DataStore`、`model/type/DNSMode`（`enum class`）、
-`ZotieraApplication`、`StartupReceiver`。
-
-`util/FileUtil.java` 当前没有引用，随迁移直接删掉；`util/DatabaseUtils.java` 只被服务用，照原样迁。
+`util/` 9 个（`FileUtil` 无引用直接删）、`ARPTable` / `NDPTable` / `ARPEntry` / `NDPEntry` / `ARPReplyData` /
+`Route` / `UdpCom` / `DataStore`、`model/type/DNSMode`、`ZotieraApplication`、`StartupReceiver`。
 
 ## 批次
 
-| 批次 | 文件 | 行数 | 回归项 |
-| --- | --- | --- | --- |
-| R1.1 | `util/*` 9 个（`FileUtil` 直接删）+ `DNSMode` | 547 | 启动、加入网络、三个顶层页与四个管理页都能打开；网络卡片显示正常 |
-| R1.2 | `DataStore`、`Route`、`ARPTable`、`NDPTable`、`ARPEntry`、`NDPEntry`、`ARPReplyData`、`UdpCom` | 653 | 加入网络拿到地址、Peers 列表有数据、切换实例后节点 ID 变化 |
-| R1.3 | `TunTapAdapter` → 2 个文件 | 550 | 开隧道后节点上线（控制器侧在线）、局域网内能收发（`ping` 同网段地址） |
-| R1.4 | `ZeroTierOneService` → 4 个文件 | 1220 | 完整链路：加入 → 上线 → 加第二个网络 → 切身份 → 离开 → 关闭隧道；通知文案正确 |
-| R1.5 | `ZotieraApplication`、`StartupReceiver`，删 `app/src/main/java` | 89 | 冷启动正常；`adb shell am broadcast -a android.intent.action.BOOT_COMPLETED -p net.sumitm.zotiera.pr` 后服务按开关自启 |
+每批同时完成「语言 + 并发 + 事件」，做完即终态，不再二次改。
 
-R1.4 是唯一一批改到 `internal` 可见性的，单独成批便于回滚。
+| 批次 | 范围 | 回归项 |
+| --- | --- | --- |
+| P1 | `util/*` 9 个 + `DNSMode`（547 行） | 启动、加入网络、三个顶层页与四个管理页；网络卡片正常 |
+| P2 | `DataStore`、`Route`、`ARPTable`、`NDPTable`、`ARPEntry`、`NDPEntry`、`ARPReplyData`（653 行），表内 1 秒清理改为 `sweep()` | 加入网络拿到地址；Peers 有数据；切换实例后节点 ID 变化 |
+| P3 | 新增 `NodeState` + `ServiceCommands`；`NodeViewModel` 改读 `NodeState`；服务侧按 `ACTION_*` 处理命令并写 `NodeState`（服务此时仍是 Java） | 加/删网络、开关隧道、切身份、磁贴开关；`running` 与服务实际状态一致 |
+| P4 | `UdpCom`（去掉 `Runnable`）、`TunTapAdapter` → 2 个文件 + 读协程 | 隧道上线、同网段能 ping 通、断开后没有残留线程 |
+| P5 | `ZeroTierOneService` → 4 个文件；删 binder、删 EventBus 注册与 12 个订阅、线程改协程 | 完整链路：加入 → 上线 → 加第二个网络 → 切身份 → 离开 → 关闭；通知文案；撤轨后引擎里 `LEAF` 消失 |
+| P6 | `ZotieraApplication`、`StartupReceiver`；删 `app/src/main/java`；`app/build.gradle` 去掉 `eventbus` | 冷启动；`am broadcast -a android.intent.action.BOOT_COMPLETED -p …` 后按开关自启 |
 
-## 迁移时的写法约定
+P3 是唯一「新旧并存」的一批：命令先切成 Intent、UI 先切到 `NodeState`，服务内部暂时留着 EventBus 骨架当过渡；
+P5 把骨架删干净。这样每批都能单独跑、单独回滚。
 
-| Java | Kotlin |
-| --- | --- |
-| `static final long X = 1` | `companion object { const val X = 1L }`（对外仍是 `Class.X`） |
-| `static volatile boolean isRunning` | `companion object { @JvmField @Volatile var isRunning = false }` |
-| `implements Runnable` + `run()` | 保留 `Runnable` 接口，`override fun run()` |
-| 匿名 `new Thread() { run() }` | `object : Thread() { override fun run() { … } }`，或按上面拆成类 |
-| `private void foo()` 但被扩展函数用 | `internal fun foo()` |
-| `synchronized` | `@Synchronized`（实例方法）或 `synchronized(obj) { }` |
-| `Long` 装箱的 Map key | 保持 `Map<Long, …>`，不要用 `MutableMap<Long, …>` 的原始类型假设 |
-| platform type（如 `getVirtualNetworkConfig()`） | 先按 Java 的实际可能返回 `null` 标 `?`；确实不会为空的用 `!!`，不顺手改成 `?: return` |
-| `var`（Java 10 局部推断） | `val` / `var` 按是否重赋值选 |
+## 行为变化（需确认）
 
-`BuildConfig.DEBUG` 收口的 `DebugLog` 保持语义：release 里不输出。
+| 变化 | 影响 | 处理 |
+| --- | --- | --- |
+| 停止从同步变异步 | 现在 `StopEvent` 是 `POSTING`，`post` 返回时已停完；改成命令后要等 `onStartCommand` | UI 只看 `NodeState.running`，不再依赖「已停完」 |
+| 去掉绑定 | 以前绑定期间 `stopService` 无效，磁贴得「先 post 再 stop」 | 服务收到 `ACTION_STOP` 后自己 `stopSelf()`；磁贴只发命令 |
+| 请求/应答变状态订阅 | 少了 `refresh()` 往返，UI 始终看到最新值 | `refresh()` 只重读数据库 |
+| 撤轨走命令 | 以前根本没到引擎 | 顺带修好，P5 回归项验证 |
+| 错误事件删除 | 用户本就看不到这些错误 | 只留日志，不新增提示 |
 
 ## 不做
 
-- 不动 EventBus（`R2` 才换 Flow）。R1 只保证 Kotlin 里订阅照旧工作。
-- 不动线程模型（扫描线程、UDP 线程、tun 读写线程都照搬，`R2` 再换协程）。
-- 不改任何分支、日志文案、方法名；不改 `VpnService.Builder` 的配置顺序。
-- 不顺手删 `DatabaseUtils` 这类「看起来没用」的类，除非 `grep` 确认零引用（`FileUtil` 已确认）。
+- 不改 `VpnService.Builder` 的配置顺序、路由与 DNS 规则。
+- 不改命令之外的行为：加入网络的时机、隧道重建判据（指纹比较）照旧。
+- 不动 Room，不动 UI 结构（除 `NodeViewModel` 的取值方式与月页的命令调用）。
+- 不引入 DI 框架：`NodeState` 是普通 object，`TunnelController` 用构造参数。
 
 ## 风险
 
 | 风险 | 处理 |
 | --- | --- |
-| EventBus 反射找不到订阅方法（扩展函数化、方法变 private） | 订阅方法一律留在类体且 `public`；R1.4 的回归项专门走过事件路径（加/删网络、切身份、磁贴） |
-| `internal` 放宽可见性后误用 | 只在本模块；R1.4 单独一批，回滚面小 |
-| 空安全改写引入 NPE 或行为变化 | 按上表「platform type」处理，先保持 Java 的宽松语义，收敛 null 留到单独一轮 |
-| 拆文件时把字段带错（如 `vpnSocket` 分到两个文件） | 拆分按上表行范围一次性对照；R1.3/R1.4 各跑一次完整链路 |
-| Kotlin `@Volatile` 漏加导致跨线程看不到状态 | 对照 Java 的 `volatile` 逐个标；`isRunning`、`node`、`vpnSocket` 这几个跨线程读的必须有 |
+| 命令时序变化引出回归（尤其停止、切身份） | P3 单独成批并跑完整链路；`running` 以服务上报为准 |
+| 阻塞读不可取消，取消后线程还在 | `runInterruptible` + `socket.close()` 双保险；P4 验证断开后无残留线程 |
+| `StateFlow` 初值与首帧不一致（服务还没起） | 初值取数据库与服务静态状态；界面已有「未连接」态兜底 |
+| 一次改太多、定位困难 | 六批独立提交，P3 保留旧骨架直到 P5 |
+| JNI 回调线程直接写 `StateFlow` | `MutableStateFlow` 线程安全，不切 `MAIN`；只有通知涉及 Android 服务对象，与线程无关 |

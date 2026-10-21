@@ -16,6 +16,7 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 | 2026-10-19 | v1–v4 | 建立并按执行情况回填里程碑 |
 | 2026-10-21 | v6 | 精简：已完成里程碑删除，只保留 R1–R3 |
 | 2026-10-21 | v7 | R1 的拆分方案、每批回归项独立成 [`kotlin-migration.md`](kotlin-migration.md)，本文只留结论 |
+| 2026-10-21 | v8 | R1 与 R2 合并为一个里程碑：语言、事件、并发同一批换完，方案见 [`kotlin-migration.md`](kotlin-migration.md) |
 
 ## 现状
 
@@ -23,23 +24,16 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 - 事件总线仍是 EventBus 3.2.0（服务、磁贴、ViewModel、三个页面共 6 处）。
 - 旧 UI 依赖仍挂在 `app/build.gradle`；`minifyEnabled false`，单 ABI 包约 38MB。
 
-## R1 服务与工具层迁到 Kotlin
+## R1+R2 服务层重写（Kotlin + Flow + 协程）
 
-分五批：`util/*` + `DNSMode` → 服务数据层 → `TunTapAdapter`（拆 2 个文件）→ `ZeroTierOneService`（拆 4 个文件）
-→ Application/Receiver。逐文件拆分、行范围与每批回归项见 [`kotlin-migration.md`](kotlin-migration.md)。
+`app/src/main/java` 22 个文件迁 Kotlin；同时把 EventBus 换成 `NodeState` 的 `StateFlow`、命令换成 `Intent action`、
+裸 `Thread` 换成协程。两者合并是因为改的是同一批方法，分开做等于同一段代码改两遍。
 
-验收：`find app/src/main/java -name '*.java' | wc -l` 为 0；两个 ABI 构建通过；真机跑通加入网络、开关隧道、切换实例。
+分六批：工具层 → 数据层 → 命令与状态骨架 → `TunTapAdapter` → `ZeroTierOneService` → Application/Receiver。
+拆分方式、事件去留、行为变化与每批回归项见 [`kotlin-migration.md`](kotlin-migration.md)。
 
-## R2 事件与并发收敛
-
-| 项 | 现状 | 目标 |
-| --- | --- | --- |
-| 事件 | EventBus 3.2.0，`events/Events.kt` + 6 处发送/订阅 | `SharedFlow` / `StateFlow` |
-| 线程 | 服务里的裸 `Thread`（组播扫描、UDP 收包） | `CoroutineScope(SupervisorJob + Dispatchers.IO)` |
-
-必须成对改：先接上 Flow 通道、再撤 EventBus，避免双轨期丢事件。
-
-验收：无 `EventBus` 引用；连接、断开、节点上线状态与现状一致。
+验收：`find app/src/main/java -name '*.java' | wc -l` 为 0；`grep -r "greenrobot" app` 无输出；
+两版 ABI 构建通过；加入/上线/切实例/离开/关隧道全链路在模拟器上跑通。
 
 ## R3 依赖与包体清理
 
