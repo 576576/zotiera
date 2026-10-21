@@ -49,7 +49,7 @@ import net.sumitm.zotiera.ui.theme.LocalZotieraType
 fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
-    val repository = remember { (context.applicationContext as ZotieraApplication).getRepository() }
+    val repository = remember { (context.applicationContext as ZotieraApplication).repository }
 
     var refreshKey by remember { mutableIntStateOf(0) }
     var showAdd by remember { mutableStateOf(false) }

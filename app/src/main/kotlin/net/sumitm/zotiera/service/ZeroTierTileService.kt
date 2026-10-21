@@ -46,7 +46,7 @@ class ZeroTierTileService : TileService() {
 
     private fun startTunnel() {
         val hasNetwork = runCatching {
-            (application as ZotieraApplication).getRepository().lastActivatedNetworks().isNotEmpty()
+            (application as ZotieraApplication).repository.lastActivatedNetworks().isNotEmpty()
         }.getOrDefault(false)
         if (!hasNetwork) {
             toast(this, R.string.tunnel_needs_network)

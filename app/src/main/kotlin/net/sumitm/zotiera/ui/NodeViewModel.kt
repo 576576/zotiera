@@ -50,7 +50,7 @@ data class NodeUiState(
 class NodeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository: ZotieraRepository =
-        (app as ZotieraApplication).getRepository()
+        (app as ZotieraApplication).repository
 
     private val prefs = PreferenceManager.getDefaultSharedPreferences(app)
 

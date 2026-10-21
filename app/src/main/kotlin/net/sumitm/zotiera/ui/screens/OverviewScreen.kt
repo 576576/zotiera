@@ -71,7 +71,7 @@ fun OverviewScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val repository = remember { (context.applicationContext as ZotieraApplication).getRepository() }
+    val repository = remember { (context.applicationContext as ZotieraApplication).repository }
     val store = remember { InstanceStore(context) }
     val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
     val simpleMode = remember { prefs.getBoolean(Constants.PREF_SIMPLE_MODE, true) }

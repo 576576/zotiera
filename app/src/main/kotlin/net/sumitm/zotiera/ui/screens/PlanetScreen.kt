@@ -55,7 +55,7 @@ import net.sumitm.zotiera.ui.theme.LocalZotieraType
 @Composable
 fun PlanetScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val repository = remember { (context.applicationContext as ZotieraApplication).getRepository() }
+    val repository = remember { (context.applicationContext as ZotieraApplication).repository }
     val store = remember { InstanceStore(context) }
     val scope = rememberCoroutineScope()
 
