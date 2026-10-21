@@ -94,7 +94,6 @@
     <string name="peer_preferred_path">Preferred path:</string>
     <string name="invalid_ipv4_dns">Invalid IPv4 DNS address.</string>
     <string name="invalid_ipv6_dns">Invalid IPv6 DNS address</string>
-    <string name="peer_no_connection">No connection</string>
     <string name="peer_list">Peer List</string>
     <string name="peer_role_planet">Planet</string>
     <string name="peer_role_leaf">Leaf</string>

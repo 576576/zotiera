@@ -4,10 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,7 +21,6 @@ import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.component.AppLargeTitlePage
 import net.sumitm.zotiera.ui.component.AppListRow
 import net.sumitm.zotiera.ui.component.AppRoleChip
-import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.theme.LocalDarkTheme
 
 @Composable
@@ -40,47 +37,37 @@ fun PeersScreen(viewModel: NodeViewModel) {
 
     AppLargeTitlePage(title = stringResource(R.string.peer_list)) {
         Column(Modifier.fillMaxSize()) {
-            if (state.peers.isEmpty()) {
-                Text(
-                    text = stringResource(
-                        if (state.peersLoaded) R.string.peer_no_connection else R.string.wait_to_fetch
-                    ),
-                    color = appColors().onSurfaceVariant,
-                    modifier = Modifier.padding(start = 20.dp, top = 16.dp),
-                )
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(state.peers, key = { it.address }) { peer ->
-                        val version = if (peer.versionMajor < 0 || peer.versionMinor < 0 || peer.versionRev < 0) {
-                            stringResource(R.string.peer_version_unknown)
-                        } else {
-                            "v${peer.versionMajor}.${peer.versionMinor}.${peer.versionRev}"
-                        }
-                        val latency = if (peer.latency < 0) "-" else "${peer.latency} ms"
-                        val path = peer.paths?.firstOrNull()?.address
-                        AppListRow(
-                            title = java.lang.Long.toHexString(peer.address),
-                            subtitle = buildString {
-                                append(version)
-                                append(" · ")
-                                append(latency)
-                                if (path != null) {
-                                    append("\n")
-                                    append(formatSocketAddress(path))
-                                }
-                            },
-                            monoSubtitle = true,
-                            trailing = {
-                                AppRoleChip(
-                                    label = roleLabel(peer.role),
-                                    tint = roleTint(peer.role),
-                                )
-                            },
-                        )
+            LazyColumn(
+                contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(state.peers, key = { it.address }) { peer ->
+                    val version = if (peer.versionMajor < 0 || peer.versionMinor < 0 || peer.versionRev < 0) {
+                        stringResource(R.string.peer_version_unknown)
+                    } else {
+                        "v${peer.versionMajor}.${peer.versionMinor}.${peer.versionRev}"
                     }
+                    val latency = if (peer.latency < 0) "-" else "${peer.latency} ms"
+                    val path = peer.paths?.firstOrNull()?.address
+                    AppListRow(
+                        title = java.lang.Long.toHexString(peer.address),
+                        subtitle = buildString {
+                            append(version)
+                            append(" · ")
+                            append(latency)
+                            if (path != null) {
+                                append("\n")
+                                append(formatSocketAddress(path))
+                            }
+                        },
+                        monoSubtitle = true,
+                        trailing = {
+                            AppRoleChip(
+                                label = roleLabel(peer.role),
+                                tint = roleTint(peer.role),
+                            )
+                        },
+                    )
                 }
             }
         }

@@ -93,7 +93,6 @@
     <string name="peer_preferred_path">通信路径:</string>
     <string name="invalid_ipv4_dns">IPv4 DNS 地址格式错误</string>
     <string name="invalid_ipv6_dns">IPv6 DNS 地址格式错误</string>
-    <string name="peer_no_connection">无连接</string>
     <string name="peer_list">结点列表</string>
     <string name="peer_role_planet">根服务器</string>
     <string name="peer_role_leaf">叶结点</string>
