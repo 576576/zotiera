@@ -41,6 +41,7 @@ fun SettingsScreen(
     onColorModeChange: (ColorMode) -> Unit,
     amoled: Boolean,
     onAmoledChange: (Boolean) -> Unit,
+    onOpenIdentities: () -> Unit,
     onOpenPlanet: () -> Unit,
     onOpenMoons: () -> Unit,
     onOpenAbout: () -> Unit,
@@ -111,8 +112,13 @@ fun SettingsScreen(
             )
         }
 
-        // 网络相关的两个管理入口，跟着网络设置走，不单独占一栏
+        // 网络相关的三个管理入口，跟着网络设置走，不单独占一栏
         PreferenceGroup {
+            PreferenceArrow(
+                title = stringResource(R.string.manage_identity),
+                summary = stringResource(R.string.manage_identity_summary),
+                onClick = onOpenIdentities,
+            )
             PreferenceArrow(
                 title = stringResource(R.string.manage_planet),
                 summary = stringResource(R.string.manage_planet_summary),

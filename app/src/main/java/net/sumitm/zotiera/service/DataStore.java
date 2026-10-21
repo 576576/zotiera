@@ -1,9 +1,6 @@
 package net.sumitm.zotiera.service;
 
-import android.content.Context;
 import android.util.Log;
-
-import androidx.preference.PreferenceManager;
 
 import com.zerotier.sdk.DataStoreGetListener;
 import com.zerotier.sdk.DataStorePutListener;
@@ -12,132 +9,88 @@ import net.sumitm.zotiera.util.Constants;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
 /**
- * Zerotier 文件数据源
+ * ZeroTier 的文件数据源。
+ *
+ * 所有文件都落在实例目录里（见 {@code InstanceStore}）；自定义 planet 不走文件，直接替换
+ * 「planet」这个名字的读写，避免引擎把用户给的 planet 覆盖掉。
  */
 public class DataStore implements DataStoreGetListener, DataStorePutListener {
 
     private static final String TAG = "DataStore";
 
-    private final Context context;
+    private final File baseDir;
 
-    public DataStore(Context context) {
-        this.context = context;
+    /** 非空表示这个实例用自定义 planet，字节从该文件读。 */
+    private final File planetOverride;
+
+    public DataStore(File baseDir, File planetOverride) {
+        this.baseDir = baseDir;
+        this.planetOverride = planetOverride;
+    }
+
+    private boolean isPlanet(String name) {
+        return planetOverride != null && Constants.FILE_PLANET.equals(name);
     }
 
     @Override
     public int onDataStorePut(String name, byte[] buffer, boolean secure) {
-        Log.d(TAG, "Writing File: " + name + ", to: " + this.context.getFilesDir());
-        // 保护自定义 Planet 文件
-        if (hookPlanetFile(name)) {
+        Log.d(TAG, "Writing File: " + name + ", to: " + baseDir);
+        if (isPlanet(name)) {
             return 0;
         }
         try {
-            if (name.contains("/")) {
-                File file = new File(this.context.getFilesDir(), name.substring(0, name.lastIndexOf('/')));
-                if (!file.exists()) {
-                    file.mkdirs();
-                }
-                FileOutputStream fileOutputStream = new FileOutputStream(new File(file, name.substring(name.lastIndexOf('/') + 1)));
-                fileOutputStream.write(buffer);
-                fileOutputStream.flush();
-                fileOutputStream.close();
-                return 0;
+            File file = new File(baseDir, name);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
             }
-            FileOutputStream openFileOutput = this.context.openFileOutput(name, 0);
-            openFileOutput.write(buffer);
-            openFileOutput.flush();
-            openFileOutput.close();
+            FileOutputStream out = new FileOutputStream(file);
+            out.write(buffer);
+            out.flush();
+            out.close();
             return 0;
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return -1;
-        } catch (IOException e2) {
+        } catch (IOException e) {
             StringWriter stringWriter = new StringWriter();
-            e2.printStackTrace(new PrintWriter(stringWriter));
+            e.printStackTrace(new PrintWriter(stringWriter));
             Log.e(TAG, stringWriter.toString());
             return -2;
-        } catch (IllegalArgumentException e3) {
-            StringWriter stringWriter2 = new StringWriter();
-            e3.printStackTrace(new PrintWriter(stringWriter2));
-            Log.e(TAG, stringWriter2.toString());
-            return -3;
         }
     }
 
     @Override
     public int onDelete(String name) {
-        boolean deleted;
         Log.d(TAG, "Deleting File: " + name);
-        // 保护自定义 Planet 文件
-        if (hookPlanetFile(name)) {
+        if (isPlanet(name)) {
             return 0;
         }
-        if (name.contains("/")) {
-            File file = new File(this.context.getFilesDir(), name);
-            if (!file.exists()) {
-                deleted = true;
-            } else {
-                deleted = file.delete();
-            }
-        } else {
-            deleted = this.context.deleteFile(name);
+        File file = new File(baseDir, name);
+        if (!file.exists()) {
+            return 0;
         }
-        return !deleted ? 1 : 0;
+        return file.delete() ? 0 : 1;
     }
 
     @Override
     public long onDataStoreGet(String name, byte[] out_buffer) {
         Log.d(TAG, "Reading File: " + name);
-        if (hookPlanetFile(name)) {
-            name = Constants.FILE_CUSTOM_PLANET;
+        File file = isPlanet(name) ? planetOverride : new File(baseDir, name);
+        if (!file.exists()) {
+            return 0;
         }
-        // 读入文件
         try {
-            if (name.contains("/")) {
-                File file = new File(this.context.getFilesDir(), name.substring(0, name.lastIndexOf('/')));
-                if (!file.exists()) {
-                    file.mkdirs();
-                }
-                File file2 = new File(file, name.substring(name.lastIndexOf('/') + 1));
-                if (!file2.exists()) {
-                    return 0;
-                }
-                FileInputStream fileInputStream = new FileInputStream(file2);
-                int read = fileInputStream.read(out_buffer);
-                fileInputStream.close();
-                return read;
-            }
-            FileInputStream openFileInput = this.context.openFileInput(name);
-            int read2 = openFileInput.read(out_buffer);
-            openFileInput.close();
-            return read2;
-        } catch (FileNotFoundException unused) {
-            return -1;
+            FileInputStream in = new FileInputStream(file);
+            int read = in.read(out_buffer);
+            in.close();
+            return read;
         } catch (IOException e) {
             Log.e(TAG, "", e);
             return -2;
-        } catch (Exception e) {
-            Log.e(TAG, "", e);
-            return -3;
         }
-    }
-
-    /**
-     * 判断自定义 Planet 文件
-     */
-    boolean hookPlanetFile(String name) {
-        if (Constants.FILE_PLANET.equals(name)) {
-            return PreferenceManager
-                    .getDefaultSharedPreferences(this.context)
-                    .getBoolean(Constants.PREF_PLANET_USE_CUSTOM, false);
-        }
-        return false;
     }
 }

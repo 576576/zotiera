@@ -3,129 +3,233 @@ package net.sumitm.zotiera.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
-import androidx.preference.PreferenceManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.sumitm.zotiera.R
+import net.sumitm.zotiera.ZotieraApplication
+import net.sumitm.zotiera.identity.InstanceStore
+import net.sumitm.zotiera.model.Planet
 import net.sumitm.zotiera.ui.component.AppDialog
+import net.sumitm.zotiera.ui.component.AppDialogAction
+import net.sumitm.zotiera.ui.component.AppFab
+import net.sumitm.zotiera.ui.component.AppListRow
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
-import net.sumitm.zotiera.ui.component.preference.PreferenceArrow
-import net.sumitm.zotiera.ui.component.preference.PreferenceGroup
-import net.sumitm.zotiera.ui.component.preference.PreferenceSwitch
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
-import net.sumitm.zotiera.util.Constants
-import java.io.File
-import java.net.URL
 
+/**
+ * 管理 Planet：官方 planet 固定在最上面，自定义的从文件导入并起别名。
+ *
+ * 结构照 Moon 页：列表 + 右下角添加按钮；添加时先选文件，再填别名。
+ */
 @Composable
 fun PlanetScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    // 提示文案在组合期取好，回调里不再摸 LocalContext 的资源
-    val planetWrongFormat = stringResource(R.string.planet_wrong_format)
-    val cannotDownloadPlanet = stringResource(R.string.cannot_download_planet_file)
-    val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
-    val scope = rememberCoroutineScope()
+    val repository = remember { (context.applicationContext as ZotieraApplication).getRepository() }
+    val store = remember { InstanceStore(context) }
 
-    var customPlanet by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_PLANET_USE_CUSTOM, false)) }
-    var planetMessage by remember { mutableStateOf<String?>(null) }
-    var showUrlDialog by remember { mutableStateOf(false) }
+    var refreshKey by remember { mutableIntStateOf(0) }
+    var menuPlanet by remember { mutableStateOf<Planet?>(null) }
+    var renameTarget by remember { mutableStateOf<Planet?>(null) }
+    var deleteTarget by remember { mutableStateOf<Planet?>(null) }
+    var pendingBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var pendingWorldId by remember { mutableStateOf<Long?>(null) }
+    var aliasDraft by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf<String?>(null) }
 
-    fun planetLoaded(): Boolean = File(context.filesDir, Constants.FILE_CUSTOM_PLANET).exists()
-
-    fun importPlanet(bytes: ByteArray): Boolean {
-        if (bytes.isEmpty() || bytes[0] != 0x01.toByte()) return false
-        File(context.filesDir, Constants.FILE_CUSTOM_PLANET).writeBytes(bytes)
-        prefs.edit { putBoolean(Constants.PREF_SET_PLANET_FILE, true) }
-        return true
-    }
+    val planets = remember(refreshKey) { repository.planets() }
+    val inUseMsg = stringResource(R.string.planet_in_use)
+    val wrongFormat = stringResource(R.string.planet_wrong_format)
+    val existsFmt = stringResource(R.string.planet_exists)
 
     val pickPlanet = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        planetMessage = if (bytes != null && importPlanet(bytes)) null
-        else planetWrongFormat
+        if (bytes == null || bytes.size < 9 || bytes[0] != 0x01.toByte()) {
+            message = wrongFormat
+            return@rememberLauncherForActivityResult
+        }
+        var worldId = 0L
+        for (i in 1..8) worldId = (worldId shl 8) + (bytes[i].toLong() and 0xff)
+        val existing = repository.planet(worldId)
+        if (existing != null) {
+            message = String.format(existsFmt, existing.alias)
+            return@rememberLauncherForActivityResult
+        }
+        pendingBytes = bytes
+        pendingWorldId = worldId
+        aliasDraft = String.format("%016x", worldId)
     }
 
     Column(Modifier.fillMaxSize()) {
         AppTopBar(title = stringResource(R.string.manage_planet), onBack = onBack)
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        ) {
-            Spacer(Modifier.height(8.dp))
-            PreferenceGroup {
-                PreferenceSwitch(
-                    title = stringResource(R.string.use_custom_planet),
-                    summary = stringResource(R.string.use_custom_planet_summary),
-                    checked = customPlanet,
-                    onCheckedChange = {
-                        customPlanet = it
-                        prefs.edit { putBoolean(Constants.PREF_PLANET_USE_CUSTOM, it) }
-                    },
-                )
-                PreferenceArrow(
-                    title = stringResource(R.string.import_via_file),
-                    summary = if (planetLoaded()) stringResource(R.string.load_planet) else null,
-                    onClick = { pickPlanet.launch(arrayOf("application/octet-stream", "*/*")) },
-                )
-                PreferenceArrow(
-                    title = stringResource(R.string.import_via_url),
-                    summary = null,
-                    onClick = { showUrlDialog = true },
-                )
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(planets, key = { it.worldId }) { planet ->
+                    AppListRow(
+                        title = planet.alias,
+                        subtitle = String.format("%016x", planet.worldId) + " · " +
+                            stringResource(if (planet.builtIn) R.string.planet_builtin else R.string.planet_from_file),
+                        leading = Icons.Rounded.Public,
+                        leadingTint = if (planet.builtIn) appColors().primary else Color.Unspecified,
+                        onClick = { menuPlanet = planet },
+                        onLongClick = { menuPlanet = planet },
+                    )
+                }
             }
-            planetMessage?.let {
-                Text(it, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = appColors().error)
-            }
-            Spacer(Modifier.height(24.dp))
+            AppFab(
+                label = stringResource(R.string.add_planet),
+                icon = Icons.Rounded.Add,
+                onClick = { pickPlanet.launch(arrayOf("application/octet-stream", "*/*")) },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
+            )
         }
     }
 
-    if (showUrlDialog) {
-        var url by remember { mutableStateOf("") }
+    message?.let { text ->
         AppDialog(
-            title = stringResource(R.string.import_via_url),
+            title = stringResource(R.string.manage_planet),
+            confirmLabel = stringResource(android.R.string.ok),
+            onConfirm = { message = null },
+            onDismiss = { message = null },
+        ) {
+            Text(text, color = appColors().onSurface)
+        }
+    }
+
+    // 选完文件：填别名
+    val bytes = pendingBytes
+    val worldId = pendingWorldId
+    if (bytes != null && worldId != null) {
+        AppDialog(
+            title = stringResource(R.string.add_planet),
             confirmLabel = stringResource(android.R.string.ok),
             onConfirm = {
-                showUrlDialog = false
-                scope.launch {
-                    planetMessage = runCatching {
-                        require(url.startsWith("https://")) { "https only" }
-                        val bytes = withContext(Dispatchers.IO) {
-                            URL(url).openStream().use { it.readBytes() }
-                        }
-                        if (!importPlanet(bytes)) error("bad header")
-                        null
-                    }.getOrElse { cannotDownloadPlanet }
+                val alias = aliasDraft.trim()
+                if (alias.isNotEmpty()) {
+                    store.planetFile(worldId).parentFile?.mkdirs()
+                    store.planetFile(worldId).writeBytes(bytes)
+                    repository.insertPlanet(
+                        Planet(
+                            worldId = worldId,
+                            alias = alias,
+                            builtIn = false,
+                            addedAt = System.currentTimeMillis(),
+                        )
+                    )
+                    pendingBytes = null
+                    pendingWorldId = null
+                    refreshKey++
                 }
             },
-            onDismiss = { showUrlDialog = false },
+            onDismiss = {
+                pendingBytes = null
+                pendingWorldId = null
+            },
             dismissLabel = stringResource(android.R.string.cancel),
         ) {
             PreferenceTextField(
-                value = url,
-                onValueChange = { url = it.trim() },
-                label = stringResource(R.string.enter_planet_file_url),
+                value = aliasDraft,
+                onValueChange = { aliasDraft = it },
+                label = stringResource(R.string.alias_label),
+            )
+        }
+    }
+
+    menuPlanet?.let { planet ->
+        AppDialog(
+            title = planet.alias,
+            confirmLabel = stringResource(android.R.string.cancel),
+            onConfirm = { menuPlanet = null },
+            onDismiss = { menuPlanet = null },
+        ) {
+            Column {
+                if (!planet.builtIn) {
+                    AppDialogAction(stringResource(R.string.action_rename)) {
+                        aliasDraft = planet.alias
+                        renameTarget = planet
+                        menuPlanet = null
+                    }
+                    AppDialogAction(stringResource(R.string.action_delete), error = true) {
+                        deleteTarget = planet
+                        menuPlanet = null
+                    }
+                }
+            }
+        }
+    }
+
+    renameTarget?.let { planet ->
+        AppDialog(
+            title = stringResource(R.string.action_rename),
+            confirmLabel = stringResource(android.R.string.ok),
+            onConfirm = {
+                val alias = aliasDraft.trim()
+                if (alias.isNotEmpty()) {
+                    planet.alias = alias
+                    repository.updatePlanet(planet)
+                    refreshKey++
+                }
+                renameTarget = null
+            },
+            onDismiss = { renameTarget = null },
+            dismissLabel = stringResource(android.R.string.cancel),
+        ) {
+            PreferenceTextField(
+                value = aliasDraft,
+                onValueChange = { aliasDraft = it },
+                label = stringResource(R.string.alias_label),
+            )
+        }
+    }
+
+    deleteTarget?.let { planet ->
+        val inUse = remember(planet.worldId) { repository.networks().any { it.planetId == planet.worldId } }
+        AppDialog(
+            title = stringResource(R.string.action_delete),
+            confirmLabel = stringResource(android.R.string.ok),
+            onConfirm = {
+                if (inUse) {
+                    message = inUseMsg
+                } else {
+                    store.planetFile(planet.worldId).delete()
+                    repository.deletePlanet(planet)
+                    refreshKey++
+                }
+                deleteTarget = null
+            },
+            onDismiss = { deleteTarget = null },
+            dismissLabel = stringResource(android.R.string.cancel),
+        ) {
+            Text(
+                text = stringResource(if (inUse) R.string.planet_in_use else R.string.planet_delete_confirm),
+                color = appColors().onSurface,
             )
         }
     }

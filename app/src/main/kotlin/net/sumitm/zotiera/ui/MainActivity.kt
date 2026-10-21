@@ -61,6 +61,7 @@ import net.sumitm.zotiera.ui.component.ScreenSurface
 import net.sumitm.zotiera.ui.component.isWideLayout
 import net.sumitm.zotiera.ui.screens.DeviceScreen
 import net.sumitm.zotiera.ui.screens.AboutScreen
+import net.sumitm.zotiera.ui.screens.IdentityScreen
 import net.sumitm.zotiera.ui.screens.LicensesScreen
 import net.sumitm.zotiera.ui.screens.MoonsScreen
 import net.sumitm.zotiera.ui.screens.PlanetScreen
@@ -239,6 +240,7 @@ private fun ZotieraApp(
                             onColorModeChange = onColorModeChange,
                             amoled = amoled,
                             onAmoledChange = onAmoledChange,
+                            onOpenIdentities = { navController.navigate("identities") },
                             onOpenPlanet = { navController.navigate("planet") },
                             onOpenMoons = { navController.navigate("moons") },
                             onOpenAbout = { navController.navigate("about") },
@@ -275,6 +277,9 @@ private fun ZotieraApp(
                         ScreenSurface {
                             MoonsScreen(viewModel, onBack = { navController.popBackStack() })
                         }
+                    }
+                    composable("identities") {
+                        ScreenSurface { IdentityScreen(onBack = { navController.popBackStack() }) }
                     }
                     composable("planet") {
                         ScreenSurface { PlanetScreen(onBack = { navController.popBackStack() }) }

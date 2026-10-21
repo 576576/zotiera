@@ -1,6 +1,5 @@
 package net.sumitm.zotiera.model
 
-import android.content.Context
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Ignore
@@ -31,17 +30,17 @@ class MoonOrbit @JvmOverloads constructor(
     @Ignore
     var isCacheFile: Boolean = false
 
-    fun checkCacheFile(context: Context) {
-        isCacheFile = moonFile(context).exists()
+    /** moon 文件由引擎写在当前实例的数据目录里，路径由调用方给。 */
+    fun checkCacheFile(dir: File) {
+        isCacheFile = moonFile(dir).exists()
     }
 
-    fun deleteCacheFile(context: Context) {
-        moonFile(context).delete()
+    fun deleteCacheFile(dir: File) {
+        moonFile(dir).delete()
         isCacheFile = false
     }
 
-    private fun moonFile(context: Context): File =
-        File(context.filesDir, String.format(MOON_FILE_PATH, moonWorldId))
+    private fun moonFile(dir: File): File = File(dir, String.format(MOON_FILE_PATH, moonWorldId))
 
     companion object {
         const val MOON_FILE_PATH = "moons.d/%016x.moon"

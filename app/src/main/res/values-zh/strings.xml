@@ -201,7 +201,7 @@
     <string name="tunnel_needs_network">请先加入至少一个网络</string>
     <!-- 设置页尾部的入口与关于页 -->
     <string name="manage_planet">管理 Planet</string>
-    <string name="manage_planet_summary">自定义 planet 文件或 URL</string>
+    <string name="manage_planet_summary">内置与导入的根服务器</string>
     <string name="manage_moon">管理 Moon</string>
     <string name="about">关于</string>
     <string name="licenses">组件许可证</string>
@@ -210,4 +210,27 @@
     <string name="open_source_repo">开源仓库</string>
     <string name="disclaimer">免责声明</string>
     <string name="disclaimer_body">Zotiera 是第三方客户端，与 ZeroTier, Inc. 无隶属或背书关系；ZeroTier 是 ZeroTier, Inc. 的商标。\n\n本软件按 AGPL-3.0-or-later 提供，不对可用性与适用性作任何担保。接入他人网络时请遵守该网络的规则与当地法律。</string>
+    <string name="manage_identity">管理身份</string>
+    <string name="manage_identity_summary">这个实例的节点 ID 与密钥</string>
+    <string name="add_planet">添加 Planet</string>
+    <string name="add_identity">添加身份</string>
+    <string name="alias_label">别名</string>
+    <string name="action_rename">重命名</string>
+    <string name="action_delete">删除</string>
+    <string name="planet_builtin">内置</string>
+    <string name="planet_from_file">文件</string>
+    <string name="planet_exists">已添加：%1$s</string>
+    <string name="planet_in_use">还有网络在用这个 Planet，先删掉那些网络</string>
+    <string name="planet_delete_confirm">删除后导入的 planet 文件一并移除</string>
+    <string name="identity_not_generated">未启用</string>
+    <string name="identity_generate">生成新身份</string>
+    <string name="identity_import">从文件导入</string>
+    <string name="identity_default_alias">身份 %1$d</string>
+    <string name="identity_import_failed">文件不是有效的身份导出</string>
+    <string name="identity_exists">这个身份已经添加过了</string>
+    <string name="identity_in_use">还有网络在用这个身份，先删掉那些网络</string>
+    <string name="identity_delete_confirm">删除会把这个身份的密钥从本机移除</string>
+    <string name="identity_default_name">默认身份</string>
 </resources>
+
+

@@ -21,6 +21,11 @@ class Network @JvmOverloads constructor(
     var lastActivated: Boolean = false,
     @ColumnInfo(name = "network_config_id")
     var networkConfigId: Long = 0L,
+    /** 所属实例：planet 与身份的组合决定用哪份数据目录。 */
+    @ColumnInfo(name = "planet_id", defaultValue = "149604618")
+    var planetId: Long = Planet.OFFICIAL_WORLD_ID,
+    @ColumnInfo(name = "identity_uid", defaultValue = "1")
+    var identityUid: Long = Identity.DEFAULT_UID,
 ) {
     /** 由 repository 装载，不参与持久化。 */
     @Ignore

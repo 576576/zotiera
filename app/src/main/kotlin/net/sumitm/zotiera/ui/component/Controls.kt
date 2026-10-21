@@ -413,3 +413,17 @@ fun AppTunnelSwitch(
         )
     }
 }
+
+/** 对话框里的一行可点操作，三个管理页共用。 */
+@Composable
+fun AppDialogAction(label: String, error: Boolean = false, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = LocalZotieraType.current.rowTitle,
+        color = if (error) appColors().error else appColors().onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+    )
+}

@@ -6,12 +6,13 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import net.sumitm.zotiera.model.AppNode
 import net.sumitm.zotiera.model.AssignedAddress
 import net.sumitm.zotiera.model.DnsServer
+import net.sumitm.zotiera.model.Identity
 import net.sumitm.zotiera.model.MoonOrbit
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.model.NetworkConfig
+import net.sumitm.zotiera.model.Planet
 
 @Dao
 interface NetworkDao {
@@ -81,16 +82,41 @@ interface AssignedAddressDao {
 }
 
 @Dao
-interface AppNodeDao {
+interface PlanetDao {
 
-    @Query("SELECT * FROM app_node")
-    fun all(): List<AppNode>
+    @Query("SELECT * FROM planets ORDER BY built_in DESC, added_at, world_id")
+    fun all(): List<Planet>
+
+    @Query("SELECT * FROM planets WHERE world_id = :worldId")
+    fun byId(worldId: Long): Planet?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(node: AppNode)
+    fun insert(planet: Planet)
 
     @Update
-    fun update(node: AppNode)
+    fun update(planet: Planet)
+
+    @Delete
+    fun delete(planet: Planet)
+}
+
+@Dao
+interface IdentityDao {
+
+    @Query("SELECT * FROM identities ORDER BY uid")
+    fun all(): List<Identity>
+
+    @Query("SELECT * FROM identities WHERE uid = :uid")
+    fun byUid(uid: Long): Identity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(identity: Identity): Long
+
+    @Update
+    fun update(identity: Identity)
+
+    @Delete
+    fun delete(identity: Identity)
 }
 
 @Dao

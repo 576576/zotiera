@@ -33,11 +33,13 @@ import androidx.compose.ui.unit.dp
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.events.OrbitMoonEvent
+import net.sumitm.zotiera.identity.InstanceStore
 import net.sumitm.zotiera.events.RemoveMoonOrbitEvent
 import net.sumitm.zotiera.model.MoonOrbit
 import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppFab
+import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppListRow
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
@@ -58,7 +60,11 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
     var pendingExport by remember { mutableStateOf<MoonOrbit?>(null) }
     var menuMoon by remember { mutableStateOf<MoonOrbit?>(null) }
     var deleteMoon by remember { mutableStateOf<MoonOrbit?>(null) }
-    val moons = remember(refreshKey) { repository.moonOrbits().onEach { it.checkCacheFile(context) } }
+    val instanceDir = remember {
+        val store = InstanceStore(context)
+        store.instanceDir(store.activePlanetId, store.activeIdentityUid)
+    }
+    val moons = remember(refreshKey) { repository.moonOrbits().onEach { it.checkCacheFile(instanceDir) } }
 
     fun addMoon(worldId: Long, seed: Long, fromFile: Boolean) {
         if (repository.hasMoonOrbit(worldId)) return
@@ -82,7 +88,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
         }
         var worldId = 0L
         for (i in 1..8) worldId = (worldId shl 8) + (bytes[i].toLong() and 0xff)
-        val dest = File(context.filesDir, String.format(MoonOrbit.MOON_FILE_PATH, worldId))
+        val dest = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, worldId))
         dest.parentFile?.mkdirs()
         dest.writeBytes(bytes)
         addMoon(worldId, worldId ushr 24, fromFile = true)
@@ -94,7 +100,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
         val moon = pendingExport
         pendingExport = null
         if (uri == null || moon == null) return@rememberLauncherForActivityResult
-        val source = File(context.filesDir, String.format(MoonOrbit.MOON_FILE_PATH, moon.moonWorldId))
+        val source = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, moon.moonWorldId))
         runCatching {
             context.contentResolver.openOutputStream(uri)?.use { out ->
                 source.inputStream().use { input -> input.copyTo(out) }
@@ -150,27 +156,27 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
             onDismiss = { menuMoon = null },
         ) {
             Column {
-                DialogAction(stringResource(R.string.copy_moon_world_id_to_clipboard)) {
+                AppDialogAction(stringResource(R.string.copy_moon_world_id_to_clipboard)) {
                     clipboard.setText(
                         androidx.compose.ui.text.AnnotatedString(java.lang.Long.toHexString(moon.moonWorldId))
                     )
                     menuMoon = null
                 }
                 if (moon.isCacheFile) {
-                    DialogAction(stringResource(R.string.export_moon_file)) {
+                    AppDialogAction(stringResource(R.string.export_moon_file)) {
                         pendingExport = moon
                         exportLauncher.launch(String.format("%016x.moon", moon.moonWorldId))
                         menuMoon = null
                     }
                 }
                 if (moon.isCacheFile && !moon.fromFile) {
-                    DialogAction(stringResource(R.string.delete_cache)) {
-                        moon.deleteCacheFile(context)
+                    AppDialogAction(stringResource(R.string.delete_cache)) {
+                        moon.deleteCacheFile(instanceDir)
                         refreshKey++
                         menuMoon = null
                     }
                 }
-                DialogAction(stringResource(R.string.delete_moon_orbit), error = true) {
+                AppDialogAction(stringResource(R.string.delete_moon_orbit), error = true) {
                     deleteMoon = moon
                     menuMoon = null
                 }
@@ -183,7 +189,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
             title = stringResource(R.string.delete_moon_orbit),
             confirmLabel = stringResource(android.R.string.ok),
             onConfirm = {
-                moon.deleteCacheFile(context)
+                moon.deleteCacheFile(instanceDir)
                 repository.deleteMoonOrbit(moon)
                 bus.post(RemoveMoonOrbitEvent(moon.moonWorldId, moon.moonSeed))
                 deleteMoon = null
@@ -234,7 +240,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
                     onValueChange = { seedText = it.trim() },
                     label = stringResource(R.string.moon_seed),
                 )
-                DialogAction(stringResource(R.string.import_via_file)) {
+                AppDialogAction(stringResource(R.string.import_via_file)) {
                     showAdd = false
                     importLauncher.launch(arrayOf("*/*"))
                 }
@@ -243,15 +249,3 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
     }
 }
 
-@Composable
-private fun DialogAction(label: String, error: Boolean = false, onClick: () -> Unit) {
-    Text(
-        text = label,
-        style = LocalZotieraType.current.rowTitle,
-        color = if (error) appColors().error else appColors().onSurface,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-    )
-}

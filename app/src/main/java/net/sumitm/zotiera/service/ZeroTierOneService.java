@@ -52,7 +52,7 @@ import net.sumitm.zotiera.events.VPNErrorEvent;
 import net.sumitm.zotiera.events.VirtualNetworkConfigChangedEvent;
 import net.sumitm.zotiera.events.VirtualNetworkConfigReplyEvent;
 import net.sumitm.zotiera.events.VirtualNetworkConfigRequestEvent;
-import net.sumitm.zotiera.model.AppNode;
+import net.sumitm.zotiera.identity.InstanceStore;
 import net.sumitm.zotiera.model.MoonOrbit;
 import net.sumitm.zotiera.model.Network;
 import net.sumitm.zotiera.model.type.DNSMode;
@@ -93,7 +93,12 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
     /** 服务实例是否在跑。通知栏磁贴读它取开关状态。 */
     public static volatile boolean isRunning = false;
     private final IBinder mBinder = new ZeroTierBinder();
-    private final DataStore dataStore = new DataStore(this);
+    /** 按实例创建，切换实例时重建。 */
+    private DataStore dataStore;
+    private InstanceStore instanceStore;
+    /** 当前实例的 planet 与身份，节点初始化时定下来，写节点 ID 时要用。 */
+    private long instancePlanetId;
+    private long instanceIdentityUid;
     private final EventBus eventBus = EventBus.getDefault();
     private final Map<Long, VirtualNetworkConfig> virtualNetworkConfigMap = new HashMap();
     FileInputStream in;
@@ -365,7 +370,16 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                     this.udpCom = new UdpCom(this, this.svrSocket);
                     this.tunTapAdapter = new TunTapAdapter(this);
 
-                    // 创建节点对象并初始化
+                    // 创建节点对象并初始化：数据源按实例目录来
+                    if (this.instanceStore == null) {
+                        this.instanceStore = new InstanceStore(this);
+                    }
+                    this.instancePlanetId = this.instanceStore.getActivePlanetId();
+                    this.instanceIdentityUid = this.instanceStore.getActiveIdentityUid();
+                    this.instanceStore.ensure(this.instancePlanetId, this.instanceIdentityUid);
+                    this.dataStore = new DataStore(
+                            this.instanceStore.instanceDir(this.instancePlanetId, this.instanceIdentityUid),
+                            this.instanceStore.planetOverride(this.instancePlanetId));
                     var dataStore = this.dataStore;
                     this.node = new Node(System.currentTimeMillis());
                     var result = this.node.init(dataStore, dataStore, this.udpCom, this, this.tunTapAdapter, this, null);
@@ -384,18 +398,8 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                     DatabaseUtils.writeLock.lock();
                     try {
                         var repository = ((ZotieraApplication) getApplication()).getRepository();
-                        var nodesList = repository.appNodes();
-                        if (nodesList.isEmpty()) {
-                            var appNode = new AppNode();
-                            appNode.setNodeId(address);
-                            appNode.setNodeIdStr(String.format("%10x", address));
-                            repository.insertAppNode(appNode);
-                        } else {
-                            var appNode = nodesList.get(0);
-                            appNode.setNodeId(address);
-                            appNode.setNodeIdStr(String.format("%10x", address));
-                            repository.updateAppNode(appNode);
-                        }
+                        repository.setNodeId(this.instanceIdentityUid, address);
+                        this.instanceStore.syncUp(this.instancePlanetId, this.instanceIdentityUid);
                     } finally {
                         DatabaseUtils.writeLock.unlock();
                     }

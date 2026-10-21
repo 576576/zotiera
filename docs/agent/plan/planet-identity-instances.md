@@ -5,6 +5,11 @@
 把「一个节点」拆成「一个实例 = Planet × 身份」：Planet 与身份各自成页、都能有多条，
 同一时刻只允许一个实例在线；网络挂在实例上，添加网络时选实例，简易模式下自动用默认实例。
 
+## 进度
+
+S1–S4 已落地：Room v2 + `InstanceStore` + 服务按实例建数据源 + 管理 Planet / 管理身份两页。
+S5（简易模式）、S6（概览页跨实例禁用）、S7（添加网络选实例）还没做。
+
 ## 1. 为什么必须是「实例」而不是两个独立列表
 
 引擎的三个事实决定了这一点：
@@ -26,13 +31,13 @@
 | --- | --- | --- | --- |
 | Planet | 表 `planets` + 文件 `files/planets/<worldId>.planet` | worldId（8 字节，取自文件头） | 官方 planet 是内置行，worldId 固定，**别名固定 `zerotier.com`**，无文件 |
 | Identity | 表 `identities` | nodeId（10 位 hex） | 别名可改；密钥在实例目录里 |
-| 实例 | 不单独建表，由 `(planetId, identityId)` 组合 | 二元组 | 目录 `files/instances/<planetId>-<identityId>/` |
+| 实例 | 不单独建表，由 `(planetId, identity.uid)` 组合 | 二元组 | 目录 `files/instances/<planetId>-<uid>/`（uid 是身份行号，节点 ID 首次启用前不知道） |
 | 网络 | `networks` 加 `planet_id`、`identity_id` 两列 | networkId | 两列决定它属于哪个实例 |
 
 实例目录内容：
 
 ```
-files/instances/<planetId>-<nodeId>/
+files/instances/<planetId>-<uid>/
 ├── identity.secret      // 从 identities 里拷一份（引擎只认这个文件名）
 ├── identity.public
 ├── planet               // 非官方 planet 时写入；官方时不写，走内置

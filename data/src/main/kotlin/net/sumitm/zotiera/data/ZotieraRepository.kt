@@ -1,12 +1,13 @@
 package net.sumitm.zotiera.data
 
 import androidx.room.withTransaction
-import net.sumitm.zotiera.model.AppNode
 import net.sumitm.zotiera.model.AssignedAddress
 import net.sumitm.zotiera.model.DnsServer
+import net.sumitm.zotiera.model.Identity
 import net.sumitm.zotiera.model.MoonOrbit
 import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.model.NetworkConfig
+import net.sumitm.zotiera.model.Planet
 
 /**
  * 唯一的持久化入口。对外只暴露这个类，Room 的 DAO 不出 :data 模块。
@@ -71,15 +72,36 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
 
     fun deleteAssignedAddress(address: AssignedAddress) = db.assignedAddressDao().delete(address)
 
-    // ---- app node ----
+    // ---- planets / identities ----
 
-    fun appNodes(): List<AppNode> = db.appNodeDao().all()
+    fun planets(): List<Planet> = db.planetDao().all()
 
-    fun appNode(): AppNode? = db.appNodeDao().all().firstOrNull()
+    fun planet(worldId: Long): Planet? = db.planetDao().byId(worldId)
 
-    fun insertAppNode(node: AppNode) = db.appNodeDao().insert(node)
+    fun insertPlanet(planet: Planet) = db.planetDao().insert(planet)
 
-    fun updateAppNode(node: AppNode) = db.appNodeDao().update(node)
+    fun updatePlanet(planet: Planet) = db.planetDao().update(planet)
+
+    fun deletePlanet(planet: Planet) = db.planetDao().delete(planet)
+
+    fun identities(): List<Identity> = db.identityDao().all()
+
+    fun identity(uid: Long): Identity? = db.identityDao().byUid(uid)
+
+    /** 插入身份并返回自增 uid。 */
+    fun insertIdentity(identity: Identity): Long = db.identityDao().insert(identity)
+
+    fun updateIdentity(identity: Identity) = db.identityDao().update(identity)
+
+    fun deleteIdentity(identity: Identity) = db.identityDao().delete(identity)
+
+    /** 引擎生成密钥后回写节点 ID。 */
+    fun setNodeId(uid: Long, nodeId: Long) {
+        val identity = db.identityDao().byUid(uid) ?: return
+        if (identity.nodeId == nodeId) return
+        identity.nodeId = nodeId
+        db.identityDao().update(identity)
+    }
 
     // ---- moons ----
 
