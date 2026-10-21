@@ -325,9 +325,8 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
         udpJob?.cancel()
         udpJob = null
         tunTapAdapter?.let { adapter ->
-            if (adapter.isRunning) {
+            if (adapter.isRunning()) {
                 adapter.interrupt()
-                runCatching { adapter.join() }
             }
         }
         tunTapAdapter = null
@@ -560,9 +559,8 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
     /** 拆掉当前隧道：TUN 线程、VPN socket 与路由表。 */
     private fun teardownTunnel() {
         tunTapAdapter?.let { adapter ->
-            if (adapter.isRunning) {
+            if (adapter.isRunning()) {
                 adapter.interrupt()
-                runCatching { adapter.join() }
             }
             adapter.clearRouteMap()
         }
