@@ -10,11 +10,10 @@
 docs/agent/
 ├── README.md          本文件：约定、硬约束、索引
 ├── architecture.md    现状：模块、数据、实例、网络行为、界面（事实）
+├── fork-comparison.md 与上游 ZerotierFix 的差异（能力、兼容性、包体）
 └── plan/              未完成的计划
     ├── init-refactor.md
-    ├── coexist-mode.md
-    ├── identity-export.md
-    └── zotiera-manager.md
+    └── coexist-mode.md
 ```
 
 事实写进 `architecture.md`，计划写进 `plan/`；不设 `notes/`。仓库根与代码目录下不放 agent 文档。
@@ -79,7 +78,6 @@ Android SDK 必需（compileSdk 37）；NDK 固定 `28.2.13676358`，CMake 由 A
 | 文档 | 状态 | 内容 |
 | --- | --- | --- |
 | [architecture.md](architecture.md) | 事实 | 模块、工具链、引擎与 JNI、数据层、实例、隧道、界面、能力清单、不变项 |
-| [plan/init-refactor.md](plan/init-refactor.md) | 执行中 | 核心 1.12.2→1.16.2；Java→Kotlin + Compose；剩余里程碑 |
+| [fork-comparison.md](fork-comparison.md) | 事实 | 与上游 ZerotierFix 的逐项差异 |
+| [plan/init-refactor.md](plan/init-refactor.md) | 执行中 | 剩余 Java 层迁移、事件/并发收敛、依赖与包体清理 |
 | [plan/coexist-mode.md](plan/coexist-mode.md) | 草案 | 与其它 VPN 共存：API 102 模块 + root 模式 tun 的可行性 |
-| [plan/identity-export.md](plan/identity-export.md) | 执行中 | 身份导入已落地，导出待做 |
-| [plan/zotiera-manager.md](plan/zotiera-manager.md) | 挂起 | 独立 App：Legacy Central 成员管理 |

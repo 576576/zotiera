@@ -14,6 +14,7 @@
 - 自定义 planet（文件或 HTTPS URL）、moon 轨道管理与 `.moon` 导出
 - 网络详情（状态、MAC、MTU、DNS、分配地址）与对等节点列表（角色、版本、延迟、首选路径）
 - DNS 三种模式：不使用 / 网络下发 / 自定义
+- 身份导入 / 导出（zip，含两个密钥文件）
 - 中英文界面，API 33+ 可在系统设置里单独设置本应用语言
 
 ## 截图
@@ -50,6 +51,7 @@ git submodule update --init --recursive
 ## 文档
 
 - [现状与架构](docs/agent/architecture.md)
+- [与上游 ZerotierFix 的差异](docs/agent/fork-comparison.md)
 - [未完成计划](docs/agent/plan/)
 - [界面截图](assets/images/screenshots/readme.md)
 

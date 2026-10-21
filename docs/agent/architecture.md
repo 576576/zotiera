@@ -106,7 +106,7 @@ files/
 
 - 出站包按目的地址反查网络；每个网络有自己的 MAC 与 ARP/NDP 表。
 - 网络行开关 = 加入/离开该网络；设备卡单击 = 开关隧道，长按 = 进设备页。
-- DNS 三模式：不使用 / 网络下发 / 自定义。
+- DNS 三模式（加入网络时选择）：不使用 / 网络下发 / 自定义；自定义服务器没有编辑界面，选它等于不加 DNS。
 - moon 保留但标为弃用：界面提示 + 支持导出 `.moon`；moon 是独立根，不与行星关联。
 
 ## 7. 界面
@@ -129,7 +129,7 @@ files/
 | 状态 | 条件 | 外观 | 底行 |
 | --- | --- | --- | --- |
 | 工作中 | 隧道运行且节点在线 | 绿底 + 空心大对勾 | `A1 · N 个网络` |
-| 连接中 | 隧道运行、节点未上线 | 绿底 + 空心大对勾 | 同上 |
+| 连接中 | 隧道运行、节点未上线 | 黄底 + 空心大对勾 | 同上 |
 | 未连接 | 有网络、隧道关闭 | 黄底 + 空心停止图标 | 同上 |
 | 没有网络 | 未加入任何网络 | 红底 + 空心大叉 | 空 |
 
@@ -151,7 +151,7 @@ files/
 
 - 正本在 `files/identities/<uid>/`，实例目录里是副本；导入按 zip（两个文件）或单个 `identity.secret` 写入，
   校验节点 ID 且不覆盖已有身份。
-- 导出未实现（见 [`plan/identity-export.md`](plan/identity-export.md)）。
+- 导出为 zip：`identity.secret` + `identity.public` + `README.txt`；桌面端复用未在本轮验证。
 - Android 11+ 不能跨应用读私有目录，换包名后旧版身份无法自动继承。
 
 ## 9. 能力清单
@@ -162,11 +162,11 @@ files/
 | 多行星 / 多身份 / 实例切换 | 有 |
 | 自定义行星（文件、HTTPS URL） | 有 |
 | moon 轨道管理 | 有，标注弃用并提供导出 |
-| DNS 三模式 | 有 |
-| 全隧道 / 分应用放行 | 有 |
+| DNS 三模式 | 有；自定义服务器无编辑界面 |
+| 全隧道 / 分应用放行 | 全隧道开关有；分应用放行硬编码 `com.android.vending`，无界面 |
 | 开机自启、快捷设置磁贴、前台通知 | 有 |
-| 身份导入 | 有；导出待做 |
-| Legacy Central 成员管理 | 不在本仓库，见 [`plan/zotiera-manager.md`](plan/zotiera-manager.md) |
+| 身份导入 / 导出 | 都有（zip：两个密钥 + README） |
+| Legacy Central 成员管理 | 不在本仓库：独立 App（`ZotieraManager` 仓库） |
 | 与其它 VPN 同时运行 | 不支持：Android 每个用户只有一个活动 VPN |
 
 ## 10. 重构前后对照
@@ -208,7 +208,5 @@ files/
 
 | 文档 | 状态 |
 | --- | --- |
-| [`plan/init-refactor.md`](plan/init-refactor.md) | 执行中（M0/M1/M2/M6 完成，M3/M4 部分完成） |
+| [`plan/init-refactor.md`](plan/init-refactor.md) | 执行中（剩余 Java 层迁移、事件/并发收敛、依赖清理） |
 | [`plan/coexist-mode.md`](plan/coexist-mode.md) | 草案（root 模式 tun + 策略路由，待 P0 验证） |
-| [`plan/identity-export.md`](plan/identity-export.md) | 执行中（导入已落地，导出待做） |
-| [`plan/zotiera-manager.md`](plan/zotiera-manager.md) | 挂起（独立 App） |

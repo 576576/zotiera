@@ -17,6 +17,7 @@ Material / Miuix look and several networks online at the same time.
 - Network details (status, MAC, MTU, DNS, assigned addresses) and a peer list (role, version,
   latency, preferred path)
 - Three DNS modes: none / network DNS / custom
+- Identity import / export (zip with both key files)
 - Chinese and English UI; on Android 13+ the app language can also be set in system settings
 
 ## Screenshots
@@ -55,6 +56,7 @@ Versions follow the ZeroTier engine: `versionName = <engine>-<revision>` (e.g. `
 ## Docs
 
 - [Architecture and current state](../agent/architecture.md) (Chinese)
+- [Differences from upstream ZerotierFix](../agent/fork-comparison.md) (Chinese)
 - [Open plans](../agent/plan/) (Chinese)
 - [Screenshots](../../assets/images/screenshots/readme.md)
 
