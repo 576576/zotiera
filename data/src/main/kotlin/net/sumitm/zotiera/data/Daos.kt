@@ -173,6 +173,9 @@ interface MoonOrbitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(moon: MoonOrbit)
 
+    @Update
+    fun update(moon: MoonOrbit)
+
     @Delete
     fun delete(moon: MoonOrbit)
 }

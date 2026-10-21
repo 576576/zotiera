@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,6 +44,7 @@ import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppListRow
+import net.sumitm.zotiera.ui.component.AppSwitch
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
@@ -138,6 +141,23 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
                             },
                             leading = Icons.Rounded.DarkMode,
                             leadingTint = if (moon.isCacheFile) appColors().primary else Color.Unspecified,
+                            trailing = {
+                                AppSwitch(
+                                    checked = moon.enabled,
+                                    onCheckedChange = { on ->
+                                        moon.enabled = on
+                                        repository.updateMoonOrbit(moon)
+                                        if (on) {
+                                            bus.post(OrbitMoonEvent(listOf(moon)))
+                                        } else {
+                                            // 停用等于从引擎摘掉：删缓存文件再撤掉入轨
+                                            moon.deleteCacheFile(instanceDir)
+                                            bus.post(RemoveMoonOrbitEvent(moon.moonWorldId, moon.moonSeed))
+                                        }
+                                        refreshKey++
+                                    },
+                                )
+                            },
                             onClick = { menuMoon = moon },
                             onLongClick = { menuMoon = moon },
                         )
@@ -203,11 +223,18 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
             onDismiss = { deleteMoon = null },
             dismissLabel = stringResource(android.R.string.cancel),
         ) {
-            Text(
-                text = java.lang.Long.toHexString(moon.moonWorldId),
-                style = LocalZotieraType.current.mono,
-                color = appColors().onSurface,
-            )
+            Column {
+                Text(
+                    text = stringResource(R.string.delete_irreversible_warning),
+                    color = appColors().onSurface,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = java.lang.Long.toHexString(moon.moonWorldId),
+                    style = LocalZotieraType.current.mono,
+                    color = appColors().onSurfaceVariant,
+                )
+            }
         }
     }
 

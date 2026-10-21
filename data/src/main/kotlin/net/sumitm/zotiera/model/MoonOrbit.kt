@@ -28,6 +28,9 @@ class MoonOrbit @JvmOverloads constructor(
     /** 序号，从 1 起按加入顺序分配。 */
     @ColumnInfo(name = "ordinal")
     var ordinal: Int = 0,
+    /** 停用后从引擎摘掉并删掉缓存文件。 */
+    @ColumnInfo(name = "enabled")
+    var enabled: Boolean = true,
 ) {
     /** moon 文件是否已缓存，运行期状态，不持久化。 */
     @Ignore

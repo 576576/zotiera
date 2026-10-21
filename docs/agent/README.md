@@ -31,7 +31,8 @@ docs/agent/
 9. **升级核心必须逐项回归**：16KB 页对齐、MTU 下限、双栈、多播、自定义 planet、moon、peers 列表，缺一项都不算完成。
 10. **一次只改一个变量**：一项改动只解决一个里程碑任务；顺手重构会掩盖回归来源。
 11. **提交前跑通构建**：涉及 `:core` 或子模块时两个 ABI 都要过。网络行为只能真机验证，编译通过不等于功能可用。
-12. **本地出包不用等吩咐**：代码一改完就跑 `scripts/build-local.sh`，三种产物（arm64-v8a / x86_64 / all）拷进 `../zt-playground`，在交付说明里给出实际路径。
+12. **页面层不许自绘控件**：`ui/screens/**` 里出现 `DropdownMenu(`、`AlertDialog(`、`Switch(`、`Modifier.border(` 这类底层控件，`UiConventionsTest` 直接失败；风格分支只允许待在 `ui/component/**`。
+13. **本地出包不用等吩咐**：代码一改完就跑 `scripts/build-local.sh`，三种产物（arm64-v8a / x86_64 / all）拷进 `../zt-playground`，在交付说明里给出实际路径。
 
 ## 构建
 

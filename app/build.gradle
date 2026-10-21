@@ -143,3 +143,11 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.48'
     annotationProcessor 'org.projectlombok:lombok:1.18.48'
 }
+
+
+// 单测里有一条会扫页面源码（UiConventionsTest），页面一改就得重跑，否则会读缓存结果
+tasks.withType(Test).configureEach {
+    inputs.dir("src/main/kotlin/net/sumitm/zotiera/ui/screens")
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+        .withPropertyName("screenSources")
+}

@@ -64,7 +64,7 @@ import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.instanceChipTint
 import net.sumitm.zotiera.ui.component.isWideLayout
 import net.sumitm.zotiera.ui.component.planetLetter
-import net.sumitm.zotiera.ui.component.preference.PreferenceSelectCompact
+import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 import net.sumitm.zotiera.ui.toast
@@ -135,6 +135,12 @@ fun OverviewScreen(
     val activeIdentityUid: Long? = joinedNetworks.firstOrNull()?.identityUid
     val planets = remember(state.networks) { repository.planets() }
     val identities = remember(state.networks) { repository.identities() }
+    val defaultPlanetId = planets.firstOrNull { it.isDefault }?.worldId ?: Planet.OFFICIAL_WORLD_ID
+    val visibleNetworks = if (simpleMode) {
+        state.networks.filter { it.planetId == defaultPlanetId }
+    } else {
+        state.networks
+    }
     val activePlanet = planets.firstOrNull { it.worldId == activePlanetId }
     val activeAlias = when {
         activePlanet == null -> ""
@@ -171,16 +177,15 @@ fun OverviewScreen(
                         contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(state.networks, key = { it.networkId }) { network ->
+                        // 简易模式只服务默认实例，别的行星上的网络在这里没有意义
+                        items(visibleNetworks, key = { it.networkId }) { network ->
                             // 已经连着某个实例时，别的实例的网络不能同时开
                             val enabled = activePlanetId == null ||
                                 (network.planetId == activePlanetId && network.identityUid == activeIdentityUid)
-                            // 胶囊只在非「默认行星 + 默认身份」时出现，简单模式下不显示
+                            // 简易模式不显示胶囊（那里只有默认实例），其余情况常显
                             val planet = planets.firstOrNull { it.worldId == network.planetId }
                             val identity = identities.firstOrNull { it.uid == network.identityUid }
-                            val chip = if (!simpleMode && planet != null && identity != null &&
-                                !(planet.isDefault && identity.isDefault)
-                            ) {
+                            val chip = if (!simpleMode && planet != null && identity != null) {
                                 "${planetLetter(planet.ordinal)}${identity.ordinal}" to
                                     instanceChipTint(planet.ordinal, identity.ordinal)
                             } else {
@@ -236,8 +241,8 @@ fun OverviewScreen(
     if (showJoin) {
         JoinNetworkDialog(
             simpleMode = simpleMode,
-            planets = planets,
-            identities = identities,
+            planets = planets.filter { it.enabled },
+            identities = identities.filter { it.enabled },
             defaultPlanetId = activePlanetId ?: store.activePlanetId,
             defaultIdentityUid = activeIdentityUid ?: store.activeIdentityUid,
             // 已经有网络在连时，新网络只能挂同一个实例
@@ -261,7 +266,7 @@ fun OverviewScreen(
             onDismiss = { identityTarget = null },
         ) {
             Column {
-                identities.forEach { identity ->
+                identities.filter { it.enabled }.forEach { identity ->
                     val known = identity.uid in used
                     val name = identity.alias.ifEmpty {
                         stringResource(R.string.identity_default_alias, identity.ordinal)
@@ -463,8 +468,9 @@ private fun JoinNetworkDialog(
             )
             // 非简易模式：这条网络挂到哪个 Planet x 身份；已有网络在连时锁死同一个实例
             if (!simpleMode && !locked && planets.isNotEmpty() && identities.isNotEmpty()) {
-                PreferenceSelectCompact(
+                PreferenceSelect(
                     title = stringResource(R.string.planet_label),
+                    summary = null,
                     items = planets.map {
                         when {
                             it.builtIn -> stringResource(R.string.official_planet)
@@ -475,8 +481,9 @@ private fun JoinNetworkDialog(
                     selectedIndex = planetIndex,
                     onSelected = { planetIndex = it },
                 )
-                PreferenceSelectCompact(
+                PreferenceSelect(
                     title = stringResource(R.string.identity_label),
+                    summary = null,
                     items = identities.map {
                         it.alias.ifEmpty { stringResource(R.string.identity_default_alias, it.ordinal) }
                     },
@@ -484,8 +491,9 @@ private fun JoinNetworkDialog(
                     onSelected = { identityIndex = it },
                 )
             }
-            PreferenceSelectCompact(
+            PreferenceSelect(
                 title = stringResource(R.string.network_dns_mode),
+                summary = null,
                 items = listOf(
                     stringResource(R.string.network_dns_mode_no_dns),
                     stringResource(R.string.network_dns_mode_network_dns),

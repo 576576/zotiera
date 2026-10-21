@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -62,13 +64,14 @@ fun AppButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier,
  * 对话框。Miuix 用 OverlayDialog，Material 用 AlertDialog——各自用自己那套，
  * 不混用，否则 Miuix 下会没有 MaterialTheme 而退化成黑块。
  *
+ * [confirmLabel] 为 null 时不画底部按钮，动作由内容区（例如 [AppDialogButtonGroup]）提供。
  * [destructive] 把确认按钮的字染成错误色，用于删除这类不可撤销的操作。
  */
 @Composable
 fun AppDialog(
     title: String,
-    confirmLabel: String,
-    onConfirm: () -> Unit,
+    confirmLabel: String? = null,
+    onConfirm: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     dismissLabel: String? = null,
     destructive: Boolean = false,
@@ -79,20 +82,24 @@ fun AppDialog(
         UiMode.Miuix -> OverlayDialog(show = true, title = title, onDismissRequest = onDismiss) {
             Column {
                 content()
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (dismissLabel != null) {
-                        MiuixButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                            MiuixText(dismissLabel)
+                if ((confirmLabel != null && onConfirm != null) || dismissLabel != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (dismissLabel != null) {
+                            MiuixButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                                MiuixText(dismissLabel)
+                            }
                         }
-                    }
-                    MiuixButton(onClick = onConfirm, modifier = Modifier.weight(1f)) {
-                        if (destructive) {
-                            MiuixText(confirmLabel, color = colors.error)
-                        } else {
-                            MiuixText(confirmLabel)
+                        if (confirmLabel != null && onConfirm != null) {
+                            MiuixButton(onClick = onConfirm, modifier = Modifier.weight(1f)) {
+                                if (destructive) {
+                                    MiuixText(confirmLabel, color = colors.error)
+                                } else {
+                                    MiuixText(confirmLabel)
+                                }
+                            }
                         }
                     }
                 }
@@ -104,14 +111,16 @@ fun AppDialog(
             title = { Text(title) },
             text = { Column { content() } },
             confirmButton = {
-                TextButton(
-                    onClick = onConfirm,
-                    colors = if (destructive) {
-                        androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = colors.error)
-                    } else {
-                        androidx.compose.material3.ButtonDefaults.textButtonColors()
-                    },
-                ) { Text(confirmLabel) }
+                if (confirmLabel != null && onConfirm != null) {
+                    TextButton(
+                        onClick = onConfirm,
+                        colors = if (destructive) {
+                            androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = colors.error)
+                        } else {
+                            androidx.compose.material3.ButtonDefaults.textButtonColors()
+                        },
+                    ) { Text(confirmLabel) }
+                }
             },
             dismissButton = dismissLabel?.let { { TextButton(onClick = onDismiss) { Text(it) } } },
         )
@@ -417,6 +426,12 @@ fun AppTunnelSwitch(
 }
 
 /** 对话框里的一行可点操作，三个管理页共用。 */
+/**
+ * 对话框里的动作行。用各风格自己的行组件，不自己拼：
+ * Miuix 是 `BasicComponent`（它的 preference 行都基于它），Material 是 `ListItem`。
+ *
+ * [muted] 表示「看得见但点不动」，用于已经是默认项这种动作。
+ */
 @Composable
 fun AppDialogAction(
     label: String,

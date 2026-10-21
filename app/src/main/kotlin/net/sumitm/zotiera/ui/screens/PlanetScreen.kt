@@ -7,8 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -20,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +32,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.identity.InstanceStore
@@ -35,26 +43,32 @@ import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppListRow
+import net.sumitm.zotiera.ui.component.AppSwitch
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 
 /**
- * 管理 Planet：官方 planet 固定在最上面，自定义的从文件导入并起别名。
+ * 管理行星：官方行星固定在最上面，自定义的从文件或 URL 导入并起别名。
  *
- * 结构照 Moon 页：列表 + 右下角添加按钮；添加时先选文件，再填别名。
+ * 结构照卫星页：列表 + 右下角添加按钮；每行尾部有启用开关，默认行星不能停用。
  */
 @Composable
 fun PlanetScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val repository = remember { (context.applicationContext as ZotieraApplication).getRepository() }
     val store = remember { InstanceStore(context) }
+    val scope = rememberCoroutineScope()
 
     var refreshKey by remember { mutableIntStateOf(0) }
     var menuPlanet by remember { mutableStateOf<Planet?>(null) }
     var renameTarget by remember { mutableStateOf<Planet?>(null) }
     var deleteTarget by remember { mutableStateOf<Planet?>(null) }
+    var showAdd by remember { mutableStateOf(false) }
+    var showUrlInput by remember { mutableStateOf(false) }
+    var urlDraft by remember { mutableStateOf("") }
+    var downloading by remember { mutableStateOf(false) }
     var pendingBytes by remember { mutableStateOf<ByteArray?>(null) }
     var pendingWorldId by remember { mutableStateOf<Long?>(null) }
     var aliasDraft by remember { mutableStateOf("") }
@@ -64,24 +78,33 @@ fun PlanetScreen(onBack: () -> Unit) {
     val inUseMsg = stringResource(R.string.planet_in_use)
     val wrongFormat = stringResource(R.string.planet_wrong_format)
     val existsFmt = stringResource(R.string.planet_exists)
+    val urlFailed = stringResource(R.string.planet_url_failed)
 
-    val pickPlanet = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+    /** 解析行星文件头：第一个字节是类型，接着 8 个字节是 world id。 */
+    fun stage(bytes: ByteArray?): Boolean {
         if (bytes == null || bytes.size < 9 || bytes[0] != 0x01.toByte()) {
             message = wrongFormat
-            return@rememberLauncherForActivityResult
+            return false
         }
         var worldId = 0L
         for (i in 1..8) worldId = (worldId shl 8) + (bytes[i].toLong() and 0xff)
         val existing = repository.planet(worldId)
         if (existing != null) {
-            message = String.format(existsFmt, existing.alias)
-            return@rememberLauncherForActivityResult
+            message = String.format(
+                existsFmt,
+                existing.alias.ifEmpty { existing.worldIdHex },
+            )
+            return false
         }
         pendingBytes = bytes
         pendingWorldId = worldId
         aliasDraft = java.lang.Long.toHexString(worldId)
+        return true
+    }
+
+    val pickPlanet = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        stage(context.contentResolver.openInputStream(uri)?.use { it.readBytes() })
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -100,11 +123,24 @@ fun PlanetScreen(onBack: () -> Unit) {
                         leading = Icons.Rounded.Public,
                         leadingTint = if (planet.builtIn) appColors().primary else Color.Unspecified,
                         trailing = {
-                            if (planet.isDefault) {
-                                Text(
-                                    text = stringResource(R.string.planet_default_tag),
-                                    style = LocalZotieraType.current.rowSummary,
-                                    color = appColors().primary,
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (planet.isDefault) {
+                                    Text(
+                                        text = stringResource(R.string.planet_default_tag),
+                                        style = LocalZotieraType.current.rowSummary,
+                                        color = appColors().primary,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                AppSwitch(
+                                    checked = planet.enabled,
+                                    // 默认行星停用后没有可用默认，直接锁住
+                                    enabled = !planet.isDefault,
+                                    onCheckedChange = {
+                                        planet.enabled = it
+                                        repository.updatePlanet(planet)
+                                        refreshKey++
+                                    },
                                 )
                             }
                         },
@@ -116,7 +152,7 @@ fun PlanetScreen(onBack: () -> Unit) {
             AppFab(
                 label = stringResource(R.string.add_planet),
                 icon = Icons.Rounded.Add,
-                onClick = { pickPlanet.launch(arrayOf("application/octet-stream", "*/*")) },
+                onClick = { showAdd = true },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             )
         }
@@ -133,7 +169,64 @@ fun PlanetScreen(onBack: () -> Unit) {
         }
     }
 
-    // 选完文件：填别名
+    // 添加：从文件或 URL
+    if (showAdd) {
+        AppDialog(
+            title = stringResource(R.string.add_planet),
+            onDismiss = { showAdd = false },
+            dismissLabel = stringResource(android.R.string.cancel),
+        ) {
+            Column {
+                AppDialogAction(stringResource(R.string.import_from_file)) {
+                    showAdd = false
+                    pickPlanet.launch(arrayOf("application/octet-stream", "*/*"))
+                }
+                AppDialogAction(stringResource(R.string.import_from_url)) {
+                    showAdd = false
+                    urlDraft = ""
+                    showUrlInput = true
+                }
+            }
+        }
+    }
+
+    if (showUrlInput) {
+        AppDialog(
+            title = stringResource(R.string.import_from_url),
+            confirmLabel = if (downloading) {
+                stringResource(R.string.downloading)
+            } else {
+                stringResource(android.R.string.ok)
+            },
+            onConfirm = {
+                if (downloading) return@AppDialog
+                val url = urlDraft.trim()
+                if (url.isEmpty()) return@AppDialog
+                downloading = true
+                scope.launch {
+                    val bytes = withContext(Dispatchers.IO) {
+                        runCatching { java.net.URL(url).openStream().use { it.readBytes() } }.getOrNull()
+                    }
+                    downloading = false
+                    if (bytes == null) {
+                        message = urlFailed
+                    } else if (stage(bytes)) {
+                        showUrlInput = false
+                    }
+                }
+            },
+            onDismiss = { if (!downloading) showUrlInput = false },
+            dismissLabel = stringResource(android.R.string.cancel),
+        ) {
+            PreferenceTextField(
+                value = urlDraft,
+                onValueChange = { urlDraft = it },
+                label = stringResource(R.string.planet_url_label),
+            )
+        }
+    }
+
+    // 选完文件或下载完：填别名
     val bytes = pendingBytes
     val worldId = pendingWorldId
     if (bytes != null && worldId != null) {
@@ -173,8 +266,9 @@ fun PlanetScreen(onBack: () -> Unit) {
     }
 
     menuPlanet?.let { planet ->
+        val name = if (planet.builtIn) stringResource(R.string.official_planet) else planet.alias
         AppDialog(
-            title = planet.alias,
+            title = name,
             confirmLabel = stringResource(android.R.string.cancel),
             onConfirm = { menuPlanet = null },
             onDismiss = { menuPlanet = null },
@@ -247,10 +341,22 @@ fun PlanetScreen(onBack: () -> Unit) {
             onDismiss = { deleteTarget = null },
             dismissLabel = stringResource(android.R.string.cancel),
         ) {
-            Text(
-                text = stringResource(if (inUse) R.string.planet_in_use else R.string.planet_delete_confirm),
-                color = appColors().onSurface,
-            )
+            Column {
+                Text(
+                    text = stringResource(
+                        if (inUse) R.string.planet_in_use else R.string.delete_irreversible_warning
+                    ),
+                    color = appColors().onSurface,
+                )
+                if (!inUse) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "${planet.worldIdHex}  ${planet.alias}",
+                        style = LocalZotieraType.current.mono,
+                        color = appColors().onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }

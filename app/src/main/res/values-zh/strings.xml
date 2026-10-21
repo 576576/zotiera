@@ -205,7 +205,7 @@
     <string name="licenses">组件许可证</string>
     <string name="licenses_summary">组件名称与许可证标识</string>
     <string name="licenses_note">完整许可证文本以各组件发布页与本仓库 LICENSE 为准。</string>
-    <string name="open_source_repo">开源仓库</string>
+    <string name="open_source_repo">在 GitHub 查看源码</string>
     <string name="disclaimer">免责声明</string>
     <string name="disclaimer_body">Zotiera 是第三方客户端，与 ZeroTier, Inc. 无隶属或背书关系；ZeroTier 是 ZeroTier, Inc. 的商标。\n\n本软件按 AGPL-3.0-or-later 提供，不对可用性与适用性作任何担保。接入他人网络时请遵守该网络的规则与当地法律。</string>
     <string name="manage_identity">管理身份</string>
@@ -247,7 +247,13 @@
     <string name="identity_current">当前</string>
     <string name="switch_identity_confirm_title">未在此网络使用过</string>
     <string name="switch_identity_confirm_body">换身份等于换一个节点：原身份在这条网络上的成员资格不会跟过来，可能需要管理员重新授权。确定切换？</string>
+    <string name="import_from_file">从文件导入</string>
+    <string name="import_from_url">从 URL 导入</string>
+    <string name="planet_url_label">行星文件 URL</string>
+    <string name="planet_url_failed">下载失败，检查地址或网络</string>
+    <string name="delete_irreversible_warning">该操作不可逆，以下配置将被永久移除：</string>
 </resources>
+
 
 
 

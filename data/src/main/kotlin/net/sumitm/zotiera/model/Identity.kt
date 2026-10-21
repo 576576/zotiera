@@ -26,6 +26,9 @@ class Identity @JvmOverloads constructor(
     /** 默认身份：新建网络与简易模式都用它，全局只有一个。 */
     @ColumnInfo(name = "is_default")
     var isDefault: Boolean = false,
+    /** 停用后不出现在选择列表里；默认身份不能停用。 */
+    @ColumnInfo(name = "enabled")
+    var enabled: Boolean = true,
 ) {
     /** 10 位小写节点 ID；还没生成时为空串。 */
     val nodeIdString: String

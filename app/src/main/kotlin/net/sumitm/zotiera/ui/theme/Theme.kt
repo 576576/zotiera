@@ -95,19 +95,19 @@ val LocalDarkTheme = staticCompositionLocalOf { false }
 val SeedColor = Color(0xFFFF6A00)
 
 /**
- * 深色配色：背景与 surface 压到纯黑，容器只抬一点点。
+ * 深色配色：底色接近黑但不纯黑，卡片与弹窗抬到 KernelSU 那一档。
  *
- * 容器必须比纯黑亮，否则分组卡片和背景同色、看不出卡片边界；
- * 但也不宜太亮——上限停在 [0xFF1A1A1A]。
+ * 早先压到纯黑 + 最深容器，卡片和弹窗看着像糊在一起；这里把容器整体提亮，
+ * 层级仍是「底色 < 卡片 < 弹窗」。
  */
 fun ColorScheme.blackDark(): ColorScheme = copy(
-    background = Color.Black,
-    surface = Color.Black,
-    surfaceContainerLowest = Color.Black,
-    surfaceContainerLow = Color(0xFF0C0C0C),
-    surfaceContainer = Color(0xFF131313),
-    surfaceContainerHigh = Color(0xFF171717),
-    surfaceContainerHighest = Color(0xFF1A1A1A),
+    background = Color(0xFF121212),
+    surface = Color(0xFF121212),
+    surfaceContainerLowest = Color(0xFF161616),
+    surfaceContainerLow = Color(0xFF1A1A1A),
+    surfaceContainer = Color(0xFF1E1E1E),
+    surfaceContainerHigh = Color(0xFF232323),
+    surfaceContainerHighest = Color(0xFF282828),
 )
 
 @Composable
@@ -151,14 +151,14 @@ fun ZotieraTheme(
                 val controller = remember(dark) {
                     ThemeController(
                         colorSchemeMode = if (dark) ColorSchemeMode.Dark else ColorSchemeMode.Light,
-                        // Miuix 自带的暗色板里卡片与背景几乎同色，深色统一换成黑底微抬的那套
+                        // Miuix 自带的暗色板里卡片与背景几乎同色，深色统一换成这套
                         darkColors = top.yukonga.miuix.kmp.theme.darkColorScheme().let {
                             it.copy(
-                                background = Color.Black,
-                                surface = Color.Black,
-                                surfaceContainer = Color(0xFF131313),
-                                surfaceContainerHigh = Color(0xFF171717),
-                                surfaceContainerHighest = Color(0xFF1A1A1A),
+                                background = Color(0xFF121212),
+                                surface = Color(0xFF121212),
+                                surfaceContainer = Color(0xFF1E1E1E),
+                                surfaceContainerHigh = Color(0xFF232323),
+                                surfaceContainerHighest = Color(0xFF282828),
                             )
                         },
                     )
@@ -188,12 +188,12 @@ private fun materialScheme(seed: Color, dark: Boolean): ColorScheme {
     return if (dark) {
         androidx.compose.material3.darkColorScheme(
             primary = shift(0.18f, 0.05f),
-            background = neutral(0.07f),
-            surface = neutral(0.07f),
+            background = Color(0xFF121212),
+            surface = Color(0xFF121212),
             onSurface = neutral(0.92f, 0.02f),
-            surfaceContainerLow = neutral(0.11f),
-            surfaceContainer = neutral(0.13f),
-            surfaceVariant = neutral(0.16f),
+            surfaceContainerLow = Color(0xFF1A1A1A),
+            surfaceContainer = Color(0xFF1E1E1E),
+            surfaceVariant = Color(0xFF232323),
             onSurfaceVariant = neutral(0.78f, 0.03f),
         )
     } else {

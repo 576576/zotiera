@@ -27,6 +27,9 @@ class Planet @JvmOverloads constructor(
     /** 默认行星：新建网络与简易模式都用它，全局只有一个。 */
     @ColumnInfo(name = "is_default")
     var isDefault: Boolean = false,
+    /** 停用后不出现在选择列表里；默认行星不能停用。 */
+    @ColumnInfo(name = "enabled")
+    var enabled: Boolean = true,
 ) {
     /** 16 位 hex 去掉前导 0，与卫星的显示方式一致。 */
     val worldIdHex: String

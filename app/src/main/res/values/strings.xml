@@ -208,7 +208,7 @@
     <string name="licenses">Component licenses</string>
     <string name="licenses_summary">Component names and license identifiers</string>
     <string name="licenses_note">Full license texts are on each project\'s release page and in this repository\'s LICENSE file.</string>
-    <string name="open_source_repo">Source code</string>
+    <string name="open_source_repo">View source on GitHub</string>
     <string name="disclaimer">Disclaimer</string>
     <string name="disclaimer_body">Zotiera is a third-party client, not affiliated with or endorsed by ZeroTier, Inc. ZeroTier is a trademark of ZeroTier, Inc.\n\nThis software is provided under AGPL-3.0-or-later, without warranty of any kind. When you join a network that is not yours, follow its rules and your local law.</string>
     <string name="manage_identity">Manage identity</string>
@@ -250,7 +250,13 @@
     <string name="identity_current">current</string>
     <string name="switch_identity_confirm_title">Not used on this network</string>
     <string name="switch_identity_confirm_body">Changing the identity swaps the node: membership of the old node on this network does not carry over, and an admin may have to authorize the new node. Continue?</string>
+    <string name="import_from_file">Import from file</string>
+    <string name="import_from_url">Import from URL</string>
+    <string name="planet_url_label">Planet file URL</string>
+    <string name="planet_url_failed">Download failed. Check the address and your connection.</string>
+    <string name="delete_irreversible_warning">This cannot be undone. The following will be permanently removed:</string>
 </resources>
+
 
 
 

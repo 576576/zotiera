@@ -189,6 +189,8 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
 
     fun hasMoonOrbit(worldId: Long): Boolean = db.moonOrbitDao().count(worldId) > 0
 
+    fun updateMoonOrbit(moon: MoonOrbit) = db.moonOrbitDao().update(moon)
+
     fun insertMoonOrbit(moon: MoonOrbit) {
         moon.ordinal = db.moonOrbitDao().nextOrdinal()
         db.moonOrbitDao().insert(moon)

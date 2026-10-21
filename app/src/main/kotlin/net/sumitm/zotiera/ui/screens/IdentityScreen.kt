@@ -7,8 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -36,12 +40,14 @@ import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppListRow
 import net.sumitm.zotiera.ui.component.AppRoleChip
+import net.sumitm.zotiera.ui.component.AppSwitch
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
+import net.sumitm.zotiera.ui.theme.LocalZotieraType
 
 /**
- * 管理身份：结构照 Moon 页，可以有多条。
+ * 管理身份：结构照卫星页，可以有多条。
  *
  * 「生成新身份」只建一行，密钥等这个身份第一次启用时由引擎补齐；「从文件导入」直接写正本。
  */
@@ -105,10 +111,23 @@ fun IdentityScreen(onBack: () -> Unit) {
                         leading = Icons.Rounded.Badge,
                         leadingTint = if (active) appColors().primary else Color.Unspecified,
                         trailing = {
-                            if (identity.isDefault) {
-                                AppRoleChip(
-                                    label = stringResource(R.string.identity_badge_default),
-                                    tint = appColors().primary,
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (identity.isDefault) {
+                                    AppRoleChip(
+                                        label = stringResource(R.string.identity_badge_default),
+                                        tint = appColors().primary,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                AppSwitch(
+                                    checked = identity.enabled,
+                                    // 默认身份停用后没有可用默认，直接锁住
+                                    enabled = !identity.isDefault,
+                                    onCheckedChange = {
+                                        identity.enabled = it
+                                        repository.updateIdentity(identity)
+                                        refreshKey++
+                                    },
                                 )
                             }
                         },
@@ -140,9 +159,8 @@ fun IdentityScreen(onBack: () -> Unit) {
     if (showAdd) {
         AppDialog(
             title = stringResource(R.string.add_identity),
-            confirmLabel = stringResource(android.R.string.cancel),
-            onConfirm = { showAdd = false },
             onDismiss = { showAdd = false },
+            dismissLabel = stringResource(android.R.string.cancel),
         ) {
             Column {
                 AppDialogAction(stringResource(R.string.identity_generate)) {
@@ -235,10 +253,22 @@ fun IdentityScreen(onBack: () -> Unit) {
             onDismiss = { deleteTarget = null },
             dismissLabel = stringResource(android.R.string.cancel),
         ) {
-            Text(
-                text = stringResource(if (inUse) R.string.identity_in_use else R.string.identity_delete_confirm),
-                color = appColors().onSurface,
-            )
+            Column {
+                Text(
+                    text = stringResource(
+                        if (inUse) R.string.identity_in_use else R.string.delete_irreversible_warning
+                    ),
+                    color = appColors().onSurface,
+                )
+                if (!inUse) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = identity.nodeIdString.ifEmpty { "#${identity.uid}" },
+                        style = LocalZotieraType.current.mono,
+                        color = appColors().onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }
