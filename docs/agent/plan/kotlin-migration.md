@@ -129,6 +129,8 @@ UI ◀──StateFlow（状态）──── NodeState（进程内单例）
 | P5 | `ZeroTierOneService` → 4 个文件；删 binder、删 EventBus 注册与 12 个订阅、线程改协程 | 完整链路：加入 → 上线 → 加第二个网络 → 切身份 → 离开 → 关闭；通知文案；撤轨后引擎里 `LEAF` 消失 |
 | P6 | `ZotieraApplication`、`StartupReceiver`；删 `app/src/main/java`；`app/build.gradle` 去掉 `eventbus` | 冷启动；`am broadcast -a android.intent.action.BOOT_COMPLETED -p …` 后按开关自启 |
 
+进度：P1 完成（`ffc8086`）——8 个工具类 + `DNSMode` 迁完，`FileUtil` 删除；`app/src/main/java` 剩 12 个文件。
+
 P3 是唯一「新旧并存」的一批：命令先切成 Intent、UI 先切到 `NodeState`，服务内部暂时留着 EventBus 骨架当过渡；
 P5 把骨架删干净。这样每批都能单独跑、单独回滚。
 
