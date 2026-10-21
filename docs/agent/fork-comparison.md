@@ -24,6 +24,10 @@
 | 签名 | CI 后置签名 | 双通道：`.pr` 固定 keystore / 正式包 `ANDROID_*` |
 | 许可 | GPL-2.0 | AGPL-3.0-or-later；核心 MPL-2.0 |
 
+包体：上游 release 8.3 MB，本仓库单 ABI 约 60 MB。差异来自 Miuix + Material 3 两套 UI、
+`material-icons-extended` 与 `minifyEnabled false`。收敛见 [`plan/init-refactor.md`](plan/init-refactor.md) 的 R3
+与 [`plan/material-icons.md`](plan/material-icons.md)。
+
 ## 2. 能力差异
 
 | 能力 | ZerotierFix 1.0.10 | Zotiera |
@@ -42,7 +46,6 @@
 | 深色 / 动态取色 | 深色 | 深浅色 + Android 12 动态取色 |
 | 从最近任务隐藏 | 无 | 有 |
 | 16KB 页对齐 | 无 | 有 |
-| targetSdk 36（Android 16 行为） | 无 | 有 |
 
 ## 3. 兼容性差异
 
@@ -50,24 +53,4 @@
 | --- | --- |
 | 系统版本 | minSdk 19 → 30：Android 10 及以下无法安装 |
 | CPU 架构 | 只出 64 位：`armeabi-v7a` / `x86` 设备无法安装 |
-| 覆盖安装 | 包名不同，不能覆盖升级；两版可共存但数据互不相通 |
-| 节点身份 | 新包新身份，节点 ID 会变，需要在控制器重新授权 |
-| 旧数据 | Android 11+ 不能跨应用读私有目录，网络/身份/moon 只能人工导出导入 |
 | 引擎行为 | 1.12.2 → 1.16.2：MTU 下限 1400 → 510、metrics 默认关闭、moon 在上游被标弃用 |
-| 上游生态 | 上游的更新、issue、插件经验不直接适用，本仓库独立维护 |
-
-## 4. 包体
-
-| 项 | 数值 |
-| --- | --- |
-| 上游 release `app-release.apk` | 8.3 MB |
-| 本仓库单 ABI（arm64-v8a / x86_64） | 约 60 MB |
-| 本仓库双 ABI（all） | 约 62 MB |
-
-差异来源：Compose + Miuix + Material 3 两套 UI、`material-icons-extended`、`minifyEnabled false`（未开 R8）。
-代价是下载与安装占用明显更大；收敛计划见 [`plan/init-refactor.md`](plan/init-refactor.md) 的 R3。
-
-## 5. 适用场景
-
-- 用 Android 11+ 的 64 位设备、需要多网络/多实例/新引擎：用本仓库。
-- 还在 32 位或 Android 10 及以下、要原地升级旧数据：只能用上游 1.0.10。

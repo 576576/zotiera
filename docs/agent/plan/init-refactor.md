@@ -51,7 +51,7 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 | --- | --- |
 | 旧依赖 | 确认无引用后移除 `appcompat`、`material 1.9`、`constraintlayout`、`navigation-fragment`、`recyclerview`、`swiperefreshlayout`、`legacy-support-v4` |
 | R8 | `minifyEnabled false` → 开 R8 + `shrinkResources`，补 JNI / Room / EventBus 保留规则；当前单 ABI 约 60MB |
-| 图标 | `material-icons-extended` 体积大，按实际用到的图标换 `material-icons-core` 或自带 vector |
+| 图标 | `material-icons-core` / `material-icons-extended` 一并移出，改内置 vector drawable，见 [`material-icons.md`](material-icons.md) |
 
 验收：依赖树无旧 UI 库；`assemblePr` 包体明显下降；UI 回归通过。
 
