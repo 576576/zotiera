@@ -1,6 +1,6 @@
 # 服务层重写：Kotlin + Flow + 协程（R1 + R2）
 
-- 状态：草案（待确认）
+- 状态：决策已确认（2026-10-21：进程被杀后自动恢复；启动/加网络拆成显式 action；peers 订阅者驱动）
 - 建立日期：2026-10-21
 - 修订：v2（并入原 R2：EventBus → Flow、裸线程 → 协程）
 - 基线提交：`938e7e6`
@@ -35,6 +35,7 @@ UI ◀──StateFlow（状态）──── NodeState（进程内单例）
 
 | action | extra | 替代 |
 | --- | --- | --- |
+| `ACTION_START` | — | 「打开总开关」：启节点 + join 全部已加入 |
 | `ACTION_STOP` | — | `StopEvent` |
 | `ACTION_JOIN` | `networkId` | 现有裸 `startService`（`ZT1_NETWORK_ID`） |
 | `ACTION_LEAVE` | `networkId` | `LeaveNetworkEvent` |
@@ -42,8 +43,12 @@ UI ◀──StateFlow（状态）──── NodeState（进程内单例）
 | `ACTION_ORBIT` / `ACTION_DEORBIT` | `worldId`、`seed` | `OrbitMoonEvent` / `RemoveMoonOrbitEvent` |
 | `ACTION_REFRESH_PEERS` | — | `PeerInfoRequestEvent` |
 
-`ServiceCommands.kt` 提供 `stop(context)`、`join(context, id)` 这类构造器，UI 与磁贴都不手拼 Intent。
-`onStartCommand` 按 `intent?.action` 分发；action 为空表示「启动并把数据库里已加入的网络全部 join」（保持现状）。
+`ServiceCommands.kt` 提供 `start(context)`、`stop(context)`、`join(context, id)` 这类构造器，UI 与磁贴都不手拼 Intent。
+`onStartCommand` 按 `intent?.action` 分发；`ACTION_JOIN` 只 join 指定 id，不再隐式兼带「全部已加入」。
+
+返回值保持 `START_STICKY`，并且 `intent == null`（系统在进程被杀后重新拉起）按 `ACTION_START` 处理：
+重新 join 全部已加入并重建隧道。原来那个「声明 STICKY 但 null 就静默返回」的分支删掉，
+不再留下空转的服务实例。重建隧道要重新 `establish()`，部分 ROM 上会重新弹 VPN 授权框——这是自动恢复的代价。
 
 ### 状态：`NodeState` 单例
 
@@ -52,7 +57,7 @@ UI ◀──StateFlow（状态）──── NodeState（进程内单例）
 | `running` | `StateFlow<Boolean>` | `isRunning` 静态布尔 + `IsServiceRunningRequest/ReplyEvent` |
 | `status` | `StateFlow<NodeStatus?>` | `NodeStatusEvent`、`NodeIDEvent`、`NodeDestroyedEvent` |
 | `configs` | `StateFlow<Map<Long, VirtualNetworkConfig>>` | `NetworkListReplyEvent`、`VirtualNetworkConfig{Request,Reply,Changed}Event` |
-| `peers` | `StateFlow<List<Peer>>` | `PeerInfoReplyEvent` |
+| `peers` | `StateFlow<List<Peer>>`（`WhileSubscribed(2000)`，有人订阅才每 2 秒查一次） | `PeerInfoReplyEvent` + 页面里的 2 秒轮询 |
 | `moonOrbits` | `StateFlow<List<MoonOrbit>>` | `OrbitMoonEvent` 的入参侧 |
 
 `ZeroTierOneService.isRunning` 保留为兼容读法（磁贴在用），内部读 `NodeState.running.value`。
@@ -134,6 +139,7 @@ P5 把骨架删干净。这样每批都能单独跑、单独回滚。
 | 停止从同步变异步 | 现在 `StopEvent` 是 `POSTING`，`post` 返回时已停完；改成命令后要等 `onStartCommand` | UI 只看 `NodeState.running`，不再依赖「已停完」 |
 | 去掉绑定 | 以前绑定期间 `stopService` 无效，磁贴得「先 post 再 stop」 | 服务收到 `ACTION_STOP` 后自己 `stopSelf()`；磁贴只发命令 |
 | 请求/应答变状态订阅 | 少了 `refresh()` 往返，UI 始终看到最新值 | `refresh()` 只重读数据库 |
+| peers 轮询位置 | 从 `PeersScreen` 的定时器挪到 `NodeState` 的 `WhileSubscribed` | 界面不看就不查；刷新节奏由 `NodeState` 统一 |
 | 撤轨走命令 | 以前根本没到引擎 | 顺带修好，P5 回归项验证 |
 | 错误事件删除 | 用户本就看不到这些错误 | 只留日志，不新增提示 |
 
