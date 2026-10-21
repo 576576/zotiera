@@ -26,11 +26,12 @@ docs/agent/
 4. **minSdk 30 / targetSdk 36 / compileSdk 37 是下限**：不为更老设备引入兼容分支，不写 `SDK_INT < 30` 的兜底。
 5. **ABI 只保留 64 位**：`arm64-v8a` + `x86_64`。不加回 `armeabi-v7a` / `x86`。
 6. **签名分两条通道**：`.pr` 通道（appId `net.sumitm.zotiera.pr`、应用名 `Zotiera PR`）用仓库内固定 keystore，只用于测试，**不得分发**；正式包只认 4 个 `ANDROID_*` 环境变量，缺变量必须构建失败。
-7. **Room schema 可自由设计**：不沿用旧 GreenDAO 表名列名；任何 schema 变更必须带迁移，禁止 `fallbackToDestructiveMigration`。
+7. **Room schema 可自由设计**：不沿用旧 GreenDAO 表名列名。行为稳定前不做数据接续——schema 变更走 `fallbackToDestructiveMigration`，旧库与旧文件在首次启动直接丢弃；宣布稳定之后必须改成带迁移，并删掉这个兜底。
 8. **不动 `externals/core` 的工作区**：需要改核心源码时走 fork + 最小补丁分支，不在子模块里留未提交改动。
 9. **升级核心必须逐项回归**：16KB 页对齐、MTU 下限、双栈、多播、自定义 planet、moon、peers 列表，缺一项都不算完成。
 10. **一次只改一个变量**：一项改动只解决一个里程碑任务；顺手重构会掩盖回归来源。
 11. **提交前跑通构建**：涉及 `:core` 或子模块时两个 ABI 都要过。网络行为只能真机验证，编译通过不等于功能可用。
+12. **本地出包不用等吩咐**：代码一改完就跑 `scripts/build-local.sh`，三种产物（arm64-v8a / x86_64 / all）拷进 `../zt-playground`，在交付说明里给出实际路径。
 
 ## 构建
 
@@ -38,7 +39,12 @@ docs/agent/
 git submodule update --init --recursive   # 缺了核心，:core 直接失败
 ./gradlew :app:assembleDebug              # 本地开发
 ./gradlew :app:assemblePr                 # 测试通道（.pr 包名 + 固定签名）
+scripts/build-local.sh                    # 三种架构各出一份，拷到 ../zt-playground
 ```
+
+`scripts/build-local.sh` 是本地出包的正规入口：版本号按 `release.yml` 的规则推（`<engine>-r<提交数>`），
+产物名 `Zotiera-<版本>-<arch>.apk`，逐个校验包内 ABI 后拷到 `../zt-playground`（或 `--out` 指定的目录）。
+默认走 `.pr` 测试签名，`-c release` 才用正式签名并且要求 4 个 `ANDROID_*` 变量齐全。
 
 Android SDK 必需（compileSdk 37）；NDK 固定 `28.2.13676358`，CMake 由 AGP 提供。`assembleRelease` 需要 4 个 `ANDROID_*` 环境变量（或 `local.properties` 里的本地签名配置）。
 
