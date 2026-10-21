@@ -15,6 +15,7 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 | --- | --- | --- |
 | 2026-10-19 | v1–v4 | 建立并按执行情况回填里程碑 |
 | 2026-10-21 | v6 | 精简：已完成里程碑删除，只保留 R1–R3 |
+| 2026-10-21 | v7 | R1 的拆分方案、每批回归项独立成 [`kotlin-migration.md`](kotlin-migration.md)，本文只留结论 |
 
 ## 现状
 
@@ -24,13 +25,8 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 
 ## R1 服务与工具层迁到 Kotlin
 
-| 批次 | 范围 | 文件数 | 要点 |
-| --- | --- | --- | --- |
-| R1.1 | `util/*`、`model/type/DNSMode` | 10 | 纯函数与枚举，直接转 |
-| R1.2 | `service/` 的 ARP/NDP 表、`Route`、`DataStore`、`UdpCom` | 7 | 数据与文件访问，Context 构造注入 |
-| R1.3 | `service/TunTapAdapter` | 1 | 包泵，出站解析与按网络分表照搬 |
-| R1.4 | `service/ZeroTierOneService` | 1 | 只做语言迁移与并发原语替换，不重写逻辑 |
-| R1.5 | `ZotieraApplication`、`service/StartupReceiver` | 2 | 启动入口 |
+分五批：`util/*` + `DNSMode` → 服务数据层 → `TunTapAdapter`（拆 2 个文件）→ `ZeroTierOneService`（拆 4 个文件）
+→ Application/Receiver。逐文件拆分、行范围与每批回归项见 [`kotlin-migration.md`](kotlin-migration.md)。
 
 验收：`find app/src/main/java -name '*.java' | wc -l` 为 0；两个 ABI 构建通过；真机跑通加入网络、开关隧道、切换实例。
 

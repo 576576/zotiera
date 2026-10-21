@@ -25,8 +25,6 @@
 | 包大小 | 8.3 MB | 约 38 MB（双 ABI 约 40 MB，dex 占 35 MB） |
 | 许可 | GPL-2.0 | AGPL-3.0-or-later；核心 MPL-2.0 |
 
-差异来自 Miuix + Material 3 两套 UI 与 `minifyEnabled false`；继续收敛见 [`plan/init-refactor.md`](plan/init-refactor.md) 的 R3。
-
 ## 2. 能力差异
 
 | 能力 | ZerotierFix 1.0.10 | Zotiera |
