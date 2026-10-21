@@ -34,7 +34,8 @@
 | SDK | compileSdk 37 / targetSdk 36 / minSdk 30 |
 | NDK | 28.2.13676358，CMake 由 AGP 提供 |
 | ABI | `arm64-v8a` + `x86_64`，16KB 页对齐 |
-| 依赖要点 | Compose BOM 2026.09.00、Material3 1.5.0-alpha29、Miuix 0.9.4、Room 2.8.5 |
+| 依赖要点 | Compose BOM 2026.09.00、Material3 1.5.0-alpha29、Miuix 0.9.4、Room 2.8.5、kotlinx-coroutines |
+| 语言 | 全部 Kotlin；`app/src/main/java` 已删除 |
 | 签名 | `.pr` 通道仓库内固定 keystore；正式包读 4 个 `ANDROID_*` 变量 |
 | CI | `.github/workflows/` 六文件矩阵：`lint` / `build` / `release` / `pr` / `clear` / `update_i18n` |
 | 包体 | 单 ABI 约 38 MB（dex 约 35 MB，未开 R8）；双 ABI 约 40 MB |
@@ -106,6 +107,14 @@ files/
 | 重建 | 配置指纹（地址 + 路由 + DNS + MTU + 全隧道）不变就跳过，避免 `CONFIG_UPDATE` 反复拆隧道 |
 
 - 出站包按目的地址反查网络；每个网络有自己的 MAC 与 ARP/NDP 表。
+- **命令与状态**：界面不再和服务互相发事件。命令走 `startService` + action（`ServiceCommands`：
+  `START` / `STOP` / `JOIN` / `LEAVE` / `RECONFIGURE` / `ORBIT` / `DEORBIT`），状态走 `NodeState`
+  （`running` / `status` / `configs` 三个 `StateFlow`，`peers` 是 `WhileSubscribed(2000)` 的轮询流）。
+- **返回值**：`START_STICKY`；`intent == null`（进程被杀后系统拉起）按 `START` 处理，重新 join 全部已加入网络并重建隧道。
+- **并发**：服务持一个 `CoroutineScope(SupervisorJob + Dispatchers.IO)`；后台任务循环、UDP 收包、TUN 读、
+  ARP/NDP 表的 1 秒清理都是协程，`delay` 取代 `Thread.sleep`，阻塞读靠关流/socket 超时退出。
+- 服务本体仍在单个文件 `ZeroTierOneService.kt`：隧道部分与生命周期共用 `vpnSocket`、`tunnelFingerprint`，
+  拆开要把这些字段放开给另一个类，收益不抵风险；`ServiceCommands` 已独立成文件。
 - 网络行开关 = 加入/离开该网络；设备卡单击 = 开关隧道，长按 = 进设备页。
 - DNS 三模式（加入网络时选择）：不使用 / 网络下发 / 自定义；自定义服务器没有编辑界面，选它等于不加 DNS。
 - moon 保留但标为弃用：界面提示 + 支持导出 `.moon`；moon 是独立根，不与行星关联。

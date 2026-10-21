@@ -15,32 +15,22 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 | --- | --- | --- |
 | 2026-10-19 | v1–v4 | 建立并按执行情况回填里程碑 |
 | 2026-10-21 | v6 | 精简：已完成里程碑删除，只保留 R1–R3 |
-| 2026-10-21 | v7 | R1 的拆分方案、每批回归项独立成 [`kotlin-migration.md`](kotlin-migration.md)，本文只留结论 |
-| 2026-10-21 | v8 | R1 与 R2 合并为一个里程碑：语言、事件、并发同一批换完，方案见 [`kotlin-migration.md`](kotlin-migration.md) |
+| 2026-10-21 | v7 | R1 的拆分方案与每批回归项独立成文档，本文只留结论 |
+| 2026-10-21 | v8 | R1 与 R2 合并为一个里程碑：语言、事件、并发同一批换完 |
+| 2026-10-22 | v9 | R1+R2 完成，结论并入 [`architecture.md`](../architecture.md)，方案文档删除；只剩 R3 |
 
 ## 现状
 
-- `app/src/main/java` 还有 22 个文件（工具类 9、服务 11、`DNSMode` 1、Application/Receiver 2）。
-- 事件总线仍是 EventBus 3.2.0（服务、磁贴、ViewModel、三个页面共 6 处）。
+- `app/src/main/java` 已清空并删除；全部源码在 `app/src/main/kotlin`。
+- 事件总线 EventBus 已移除，界面与服务的通信换成命令 + `NodeState`。
 - 旧 UI 依赖仍挂在 `app/build.gradle`；`minifyEnabled false`，单 ABI 包约 38MB。
-
-## R1+R2 服务层重写（Kotlin + Flow + 协程）
-
-`app/src/main/java` 22 个文件迁 Kotlin；同时把 EventBus 换成 `NodeState` 的 `StateFlow`、命令换成 `Intent action`、
-裸 `Thread` 换成协程。两者合并是因为改的是同一批方法，分开做等于同一段代码改两遍。
-
-分六批：工具层 → 数据层 → 命令与状态骨架 → `TunTapAdapter` → `ZeroTierOneService` → Application/Receiver。
-拆分方式、事件去留、行为变化与每批回归项见 [`kotlin-migration.md`](kotlin-migration.md)。
-
-验收：`find app/src/main/java -name '*.java' | wc -l` 为 0；`grep -r "greenrobot" app` 无输出；
-两版 ABI 构建通过；加入/上线/切实例/离开/关隧道全链路在模拟器上跑通。
 
 ## R3 依赖与包体清理
 
 | 项 | 内容 |
 | --- | --- |
 | 旧依赖 | 确认无引用后移除 `appcompat`、`material 1.9`、`constraintlayout`、`navigation-fragment`、`recyclerview`、`swiperefreshlayout`、`legacy-support-v4` |
-| R8 | `minifyEnabled false` → 开 R8 + `shrinkResources`，补 JNI / Room / EventBus 保留规则；当前单 ABI 约 38MB |
+| R8 | `minifyEnabled false` → 开 R8 + `shrinkResources`，补 JNI / Room 保留规则；当前单 ABI 约 38MB |
 
 验收：依赖树无旧 UI 库；`assemblePr` 包体明显下降；UI 回归通过。
 
@@ -55,5 +45,4 @@ M0 基线、M1 核心 1.16.2、M2 包名/构建/Room、M4 Compose UI 主体、M6
 | 风险 | 处理 |
 | --- | --- |
 | 服务层迁移引入连接回归 | 每批单独提交，改完跑一次真机连接用例 |
-| EventBus/Flow 双轨丢事件 | 成对改造，一次只切一类事件 |
 | R8 破坏 JNI/Room 反射 | 先开 `shrinkResources`，再逐步开 R8 并补保留规则 |
