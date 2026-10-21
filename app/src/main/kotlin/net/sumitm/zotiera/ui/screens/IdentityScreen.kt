@@ -63,6 +63,8 @@ fun IdentityScreen(onBack: () -> Unit) {
     var renameTarget by remember { mutableStateOf<Identity?>(null) }
     var deleteTarget by remember { mutableStateOf<Identity?>(null) }
     var aliasDraft by remember { mutableStateOf("") }
+    // 导出要先让系统画文件选择器，选完才知道写到哪；身份先存在这里
+    var exportTarget by remember { mutableStateOf<Identity?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
     val identities = remember(refreshKey) { repository.identities() }
@@ -70,6 +72,9 @@ fun IdentityScreen(onBack: () -> Unit) {
     val importFailed = stringResource(R.string.identity_import_failed)
     val existsMsg = stringResource(R.string.identity_exists)
     val inUseMsg = stringResource(R.string.identity_in_use)
+    val exportFailed = stringResource(R.string.identity_export_failed)
+    val exportDone = stringResource(R.string.identity_export_done)
+    val exportNoKeys = stringResource(R.string.identity_export_no_keys)
 
     val importIdentity = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -92,6 +97,19 @@ fun IdentityScreen(onBack: () -> Unit) {
         )
         store.writeKeys(uid, imported.secret, imported.public)
         refreshKey++
+    }
+
+    val exportIdentity = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri: Uri? ->
+        val identity = exportTarget ?: return@rememberLauncherForActivityResult
+        exportTarget = null
+        if (uri == null) return@rememberLauncherForActivityResult
+        val bytes = store.buildZip(identity.uid)
+        val written = bytes != null && runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+        }.isSuccess
+        message = if (written) exportDone else exportFailed
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -195,6 +213,20 @@ fun IdentityScreen(onBack: () -> Unit) {
                         menuIdentity = null
                         refreshKey++
                     }
+                }
+                AppDialogAction(stringResource(R.string.identity_export)) {
+                    if (store.hasKeys(identity.uid)) {
+                        exportTarget = identity
+                        val name = if (identity.nodeId != 0L) {
+                            String.format("%010x", identity.nodeId)
+                        } else {
+                            "uid-${identity.uid}"
+                        }
+                        exportIdentity.launch("zotiera-identity-$name.zip")
+                    } else {
+                        message = exportNoKeys
+                    }
+                    menuIdentity = null
                 }
                 AppDialogAction(stringResource(R.string.action_rename)) {
                     aliasDraft = displayName

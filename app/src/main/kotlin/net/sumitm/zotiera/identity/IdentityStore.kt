@@ -2,8 +2,11 @@ package net.sumitm.zotiera.identity
 
 import android.content.Context
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 /** 从导出件里读出的一对密钥。 */
 data class ImportedIdentity(
@@ -30,6 +33,30 @@ class IdentityStore(private val context: Context) {
         dir.mkdirs()
         File(dir, SECRET).writeBytes(secret)
         File(dir, PUBLIC).writeBytes(public)
+    }
+
+    /**
+     * 把身份打包成 zip：两个密钥文件 + 一份说明。
+     *
+     * 密钥还没生成时返回 null。
+     */
+    fun buildZip(uid: Long): ByteArray? {
+        val dir = dir(uid)
+        val secret = File(dir, SECRET).takeIf { it.exists() }?.readBytes() ?: return null
+        val public = File(dir, PUBLIC).takeIf { it.exists() }?.readBytes() ?: return null
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            for ((name, bytes) in listOf(
+                SECRET to secret,
+                PUBLIC to public,
+                "README.txt" to README.toByteArray(Charsets.UTF_8),
+            )) {
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
     }
 
     /**
@@ -74,5 +101,21 @@ class IdentityStore(private val context: Context) {
     companion object {
         private const val SECRET = "identity.secret"
         private const val PUBLIC = "identity.public"
+
+        private val README = """
+            Zotiera identity export
+            =======================
+
+            identity.public  node id + public key (141 bytes, safe to share)
+            identity.secret  private key record (270 bytes)
+
+            Put both files into the data directory of a ZeroTier client to use the same
+            node id there. On Android, import them in Zotiera: Manage identity -> Add
+            identity -> Import from file. On desktop, copy them into the zerotier-one
+            data directory.
+
+            identity.secret is a private key: anyone who has it can act as this node.
+            Do not upload it or share it. 这个文件等同私钥，泄露即可冒充该节点，不要上传。
+        """.trimIndent()
     }
 }

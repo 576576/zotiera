@@ -226,6 +226,10 @@
     <string name="identity_not_generated">Not generated yet</string>
     <string name="identity_generate">Generate new identity</string>
     <string name="identity_import">Import from file</string>
+    <string name="identity_export">Export identity</string>
+    <string name="identity_export_no_keys">This identity has no keys yet. Connect it once first.</string>
+    <string name="identity_export_failed">Export failed.</string>
+    <string name="identity_export_done">Exported. The file is a private key — do not upload it.</string>
     <string name="identity_default_alias">Identity %1$d</string>
     <string name="identity_import_failed">Not a valid identity export.</string>
     <string name="identity_exists">This identity is already added.</string>

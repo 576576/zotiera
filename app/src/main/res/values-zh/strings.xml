@@ -223,6 +223,10 @@
     <string name="identity_not_generated">未启用</string>
     <string name="identity_generate">生成新身份</string>
     <string name="identity_import">从文件导入</string>
+    <string name="identity_export">导出身份</string>
+    <string name="identity_export_no_keys">这个身份还没生成密钥，先让它上线一次</string>
+    <string name="identity_export_failed">导出失败</string>
+    <string name="identity_export_done">已导出。文件等同私钥，不要上传。</string>
     <string name="identity_default_alias">身份 %1$d</string>
     <string name="identity_import_failed">文件不是有效的身份导出</string>
     <string name="identity_exists">这个身份已经添加过了</string>

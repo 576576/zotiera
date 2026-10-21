@@ -131,9 +131,15 @@ fun AppStatusCard(
  */
 @Composable
 private fun statusStyle(tone: AppStatusTone, dark: Boolean): StatusStyle = when (tone) {
-    AppStatusTone.WORKING, AppStatusTone.CONNECTING -> StatusStyle(
+    AppStatusTone.WORKING -> StatusStyle(
         container = if (dark) Color(0xFF1A3825) else Color(0xFFDFFAE4),
         icon = if (dark) Color(0xFF4BE07C) else Color(0xFF36D167),
+        glyph = Icons.Rounded.CheckCircleOutline,
+    )
+
+    AppStatusTone.CONNECTING -> StatusStyle(
+        container = if (dark) Color(0xFF3A2E12) else Color(0xFFFFF4D1),
+        icon = if (dark) Color(0xFFFFC940) else Color(0xFFE0A100),
         glyph = Icons.Rounded.CheckCircleOutline,
     )
 
