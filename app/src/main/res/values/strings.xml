@@ -65,8 +65,6 @@
     <string name="status_label">Status:</string>
     <string name="title_activity_zero_tier_one__main">ZeroTier Fix</string>
     <string name="use_custom_dns">Use Custom DNS Servers</string>
-    <string name="status_offline">OFFLINE</string>
-    <string name="status_online">ONLINE</string>
     <string name="toast_no_network">No Network Connectivity.  ZeroTier cannot start.</string>
     <string name="toast_mobile_data">Currently using mobile data.  Enable \"Use Cellular Data\" in order to start ZeroTier.</string>
     <string name="menu_peers">Peers</string>
@@ -195,6 +193,9 @@
         <item quantity="other">%d networks</item>
     </plurals>
     <string name="status_connecting">Connecting</string>
+    <string name="status_working">Working</string>
+    <string name="status_disconnected">Not connected</string>
+    <string name="version_line">Version: %1$s</string>
     <string name="device_title">Device</string>
     <string name="client_version">Client version</string>
     <string name="core_version">Core version</string>

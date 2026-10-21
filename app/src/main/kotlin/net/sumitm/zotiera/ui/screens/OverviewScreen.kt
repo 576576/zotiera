@@ -5,7 +5,6 @@ import android.net.VpnService
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,18 +13,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.Smartphone
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -44,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.preference.PreferenceManager
+import net.sumitm.zotiera.BuildConfig
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.identity.InstanceStore
@@ -52,22 +47,21 @@ import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.model.Planet
 import net.sumitm.zotiera.ui.NodeUiState
 import net.sumitm.zotiera.ui.NodeViewModel
-import net.sumitm.zotiera.ui.component.AppCard
 import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppLargeTitlePage
 import net.sumitm.zotiera.ui.component.AppListRow
 import net.sumitm.zotiera.ui.component.AppRoleChip
+import net.sumitm.zotiera.ui.component.AppStatusCard
+import net.sumitm.zotiera.ui.component.AppStatusTone
 import net.sumitm.zotiera.ui.component.AppSwitch
-import net.sumitm.zotiera.ui.component.AppTunnelSwitch
 import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.instanceChipTint
 import net.sumitm.zotiera.ui.component.isWideLayout
 import net.sumitm.zotiera.ui.component.planetLetter
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
-import net.sumitm.zotiera.ui.theme.LocalZotieraType
 import net.sumitm.zotiera.ui.toast
 import net.sumitm.zotiera.util.Constants
 import net.sumitm.zotiera.util.NetworkIdUtils
@@ -156,6 +150,12 @@ fun OverviewScreen(
         else -> stringResource(R.string.identity_default_alias, activeIdentity.ordinal)
     }
     val instanceHint = stringResource(R.string.instance_busy_hint)
+    // 卡片左下角的实例标记：行星字母 + 身份序号，和网络行上的胶囊同一套
+    val activeInstance = if (activePlanet != null && activeIdentity != null) {
+        "${planetLetter(activePlanet.ordinal)}${activeIdentity.ordinal}"
+    } else {
+        null
+    }
 
     Row(Modifier.fillMaxSize()) {
         Box(Modifier.weight(if (wide) 0.42f else 1f).fillMaxSize()) {
@@ -164,8 +164,9 @@ fun OverviewScreen(
                     Spacer(Modifier.height(8.dp))
                     DeviceCard(
                         state = state,
+                        instance = activeInstance,
                         onOpen = onOpenDevice,
-                        onToggleTunnel = ::toggleTunnel,
+                        onToggleTunnel = { toggleTunnel(!state.tunnelRunning) },
                     )
                     if (state.networks.isEmpty()) {
                         Text(
@@ -314,70 +315,48 @@ fun OverviewScreen(
 }
 
 /**
- * 设备卡：图标 + 节点 ID + 「N 个网络 · 在线」+ 隧道总开关。
+ * 设备卡：状态、版本、当前实例与网络数；单击开关隧道，长按进设备页。
  *
- * 总开关只管隧道；加入了哪些网络由列表里各自的开关决定。
+ * 没有加入任何网络时卡片是红底大叉，底行留空。
  */
 @Composable
 private fun DeviceCard(
     state: NodeUiState,
+    instance: String?,
     onOpen: () -> Unit,
-    onToggleTunnel: (Boolean) -> Unit,
+    onToggleTunnel: () -> Unit,
 ) {
-    val type = LocalZotieraType.current
-    val colors = appColors()
-    val subtitle = buildString {
-        append(pluralStringResource(R.plurals.network_count, state.joinedNetworkIds.size, state.joinedNetworkIds.size))
-        append(" · ")
-        append(
-            stringResource(
-                when {
-                    state.tunnelRunning && state.online -> R.string.status_online
-                    state.tunnelRunning -> R.string.status_connecting
-                    else -> R.string.status_offline
-                }
-            )
+    val tone = when {
+        state.joinedNetworkIds.isEmpty() -> AppStatusTone.EMPTY
+        !state.tunnelRunning -> AppStatusTone.STOPPED
+        state.online -> AppStatusTone.WORKING
+        else -> AppStatusTone.CONNECTING
+    }
+    val title = stringResource(
+        when (tone) {
+            AppStatusTone.WORKING -> R.string.status_working
+            AppStatusTone.CONNECTING -> R.string.status_connecting
+            else -> R.string.status_disconnected
+        }
+    )
+    val footer = if (instance == null) {
+        null
+    } else {
+        "$instance · " + pluralStringResource(
+            R.plurals.network_count,
+            state.joinedNetworkIds.size,
+            state.joinedNetworkIds.size,
         )
     }
-    AppCard(Modifier.padding(horizontal = 16.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onOpen)
-                .padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // 图标放一个浅色圆底，和列表里的单色小图标区分开
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(
-                        if (state.tunnelRunning) colors.primary.copy(alpha = 0.14f)
-                        else colors.onSurfaceVariant.copy(alpha = 0.10f)
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Smartphone,
-                    contentDescription = null,
-                    tint = if (state.tunnelRunning) colors.primary else colors.onSurfaceVariant,
-                    modifier = Modifier.size(26.dp),
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    text = state.nodeId.ifEmpty { "----------" },
-                    style = type.deviceTitle,
-                    color = colors.onSurface,
-                )
-                Text(text = subtitle, style = type.rowSummary, color = colors.onSurfaceVariant)
-            }
-            Spacer(Modifier.width(12.dp))
-            AppTunnelSwitch(checked = state.tunnelRunning, onCheckedChange = onToggleTunnel)
-        }
-    }
+    AppStatusCard(
+        title = title,
+        subtitle = stringResource(R.string.version_line, BuildConfig.VERSION_NAME),
+        footer = footer,
+        tone = tone,
+        onClick = onToggleTunnel,
+        onLongClick = onOpen,
+        modifier = Modifier.padding(horizontal = 16.dp),
+    )
 }
 
 /**
