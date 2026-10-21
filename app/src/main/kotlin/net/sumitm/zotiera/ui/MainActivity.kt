@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -52,7 +53,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.preference.PreferenceManager
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.component.AppBottomBar
 import net.sumitm.zotiera.ui.component.AppNavigationRail
@@ -73,6 +73,7 @@ import net.sumitm.zotiera.ui.screens.SettingsScreen
 import net.sumitm.zotiera.ui.theme.ColorMode
 import net.sumitm.zotiera.ui.theme.ZotieraTheme
 import net.sumitm.zotiera.util.AppLanguage
+import net.sumitm.zotiera.util.AppPrefs
 import net.sumitm.zotiera.util.Constants
 
 /** 页面切换时长：够短，返回手势跟手。 */
@@ -110,7 +111,7 @@ class MainActivity : ComponentActivity() {
     private fun applyRecentsExclusion() {
         if (recentsChecked) return
         recentsChecked = true
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val prefs = AppPrefs.get(this)
         if (!prefs.getBoolean(Constants.PREF_HIDE_FROM_RECENTS, false)) return
         if (intent.flags and Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS != 0) return
         startActivity(
@@ -123,11 +124,26 @@ class MainActivity : ComponentActivity() {
         finishAndRemoveTask()
     }
 
+    /**
+     * 选窗口主题。
+     *
+     * Compose 画出第一帧之前屏幕上是 XML 主题给的窗口底色，它不跟应用内的深浅色设置走，
+     * 所以这里按设置先挑一套，免得系统浅色而应用内选深色时先闪一下白。
+     */
+    private fun applyWindowTheme() {
+        val prefs = AppPrefs.get(this)
+        val mode = ColorMode.fromValue(prefs.getInt(Constants.PREF_COLOR_MODE, ColorMode.SYSTEM.value))
+        val systemDark = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+        setTheme(if (mode.isDark(systemDark)) R.style.Theme_Zotiera_Dark else R.style.Theme_Zotiera_Light)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyWindowTheme()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val prefs = AppPrefs.get(this)
         // 旧版本把纯黑存成第四种配色（3），现在深色本身就是纯黑
         val storedMode = prefs.getInt(Constants.PREF_COLOR_MODE, ColorMode.SYSTEM.value)
         setContent {

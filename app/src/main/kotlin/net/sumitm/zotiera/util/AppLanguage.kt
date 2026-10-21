@@ -6,8 +6,8 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.LocaleList
 import androidx.core.content.edit
-import androidx.preference.PreferenceManager
 import java.util.Locale
+import net.sumitm.zotiera.util.AppPrefs
 
 /**
  * 应用语言。
@@ -82,5 +82,5 @@ object AppLanguage {
     /** 传给 LocaleList 的标签要带书写系统，才能命中 values-zh。 */
     private fun localeTag(tag: String): String = if (tag == "zh") "zh-Hans" else tag
 
-    private fun prefs(context: Context) = PreferenceManager.getDefaultSharedPreferences(context)
+    private fun prefs(context: Context) = AppPrefs.get(context)
 }

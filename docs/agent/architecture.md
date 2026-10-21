@@ -38,7 +38,8 @@
 | 语言 | 全部 Kotlin；`app/src/main/java` 已删除 |
 | 签名 | `.pr` 通道仓库内固定 keystore；正式包读 4 个 `ANDROID_*` 变量 |
 | CI | `.github/workflows/` 六文件矩阵：`lint` / `build` / `release` / `pr` / `clear` / `update_i18n` |
-| 包体 | 单 ABI 约 38 MB（dex 约 35 MB，未开 R8）；双 ABI 约 40 MB |
+| 混淆 | `pr` 与 `release` 都开 R8：`minifyEnabled` + `shrinkResources`，规则在 `app/proguard-rules.pro` |
+| 包体 | 单 ABI 5.4 MB（dex 3.1 MB）；双 ABI 7.4 MB |
 
 ## 3. 引擎与 JNI
 
@@ -53,6 +54,7 @@
 | 核心常量 | `ZT_MIN_PHYSMTU` 510；`ZT_MAX_NETWORK_SPECIALISTS` 512；metrics 默认关闭 |
 
 `com.zerotier.sdk` 的包名与类名不可改：JNI 符号 `Java_com_zerotier_sdk_Node_*` 与之绑死。
+R8 里整包 `-keep class com.zerotier.sdk.** { *; }`：原生侧用字面量类名与签名找类、找方法、找回调接口。
 
 ## 4. 数据层
 
@@ -70,7 +72,8 @@ Room 2.8.5，schema **v6**，`exportSchema = true`。
 | `moon_orbits` | moon 轨道 |
 
 - 行为稳定前不做数据接续：`fallbackToDestructiveMigration(dropAllTables = true)`，首启由「没有身份就建一条」兜底。
-- 设置项是 `PreferenceManager`（SharedPreferences），键集中在 `util/Constants.kt`；启动时 `pruneObsoletePrefs` 删除已废弃的键。
+- 设置项是 SharedPreferences，文件 `<包名>_preferences`，读写统一走 `util/AppPrefs`（项目不依赖 `androidx.preference`）；
+  键集中在 `util/Constants.kt`，启动时 `pruneObsoletePrefs` 删除已废弃的键。
 
 ## 5. 实例模型
 
@@ -110,7 +113,9 @@ files/
 - **命令与状态**：界面不再和服务互相发事件。命令走 `startService` + action（`ServiceCommands`：
   `START` / `STOP` / `JOIN` / `LEAVE` / `RECONFIGURE` / `ORBIT` / `DEORBIT`），状态走 `NodeState`
   （`running` / `status` / `configs` 三个 `StateFlow`，`peers` 是 `WhileSubscribed(2000)` 的轮询流）。
-- **返回值**：`START_STICKY`；`intent == null`（进程被杀后系统拉起）按 `START` 处理，重新 join 全部已加入网络并重建隧道。
+- **返回值**：`START_STICKY`；`intent == null` 走与 `START` 相同的路径，重新 join 全部已加入网络并重建隧道。
+  这条路径只在系统真的重拉服务时才走到：模拟器（API 36）上 `kill -9` 之后 `dumpsys activity services`
+  显示 `startRequested=true`、`app=null`，但没有重启日志，进程也没起来；真机行为待验。
 - **并发**：服务持一个 `CoroutineScope(SupervisorJob + Dispatchers.IO)`；后台任务循环、UDP 收包、TUN 读、
   ARP/NDP 表的 1 秒清理都是协程，`delay` 取代 `Thread.sleep`，阻塞读靠关流/socket 超时退出。
 - 服务本体仍在单个文件 `ZeroTierOneService.kt`：隧道部分与生命周期共用 `vpnSocket`、`tunnelFingerprint`，
@@ -151,6 +156,11 @@ files/
 **图标**：15 个图标以 vector drawable 放在 `res/drawable/ic_*.xml`（Material Symbols Rounded，Apache-2.0），
 组件参数用 `@DrawableRes Int`，内部按框架能力取 `painterResource` 或 `ImageVector.vectorResource`。
 项目不依赖 `material-icons-core` / `material-icons-extended`，`UiConventionsTest` 会拦住重新引入。
+
+**主题**：`res/values/themes.xml` 只有三条。`Theme.Zotiera` 挂在清单上，跟随系统深浅色，决定系统启动画面底色；
+`Theme.Zotiera.Light` / `Theme.Zotiera.Dark` 由 `MainActivity.applyWindowTheme()` 在 `super.onCreate` 之前按
+应用内的颜色模式 `setTheme`。界面全由 Compose 绘制，XML 主题只管 Compose 画出第一帧之前的窗口底色。
+系统启动画面只认清单主题，运行时的 `setTheme` 改不到它。
 
 **语言**：`values`（英文）+ `values-zh`；`res/xml/locales_config.xml` 声明 `en` / `zh-Hans` 并挂到
 `android:localeConfig`，API 33+ 可在系统设置里改本应用语言。`AppLanguage` 以系统值为准并回写偏好，
@@ -222,5 +232,4 @@ files/
 
 | 文档 | 状态 |
 | --- | --- |
-| [`plan/init-refactor.md`](plan/init-refactor.md) | 执行中（剩余 Java 层迁移、事件/并发收敛、依赖清理） |
 | [`plan/coexist-mode.md`](plan/coexist-mode.md) | 草案（root 模式 tun + 策略路由，待 P0 验证） |

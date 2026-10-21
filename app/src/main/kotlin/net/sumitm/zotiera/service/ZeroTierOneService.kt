@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
-import android.preference.PreferenceManager
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -37,6 +36,7 @@ import net.sumitm.zotiera.model.type.DNSMode
 import net.sumitm.zotiera.state.NodeState
 import net.sumitm.zotiera.state.NodeStatusPayload
 import net.sumitm.zotiera.ui.MainActivity
+import net.sumitm.zotiera.util.AppPrefs
 import net.sumitm.zotiera.util.Constants
 import net.sumitm.zotiera.util.DatabaseUtils
 import net.sumitm.zotiera.util.InetAddressUtils
@@ -155,7 +155,7 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
         return START_STICKY
     }
 
-    private fun prefs() = PreferenceManager.getDefaultSharedPreferences(this)
+    private fun prefs() = AppPrefs.get(this)
 
     private fun lastActivatedNetworkIds(): Set<Long> {
         DatabaseUtils.readLock.lock()

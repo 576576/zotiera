@@ -1,28 +1,21 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.ZerotierFix" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="colorSecondaryVariant">@color/teal_700</item>
-        <item name="colorOnSecondary">@color/white</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
-        <item name="greyText">@color/grey_text</item>
-        <item name="lightGreyText">@color/light_grey_text</item>
-        <item name="tableRowGrey">@color/table_row_grey</item>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      系统启动画面只认清单里挂的主题，运行时的 setTheme 改不到它，
+      所以这个主题跟随系统深浅色；Compose 画出第一帧之后的窗口底色由下面两个接管。
+    -->
+    <style name="Theme.Zotiera" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/window_background</item>
     </style>
 
-    <style name="Theme.ZerotierFix.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
+    <!-- Compose 画出第一帧之前的窗口底色，MainActivity 按应用内的深浅色设置选一个 -->
+    <style name="Theme.Zotiera.Light" parent="android:Theme.DeviceDefault.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background_light</item>
     </style>
 
-    <style name="Theme.ZerotierFix.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
-
-    <style name="Theme.ZerotierFix.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+    <style name="Theme.Zotiera.Dark" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/window_background_dark</item>
+    </style>
 </resources>

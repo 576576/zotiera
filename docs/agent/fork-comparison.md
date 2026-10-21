@@ -22,7 +22,7 @@
 | 数据层 | GreenDAO，schema 22 | Room，schema 6 |
 | UI | Fragment + XML layout + Material 2 | 单 Activity + Compose（Miuix / Material 3） |
 | 签名 | CI 后置签名 | 双通道：`.pr` 固定 keystore / 正式包 `ANDROID_*` |
-| 包大小 | 8.3 MB | 约 38 MB（双 ABI 约 40 MB，dex 占 35 MB） |
+| 包大小 | 8.3 MB | 5.4 MB（双 ABI 7.4 MB） |
 | 许可 | GPL-2.0 | AGPL-3.0-or-later；核心 MPL-2.0 |
 
 ## 2. 能力差异

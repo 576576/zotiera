@@ -17,7 +17,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
-import androidx.preference.PreferenceManager
 import net.sumitm.zotiera.BuildConfig
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.NodeViewModel
@@ -29,6 +28,7 @@ import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceSwitch
 import net.sumitm.zotiera.ui.theme.ColorMode
 import net.sumitm.zotiera.util.AppLanguage
+import net.sumitm.zotiera.util.AppPrefs
 import net.sumitm.zotiera.util.Constants
 
 @Composable
@@ -45,7 +45,7 @@ fun SettingsScreen(
     onOpenAbout: () -> Unit,
 ) {
     val context = LocalContext.current
-    val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
+    val prefs = remember { AppPrefs.get(context) }
 
     var cellular by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, false)) }
     var disableIpv6 by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, false)) }

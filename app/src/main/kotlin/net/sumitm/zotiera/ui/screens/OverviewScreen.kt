@@ -34,7 +34,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.preference.PreferenceManager
 import net.sumitm.zotiera.BuildConfig
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
@@ -60,6 +59,7 @@ import net.sumitm.zotiera.ui.component.planetLetter
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.toast
+import net.sumitm.zotiera.util.AppPrefs
 import net.sumitm.zotiera.util.Constants
 import net.sumitm.zotiera.util.NetworkIdUtils
 
@@ -73,7 +73,7 @@ fun OverviewScreen(
     val context = LocalContext.current
     val repository = remember { (context.applicationContext as ZotieraApplication).repository }
     val store = remember { InstanceStore(context) }
-    val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
+    val prefs = remember { AppPrefs.get(context) }
     val simpleMode = remember { prefs.getBoolean(Constants.PREF_SIMPLE_MODE, true) }
     var showJoin by remember { mutableStateOf(false) }
     // 点胶囊换身份：先选身份，没用过的再确认一次

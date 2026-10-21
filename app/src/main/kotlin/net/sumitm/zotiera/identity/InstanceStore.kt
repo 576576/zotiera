@@ -2,8 +2,8 @@ package net.sumitm.zotiera.identity
 
 import android.content.Context
 import androidx.core.content.edit
-import androidx.preference.PreferenceManager
 import net.sumitm.zotiera.model.Planet
+import net.sumitm.zotiera.util.AppPrefs
 import java.io.File
 
 /**
@@ -24,7 +24,7 @@ class InstanceStore(private val context: Context) {
     private val root = File(context.filesDir, INSTANCES_DIR)
     private val identitiesRoot = File(context.filesDir, IDENTITIES_DIR)
     private val planetsRoot = File(context.filesDir, PLANETS_DIR)
-    private val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+    private val prefs = AppPrefs.get(context)
 
     fun instanceDir(planetId: Long, uid: Long): File = File(root, "$planetId-$uid")
 

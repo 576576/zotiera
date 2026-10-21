@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import com.zerotier.sdk.Peer
 import com.zerotier.sdk.VirtualNetworkConfig
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +19,7 @@ import net.sumitm.zotiera.model.Network
 import net.sumitm.zotiera.model.NetworkConfig
 import net.sumitm.zotiera.service.ServiceCommands
 import net.sumitm.zotiera.state.NodeState
+import net.sumitm.zotiera.util.AppPrefs
 import net.sumitm.zotiera.util.Constants
 
 data class NodeUiState(
@@ -52,7 +52,7 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
     private val repository: ZotieraRepository =
         (app as ZotieraApplication).repository
 
-    private val prefs = PreferenceManager.getDefaultSharedPreferences(app)
+    private val prefs = AppPrefs.get(app)
 
     private val _state = MutableStateFlow(
         NodeUiState(

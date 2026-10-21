@@ -40,9 +40,7 @@ private const val REPO_URL = "https://github.com/576576/zotiera"
 private val COMPONENTS = listOf(
     "Zotiera" to "AGPL-3.0-or-later",
     "AndroidX / Jetpack Compose" to "Apache-2.0",
-    "Apache Commons IO / Validator" to "Apache-2.0",
     "Kotlin / kotlinx.coroutines" to "Apache-2.0",
-    "Material Components for Android" to "Apache-2.0",
     "Miuix" to "Apache-2.0",
     "Room" to "Apache-2.0",
     "ZeroTier One" to "MPL-2.0",

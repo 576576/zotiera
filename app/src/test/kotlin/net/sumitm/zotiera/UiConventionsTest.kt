@@ -65,4 +65,28 @@ class UiConventionsTest {
             .toList()
         assertTrue("这些文件仍在使用 material-icons：$offenders", offenders.isEmpty())
     }
+
+    /**
+     * 不再引入 XML View 时代的那套 UI 库。
+     *
+     * 界面全是 Compose，`appcompat` / `material` / `recyclerview` 这些只会在包里占位置；
+     * `androidx.preference` 唯一用到的 `getDefaultSharedPreferences` 已经由 `util/AppPrefs` 顶替。
+     */
+    @Test
+    fun legacyUiLibrariesStayOut() {
+        val gradle = File("build.gradle")
+        assertTrue("找不到 build.gradle", gradle.isFile)
+        val text = gradle.readText()
+        val banned = listOf(
+            "androidx.appcompat",
+            "com.google.android.material:material",
+            "androidx.constraintlayout",
+            "androidx.recyclerview",
+            "androidx.swiperefreshlayout",
+            "androidx.legacy:legacy-support",
+            "androidx.preference",
+        )
+        val found = banned.filter { text.contains(it) }
+        assertTrue("build.gradle 里不应再出现这些依赖：$found", found.isEmpty())
+    }
 }

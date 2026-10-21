@@ -3,11 +3,11 @@ package net.sumitm.zotiera
 import android.app.Application
 import android.content.Context
 import android.util.Log
-import androidx.preference.PreferenceManager
 import net.sumitm.zotiera.data.ZotieraDatabase
 import net.sumitm.zotiera.data.ZotieraRepository
 import net.sumitm.zotiera.identity.InstanceStore
 import net.sumitm.zotiera.util.AppLanguage
+import net.sumitm.zotiera.util.AppPrefs
 
 /** 主程序入口。 */
 class ZotieraApplication : Application() {
@@ -33,7 +33,7 @@ class ZotieraApplication : Application() {
 
     /** 这一版已经不再读的偏好键，启动时删掉，免得留在 shared_prefs 里。 */
     private fun pruneObsoletePrefs() {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val prefs = AppPrefs.get(this)
         val editor = prefs.edit()
         var dirty = false
         for (key in OBSOLETE_PREF_KEYS) {
