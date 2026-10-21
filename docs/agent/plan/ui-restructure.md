@@ -28,6 +28,7 @@ val LocalUiMode = staticCompositionLocalOf { UiMode.Miuix }
 | --- | --- |
 | `AppScaffold.kt` | `AppScaffold`、`AppTopBar`、`AppLargeTitlePage`、`AppBottomBar`、`AppNavigationRail`、`isWideLayout()`、`ScreenSurface` |
 | `Controls.kt` | `AppCard`、`AppListRow`、`AppSwitch`、`AppTunnelSwitch`、`AppDialog`、`AppButton`、`AppFab`、`AppKeyValueRow`、`AppRoleChip`、`AppDangerCard`、`appColors()` |
+| `StatusCard.kt` | `AppStatusCard`、`AppStatusTone`（概览设备卡：单击开关隧道、长按进设备页） |
 | `preference/Preference.kt` | `PreferenceGroup`、`PreferenceSwitch`、`PreferenceArrow`、`PreferenceSelect`、`PreferenceTextField`、`SectionTitle` |
 
 每个组件内部按 `LocalUiMode` 给出两份实现，对外是同一个函数。
@@ -40,6 +41,8 @@ val LocalUiMode = staticCompositionLocalOf { UiMode.Miuix }
 - 收起逻辑来自两套框架各自的滚动行为（Miuix `MiuixScrollBehavior`、Material
   `exitUntilCollapsedScrollBehavior`）；页面内容照常滚动，滚动事件冒泡到顶栏即可。
   页面不要自己画顶栏或标题行。
+- 状态栏留白只让一次：外层 Scaffold 已经给出顶部内边距，顶栏内部把 systemBars 顶部标成已消费，
+  否则标题会再被推低一个状态栏高度。
 
 ## 页面与导航
 

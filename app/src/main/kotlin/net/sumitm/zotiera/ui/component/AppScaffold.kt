@@ -5,7 +5,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
@@ -24,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
 import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -65,19 +71,35 @@ fun AppTopBar(
             }
         }
     }
-    when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixTopAppBar(
-            title = title,
-            navigationIcon = back,
-            actions = { action() },
-        )
+    BarWithoutTopInset {
+        when (LocalUiMode.current) {
+            UiMode.Miuix -> MiuixTopAppBar(
+                title = title,
+                navigationIcon = back,
+                actions = { action() },
+            )
 
-        UiMode.Material -> TopAppBar(
-            title = { Text(title) },
-            navigationIcon = back,
-            actions = { action() },
-        )
+            UiMode.Material -> TopAppBar(
+                title = { Text(title) },
+                navigationIcon = back,
+                actions = { action() },
+            )
+        }
     }
+}
+
+/**
+ * 状态栏那一段留白由外层 Scaffold 让出。
+ *
+ * 顶栏自己也会按 systemBars 顶部 inset 让一次，不在这里标成已消费就会多让一整个状态栏高度。
+ */
+@Composable
+private fun BarWithoutTopInset(content: @Composable () -> Unit) {
+    Box(
+        Modifier.consumeWindowInsets(
+            WindowInsets.systemBars.only(WindowInsetsSides.Top),
+        ),
+    ) { content() }
 }
 
 /**
@@ -91,7 +113,9 @@ fun AppLargeTitlePage(title: String, content: @Composable () -> Unit) {
         UiMode.Miuix -> {
             val behavior = MiuixScrollBehavior()
             Column(Modifier.fillMaxSize()) {
-                MiuixTopAppBar(title = title, scrollBehavior = behavior)
+                BarWithoutTopInset {
+                    MiuixTopAppBar(title = title, scrollBehavior = behavior)
+                }
                 Box(Modifier.fillMaxSize().nestedScroll(behavior.nestedScrollConnection)) { content() }
             }
         }
@@ -99,10 +123,15 @@ fun AppLargeTitlePage(title: String, content: @Composable () -> Unit) {
         UiMode.Material -> {
             val behavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
             Column(Modifier.fillMaxSize()) {
-                LargeTopAppBar(
-                    title = { Text(title) },
-                    scrollBehavior = behavior,
-                )
+                BarWithoutTopInset {
+                    // 与 Miuix 大标题栏同高（M3 默认展开高度 152dp）
+                    LargeTopAppBar(
+                        title = { Text(title) },
+                        scrollBehavior = behavior,
+                        collapsedHeight = 56.dp,
+                        expandedHeight = 104.dp,
+                    )
+                }
                 Box(Modifier.fillMaxSize().nestedScroll(behavior.nestedScrollConnection)) { content() }
             }
         }

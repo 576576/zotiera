@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.CheckCircleOutline
-import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.HighlightOff
+import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -140,12 +140,12 @@ private fun statusStyle(tone: AppStatusTone, dark: Boolean): StatusStyle = when 
     AppStatusTone.STOPPED -> StatusStyle(
         container = if (dark) Color(0xFF3A2E12) else Color(0xFFFFF4D1),
         icon = if (dark) Color(0xFFFFC940) else Color(0xFFE0A100),
-        glyph = Icons.Rounded.DoNotDisturbOn,
+        glyph = Icons.Rounded.RemoveCircleOutline,
     )
 
     AppStatusTone.EMPTY -> StatusStyle(
         container = if (dark) Color(0xFF3B1D1D) else Color(0xFFFFE3E3),
         icon = if (dark) Color(0xFFFF6B6B) else Color(0xFFD93A3A),
-        glyph = Icons.Rounded.Cancel,
+        glyph = Icons.Rounded.HighlightOff,
     )
 }
