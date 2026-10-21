@@ -376,6 +376,15 @@ public class ZeroTierOneService extends VpnService implements Runnable, EventLis
                     }
                     this.instancePlanetId = this.instanceStore.getActivePlanetId();
                     this.instanceIdentityUid = this.instanceStore.getActiveIdentityUid();
+                    // 没有身份（或记的那个已经不存在）时回落到默认身份
+                    var repo = ((ZotieraApplication) getApplication()).getRepository();
+                    if (repo.identity(this.instanceIdentityUid) == null) {
+                        Long uid = repo.ensureDefaultIdentity();
+                        if (uid != null) {
+                            this.instanceIdentityUid = uid;
+                            this.instanceStore.setActive(this.instancePlanetId, uid);
+                        }
+                    }
                     this.instanceStore.ensure(this.instancePlanetId, this.instanceIdentityUid);
                     this.dataStore = new DataStore(
                             this.instanceStore.instanceDir(this.instancePlanetId, this.instanceIdentityUid),

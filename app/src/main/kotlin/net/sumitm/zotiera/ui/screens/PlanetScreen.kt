@@ -80,7 +80,7 @@ fun PlanetScreen(onBack: () -> Unit) {
         }
         pendingBytes = bytes
         pendingWorldId = worldId
-        aliasDraft = String.format("%016x", worldId)
+        aliasDraft = java.lang.Long.toHexString(worldId)
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -93,8 +93,8 @@ fun PlanetScreen(onBack: () -> Unit) {
             ) {
                 items(planets, key = { it.worldId }) { planet ->
                     AppListRow(
-                        title = planet.alias,
-                        subtitle = String.format("%016x", planet.worldId) + " · " +
+                        title = if (planet.builtIn) stringResource(R.string.official_planet) else planet.alias,
+                        subtitle = planet.worldIdHex + " · " +
                             stringResource(if (planet.builtIn) R.string.planet_builtin else R.string.planet_from_file),
                         leading = Icons.Rounded.Public,
                         leadingTint = if (planet.builtIn) appColors().primary else Color.Unspecified,

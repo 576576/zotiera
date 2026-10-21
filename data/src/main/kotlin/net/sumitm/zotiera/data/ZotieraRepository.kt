@@ -78,7 +78,24 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
 
     fun planet(worldId: Long): Planet? = db.planetDao().byId(worldId)
 
-    fun insertPlanet(planet: Planet) = db.planetDao().insert(planet)
+    /** 官方行星是内置行，没有就补一条（序号固定 0）。 */
+    fun ensureOfficialPlanet() {
+        if (planet(Planet.OFFICIAL_WORLD_ID) == null) {
+            insertPlanet(
+                Planet(
+                    worldId = Planet.OFFICIAL_WORLD_ID,
+                    alias = "",
+                    builtIn = true,
+                    ordinal = Planet.OFFICIAL_ORDINAL,
+                )
+            )
+        }
+    }
+
+    fun insertPlanet(planet: Planet) {
+        if (!planet.builtIn) planet.ordinal = db.planetDao().nextOrdinal()
+        db.planetDao().insert(planet)
+    }
 
     fun updatePlanet(planet: Planet) = db.planetDao().update(planet)
 
@@ -88,8 +105,36 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
 
     fun identity(uid: Long): Identity? = db.identityDao().byUid(uid)
 
-    /** 插入身份并返回自增 uid。 */
-    fun insertIdentity(identity: Identity): Long = db.identityDao().insert(identity)
+    /** 插入身份并返回自增 uid；序号按加入顺序分配。 */
+    fun insertIdentity(identity: Identity): Long {
+        identity.ordinal = db.identityDao().nextOrdinal()
+        return db.identityDao().insert(identity)
+    }
+
+    fun defaultIdentity(): Identity? = db.identityDao().defaultRow()
+
+    /** 设为默认身份：先清掉旧的，再标记这一条。 */
+    fun setDefaultIdentity(uid: Long) = db.runInTransaction {
+        db.identityDao().clearDefault()
+        db.identityDao().byUid(uid)?.let {
+            it.isDefault = true
+            db.identityDao().update(it)
+        }
+    }
+
+    /** 没有任何身份时补一条并设为默认。返回当前默认身份的 uid（可能为 null 只在插入失败时）。 */
+    fun ensureDefaultIdentity(): Long? {
+        defaultIdentity()?.let { return it.uid }
+        val first = identities().firstOrNull()
+        if (first != null) {
+            setDefaultIdentity(first.uid)
+            return first.uid
+        }
+        val uid = insertIdentity(
+            Identity(alias = "", createdAt = System.currentTimeMillis(), isDefault = true)
+        )
+        return uid
+    }
 
     fun updateIdentity(identity: Identity) = db.identityDao().update(identity)
 
@@ -114,7 +159,10 @@ class ZotieraRepository(private val db: ZotieraDatabase) {
 
     fun hasMoonOrbit(worldId: Long): Boolean = db.moonOrbitDao().count(worldId) > 0
 
-    fun insertMoonOrbit(moon: MoonOrbit) = db.moonOrbitDao().insert(moon)
+    fun insertMoonOrbit(moon: MoonOrbit) {
+        moon.ordinal = db.moonOrbitDao().nextOrdinal()
+        db.moonOrbitDao().insert(moon)
+    }
 
     fun deleteMoonOrbit(moon: MoonOrbit) = db.moonOrbitDao().delete(moon)
 

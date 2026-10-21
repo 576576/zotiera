@@ -21,8 +21,10 @@ public class ZotieraApplication extends Application {
         super.onCreate();
         Log.i("Application", "Starting Application");
         this.repository = new ZotieraRepository(ZotieraDatabase.create(this));
-        // 老布局（files 根目录）搬进默认实例目录，升级后节点 ID 与已加入网络都不变
-        new InstanceStore(this).bootstrapLegacy(this.repository);
+        // 行为稳定前不做数据接续：旧布局整个丢掉，身份由引擎重新生成
+        new InstanceStore(this).resetLegacyLayout();
+        this.repository.ensureOfficialPlanet();
+        this.repository.ensureDefaultIdentity();
     }
 
     public ZotieraRepository getRepository() {

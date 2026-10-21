@@ -84,8 +84,12 @@ interface AssignedAddressDao {
 @Dao
 interface PlanetDao {
 
-    @Query("SELECT * FROM planets ORDER BY built_in DESC, added_at, world_id")
+    @Query("SELECT * FROM planets ORDER BY ordinal, world_id")
     fun all(): List<Planet>
+
+    /** 下一个自定义行星的序号；官方行星固定 0，不参与。 */
+    @Query("SELECT IFNULL(MAX(ordinal), 0) + 1 FROM planets WHERE built_in = 0")
+    fun nextOrdinal(): Int
 
     @Query("SELECT * FROM planets WHERE world_id = :worldId")
     fun byId(worldId: Long): Planet?
@@ -103,8 +107,17 @@ interface PlanetDao {
 @Dao
 interface IdentityDao {
 
-    @Query("SELECT * FROM identities ORDER BY uid")
+    @Query("SELECT * FROM identities ORDER BY ordinal, uid")
     fun all(): List<Identity>
+
+    @Query("SELECT IFNULL(MAX(ordinal), 0) + 1 FROM identities")
+    fun nextOrdinal(): Int
+
+    @Query("SELECT * FROM identities WHERE is_default = 1 LIMIT 1")
+    fun defaultRow(): Identity?
+
+    @Query("UPDATE identities SET is_default = 0")
+    fun clearDefault()
 
     @Query("SELECT * FROM identities WHERE uid = :uid")
     fun byUid(uid: Long): Identity?
@@ -122,8 +135,11 @@ interface IdentityDao {
 @Dao
 interface MoonOrbitDao {
 
-    @Query("SELECT * FROM moon_orbits ORDER BY moon_world_id")
+    @Query("SELECT * FROM moon_orbits ORDER BY ordinal, moon_world_id")
     fun all(): List<MoonOrbit>
+
+    @Query("SELECT IFNULL(MAX(ordinal), 0) + 1 FROM moon_orbits")
+    fun nextOrdinal(): Int
 
     @Query("SELECT * FROM moon_orbits WHERE moon_world_id = :worldId")
     fun byWorldId(worldId: Long): MoonOrbit?

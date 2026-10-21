@@ -20,13 +20,14 @@ class Identity @JvmOverloads constructor(
     var nodeId: Long? = null,
     @ColumnInfo(name = "created_at")
     var createdAt: Long = 0L,
+    /** 序号，从 1 起按加入顺序分配。 */
+    @ColumnInfo(name = "ordinal")
+    var ordinal: Int = 0,
+    /** 默认身份：新建网络与简易模式都用它，全局只有一个。 */
+    @ColumnInfo(name = "is_default")
+    var isDefault: Boolean = false,
 ) {
     /** 10 位小写节点 ID；还没生成时为空串。 */
     val nodeIdString: String
         get() = nodeId?.let { String.format("%10x", it) } ?: ""
-
-    companion object {
-        /** 迁移建出来的默认身份。 */
-        const val DEFAULT_UID = 1L
-    }
 }

@@ -35,6 +35,7 @@ import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppListRow
+import net.sumitm.zotiera.ui.component.AppRoleChip
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
@@ -60,11 +61,9 @@ fun IdentityScreen(onBack: () -> Unit) {
 
     val identities = remember(refreshKey) { repository.identities() }
     // 文案在组合期取好，回调里不再摸 LocalContext 的资源
-    val defaultName = stringResource(R.string.identity_default_name)
     val importFailed = stringResource(R.string.identity_import_failed)
     val existsMsg = stringResource(R.string.identity_exists)
     val inUseMsg = stringResource(R.string.identity_in_use)
-    val aliasFormat = stringResource(R.string.identity_default_alias)
 
     val importIdentity = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -100,11 +99,19 @@ fun IdentityScreen(onBack: () -> Unit) {
                 items(identities, key = { it.uid }) { identity ->
                     val active = store.hasKeys(identity.uid) || identity.nodeId != null
                     AppListRow(
-                        title = identity.alias.ifEmpty { defaultName },
+                        title = identity.alias.ifEmpty { stringResource(R.string.identity_default_alias, identity.ordinal) },
                         subtitle = identity.nodeIdString.ifEmpty { stringResource(R.string.identity_not_generated) },
                         monoSubtitle = true,
                         leading = Icons.Rounded.Badge,
                         leadingTint = if (active) appColors().primary else Color.Unspecified,
+                        trailing = {
+                            if (identity.isDefault) {
+                                AppRoleChip(
+                                    label = stringResource(R.string.identity_badge_default),
+                                    tint = appColors().primary,
+                                )
+                            }
+                        },
                         onClick = { menuIdentity = identity },
                         onLongClick = { menuIdentity = identity },
                     )
@@ -139,12 +146,8 @@ fun IdentityScreen(onBack: () -> Unit) {
         ) {
             Column {
                 AppDialogAction(stringResource(R.string.identity_generate)) {
-                    val index = repository.identities().size + 1
                     repository.insertIdentity(
-                        Identity(
-                            alias = String.format(aliasFormat, index),
-                            createdAt = System.currentTimeMillis(),
-                        )
+                        Identity(alias = "", createdAt = System.currentTimeMillis())
                     )
                     showAdd = false
                     refreshKey++
@@ -158,15 +161,25 @@ fun IdentityScreen(onBack: () -> Unit) {
     }
 
     menuIdentity?.let { identity ->
+        val displayName = identity.alias.ifEmpty {
+            stringResource(R.string.identity_default_alias, identity.ordinal)
+        }
         AppDialog(
-            title = identity.alias.ifEmpty { defaultName },
+            title = displayName,
             confirmLabel = stringResource(android.R.string.cancel),
             onConfirm = { menuIdentity = null },
             onDismiss = { menuIdentity = null },
         ) {
             Column {
+                if (!identity.isDefault) {
+                    AppDialogAction(stringResource(R.string.identity_set_default)) {
+                        repository.setDefaultIdentity(identity.uid)
+                        menuIdentity = null
+                        refreshKey++
+                    }
+                }
                 AppDialogAction(stringResource(R.string.action_rename)) {
-                    aliasDraft = identity.alias.ifEmpty { defaultName }
+                    aliasDraft = displayName
                     renameTarget = identity
                     menuIdentity = null
                 }
@@ -213,6 +226,8 @@ fun IdentityScreen(onBack: () -> Unit) {
                 } else {
                     store.dir(identity.uid).deleteRecursively()
                     repository.deleteIdentity(identity)
+                    // 删掉的是默认身份时，把剩下的第一条扶正
+                    repository.ensureDefaultIdentity()
                     refreshKey++
                 }
                 deleteTarget = null

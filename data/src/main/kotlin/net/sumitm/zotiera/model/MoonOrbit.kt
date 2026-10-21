@@ -25,6 +25,9 @@ class MoonOrbit @JvmOverloads constructor(
     var source: String = SOURCE_MANUAL,
     @ColumnInfo(name = "added_at")
     var addedAt: Long = 0L,
+    /** 序号，从 1 起按加入顺序分配。 */
+    @ColumnInfo(name = "ordinal")
+    var ordinal: Int = 0,
 ) {
     /** moon 文件是否已缓存，运行期状态，不持久化。 */
     @Ignore

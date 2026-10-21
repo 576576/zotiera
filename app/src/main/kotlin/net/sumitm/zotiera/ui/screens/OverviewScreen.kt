@@ -57,6 +57,7 @@ import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppHeader
 import net.sumitm.zotiera.ui.component.AppListRow
+import net.sumitm.zotiera.ui.component.AppRoleChip
 import net.sumitm.zotiera.ui.component.AppSwitch
 import net.sumitm.zotiera.ui.component.AppTunnelSwitch
 import net.sumitm.zotiera.ui.component.appColors
@@ -128,12 +129,20 @@ fun OverviewScreen(
     val activeIdentityUid: Long? = joinedNetworks.firstOrNull()?.identityUid
     val planets = remember(state.networks) { repository.planets() }
     val identities = remember(state.networks) { repository.identities() }
-    val activeAlias = planets.firstOrNull { it.worldId == activePlanetId }?.alias?.takeIf { it.isNotEmpty() }
-        ?: stringResource(R.string.identity_default_name)
-    val activeIdentityAlias = identities.firstOrNull { it.uid == activeIdentityUid }
-        ?.alias?.takeIf { it.isNotEmpty() } ?: stringResource(R.string.identity_default_name)
+    val activePlanet = planets.firstOrNull { it.worldId == activePlanetId }
+    val activeAlias = when {
+        activePlanet == null -> ""
+        activePlanet.builtIn -> stringResource(R.string.official_planet)
+        activePlanet.alias.isNotEmpty() -> activePlanet.alias
+        else -> activePlanet.worldIdHex
+    }
+    val activeIdentity = identities.firstOrNull { it.uid == activeIdentityUid }
+    val activeIdentityAlias = when {
+        activeIdentity == null -> ""
+        activeIdentity.alias.isNotEmpty() -> activeIdentity.alias
+        else -> stringResource(R.string.identity_default_alias, activeIdentity.ordinal)
+    }
     val instanceHint = stringResource(R.string.instance_busy_hint)
-    val defaultIdentityName = stringResource(R.string.identity_default_name)
 
     Row(Modifier.fillMaxSize()) {
         Box(Modifier.weight(if (wide) 0.42f else 1f).fillMaxSize()) {
@@ -160,19 +169,26 @@ fun OverviewScreen(
                             // 已经连着某个实例时，别的实例的网络不能同时开
                             val enabled = activePlanetId == null ||
                                 (network.planetId == activePlanetId && network.identityUid == activeIdentityUid)
-                            val planetAlias = planets.firstOrNull { it.worldId == network.planetId }?.alias.orEmpty()
-                            val identityAlias = identities.firstOrNull { it.uid == network.identityUid }
-                                ?.alias?.takeIf { it.isNotEmpty() } ?: defaultIdentityName
+                            // 胶囊只在非「官方行星 + 默认身份」时出现，简单模式下不显示
+                            val planet = planets.firstOrNull { it.worldId == network.planetId }
+                            val identity = identities.firstOrNull { it.uid == network.identityUid }
+                            val capsules = if (!simpleMode && planet != null && identity != null &&
+                                !(planet.builtIn && identity.isDefault)
+                            ) {
+                                planet.ordinal to identity.ordinal
+                            } else {
+                                null
+                            }
                             NetworkRow(
                                 network = network,
                                 joined = network.lastActivated,
                                 enabled = enabled,
-                                // 同 planet 时差异在身份上，提示就报身份名
+                                // 同行星时差异在身份上，提示就报身份名
                                 hint = if (enabled) null else String.format(
                                     instanceHint,
                                     if (network.planetId == activePlanetId) activeIdentityAlias else activeAlias,
                                 ),
-                                instanceLabel = if (simpleMode) null else "$planetAlias · $identityAlias",
+                                capsules = capsules,
                                 onClick = { openNetwork(network.networkId) },
                                 onJoinedChange = { joined -> viewModel.setJoined(network, joined) },
                             )
@@ -297,7 +313,8 @@ private fun DeviceCard(
 /**
  * 网络行：开关 = 加入/离开该网络；点行 = 看详情。
  *
- * 已经连着别的实例时 [enabled] 为 false，副标题换成提示。
+ * 已经连着别的实例时 [enabled] 为 false，副标题换成提示；[capsules] 非空时在开关左边
+ * 显示「行星序号 | 身份序号」两枚胶囊。
  */
 @Composable
 private fun NetworkRow(
@@ -305,7 +322,7 @@ private fun NetworkRow(
     joined: Boolean,
     enabled: Boolean,
     hint: String?,
-    instanceLabel: String?,
+    capsules: Pair<Int, Int>?,
     onClick: () -> Unit,
     onJoinedChange: (Boolean) -> Unit,
 ) {
@@ -315,19 +332,38 @@ private fun NetworkRow(
         title = displayName ?: hex,
         subtitle = when {
             hint != null -> hint
-            // 没有网络名时标题就是 hex，副标题不再重复一遍
-            instanceLabel != null && displayName == null -> instanceLabel
-            instanceLabel != null -> "$hex · $instanceLabel"
             displayName != null -> hex
             else -> null
         },
         monoSubtitle = hint == null,
         leading = Icons.Rounded.Language,
         leadingTint = if (joined) appColors().primary else Color.Unspecified,
-        trailing = { AppSwitch(checked = joined, onCheckedChange = onJoinedChange, enabled = enabled) },
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (capsules != null) {
+                    AppRoleChip(capsules.first.toString(), planetTint(capsules.first))
+                    Spacer(Modifier.width(4.dp))
+                    AppRoleChip(capsules.second.toString(), identityTint(capsules.second))
+                    Spacer(Modifier.width(10.dp))
+                }
+                AppSwitch(checked = joined, onCheckedChange = onJoinedChange, enabled = enabled)
+            }
+        },
         onClick = onClick,
     )
 }
+
+/** 行星与身份各用一谱系，两边颜色不会撞；同一序号永远同一个颜色。 */
+private val PlanetTints = listOf(
+    Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFEF4444),
+)
+private val IdentityTints = listOf(
+    Color(0xFF8B5CF6), Color(0xFFEC4899), Color(0xFF0D9488), Color(0xFF84CC16),
+)
+
+private fun planetTint(ordinal: Int): Color = PlanetTints[Math.floorMod(ordinal, PlanetTints.size)]
+
+private fun identityTint(ordinal: Int): Color = IdentityTints[Math.floorMod(ordinal, IdentityTints.size)]
 
 @Composable
 private fun JoinNetworkDialog(
@@ -348,7 +384,6 @@ private fun JoinNetworkDialog(
     var identityIndex by remember {
         mutableIntStateOf(identities.indexOfFirst { it.uid == defaultIdentityUid }.coerceAtLeast(0))
     }
-    val defaultIdentityName = stringResource(R.string.identity_default_name)
     val valid = networkId.length == 16 && networkId.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
 
     AppDialog(
@@ -378,14 +413,22 @@ private fun JoinNetworkDialog(
                 PreferenceSelect(
                     title = stringResource(R.string.planet_label),
                     summary = null,
-                    items = planets.map { it.alias },
+                    items = planets.map {
+                        when {
+                            it.builtIn -> stringResource(R.string.official_planet)
+                            it.alias.isNotEmpty() -> it.alias
+                            else -> it.worldIdHex
+                        }
+                    },
                     selectedIndex = planetIndex,
                     onSelected = { planetIndex = it },
                 )
                 PreferenceSelect(
                     title = stringResource(R.string.identity_label),
                     summary = null,
-                    items = identities.map { it.alias.ifEmpty { defaultIdentityName } },
+                    items = identities.map {
+                        it.alias.ifEmpty { stringResource(R.string.identity_default_alias, it.ordinal) }
+                    },
                     selectedIndex = identityIndex,
                     onSelected = { identityIndex = it },
                 )
