@@ -43,6 +43,7 @@ import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppDialogAction
 import net.sumitm.zotiera.ui.component.AppFab
 import net.sumitm.zotiera.ui.component.AppListRow
+import net.sumitm.zotiera.ui.component.AppRoleChip
 import net.sumitm.zotiera.ui.component.AppSwitch
 import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
@@ -125,10 +126,9 @@ fun PlanetScreen(onBack: () -> Unit) {
                         trailing = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (planet.isDefault) {
-                                    Text(
-                                        text = stringResource(R.string.planet_default_tag),
-                                        style = LocalZotieraType.current.rowSummary,
-                                        color = appColors().primary,
+                                    AppRoleChip(
+                                        label = stringResource(R.string.planet_default_tag),
+                                        tint = appColors().primary,
                                     )
                                     Spacer(Modifier.width(8.dp))
                                 }

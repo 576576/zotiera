@@ -156,8 +156,8 @@ class MainActivity : ComponentActivity() {
                         prefs.edit { putInt(Constants.PREF_COLOR_MODE, mode.value) }
                     },
                     onLanguageChange = { tag ->
-                        prefs.edit { putString(AppLanguage.PREF, tag) }
-                        recreate()
+                        // API 33+ 由系统保存 per-app 语言并重建界面；30–32 只有偏好，得自己重建
+                        if (!AppLanguage.apply(this@MainActivity, tag)) recreate()
                     },
                 )
             }
