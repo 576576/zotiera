@@ -78,5 +78,7 @@ Android SDK 必需（compileSdk 37）；NDK 固定 `28.2.13676358`，CMake 由 A
 | 文档 | 状态 | 内容 |
 | --- | --- | --- |
 | [plan/init-refactor.md](plan/init-refactor.md) | 执行中 | 核心 1.12.2→1.16.2；Java→Kotlin + Compose/M3；Legacy Central 挂起 |
+| [plan/empty-state.md](plan/empty-state.md) | 草案 | 概览/结点列表空状态改为居中占位（LSPosed 式） |
+| [plan/coexist-mode.md](plan/coexist-mode.md) | 草案 | 与其它 VPN 共存：API 102 模块 + root 模式 tun 的可行性调查 |
 | [init-baseline-diff.md](init-baseline-diff.md) | 参考 | 重构前后的逐项对比、不变项、用户可感知差异 |
 | [notes/baseline-audit.md](notes/baseline-audit.md) | 事实记录 | 现状审计与证据 |
