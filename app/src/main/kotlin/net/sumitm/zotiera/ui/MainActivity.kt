@@ -87,24 +87,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        // 旧版本把纯黑存成第四种配色（3），现在拆成深色 + 单独的纯黑开关
+        // 旧版本把纯黑存成第四种配色（3），现在深色本身就是纯黑
         val storedMode = prefs.getInt(Constants.PREF_COLOR_MODE, ColorMode.SYSTEM.value)
-        val legacyAmoled = storedMode == ColorMode.LEGACY_AMOLED
         setContent {
             var uiMode by remember {
                 mutableStateOf(UiMode.fromValue(prefs.getString(Constants.PREF_UI_STYLE, null)))
             }
-            var colorMode by remember {
-                mutableStateOf(
-                    if (legacyAmoled) ColorMode.DARK else ColorMode.fromValue(storedMode)
-                )
-            }
-            var amoled by remember {
-                mutableStateOf(legacyAmoled || prefs.getBoolean(Constants.PREF_AMOLED, false))
-            }
+            var colorMode by remember { mutableStateOf(ColorMode.fromValue(storedMode)) }
             // NavController 在主题之外：切换风格会重建主题子树
             val navController = rememberNavController()
-            ZotieraTheme(uiMode = uiMode, colorMode = colorMode, amoled = amoled) {
+            ZotieraTheme(uiMode = uiMode, colorMode = colorMode) {
                 ZotieraApp(
                     navController = navController,
                     viewModel = viewModel,
@@ -117,11 +109,6 @@ class MainActivity : ComponentActivity() {
                     onColorModeChange = { mode ->
                         colorMode = mode
                         prefs.edit { putInt(Constants.PREF_COLOR_MODE, mode.value) }
-                    },
-                    amoled = amoled,
-                    onAmoledChange = { enabled ->
-                        amoled = enabled
-                        prefs.edit { putBoolean(Constants.PREF_AMOLED, enabled) }
                     },
                 )
             }
@@ -148,8 +135,6 @@ private fun ZotieraApp(
     onUiModeChange: (UiMode) -> Unit,
     colorMode: ColorMode,
     onColorModeChange: (ColorMode) -> Unit,
-    amoled: Boolean,
-    onAmoledChange: (Boolean) -> Unit,
 ) {
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
@@ -238,8 +223,6 @@ private fun ZotieraApp(
                             onUiModeChange = onUiModeChange,
                             colorMode = colorMode,
                             onColorModeChange = onColorModeChange,
-                            amoled = amoled,
-                            onAmoledChange = onAmoledChange,
                             onOpenIdentities = { navController.navigate("identities") },
                             onOpenPlanet = { navController.navigate("planet") },
                             onOpenMoons = { navController.navigate("moons") },

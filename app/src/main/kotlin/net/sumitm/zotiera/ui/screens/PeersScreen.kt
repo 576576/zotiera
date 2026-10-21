@@ -39,10 +39,7 @@ fun PeersScreen(viewModel: NodeViewModel) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        AppHeader(
-            title = stringResource(R.string.peer_list),
-            subtitle = stringResource(R.string.peer_subtitle),
-        )
+        AppHeader(title = stringResource(R.string.peer_list))
         if (state.peers.isEmpty()) {
             Text(
                 text = stringResource(

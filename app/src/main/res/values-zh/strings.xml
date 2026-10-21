@@ -170,8 +170,6 @@
     <string name="color_mode_system">跟随系统</string>
     <string name="color_mode_light">浅色</string>
     <string name="color_mode_dark">深色</string>
-    <string name="amoled">纯黑背景</string>
-    <string name="amoled_summary">深色下使用纯黑的背景与面板</string>
     <string name="connected_toast">已连接</string>
     <string name="connecting_toast">正在连接</string>
     <string name="disconnected_toast">已断开</string>

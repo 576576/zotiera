@@ -172,8 +172,6 @@
     <string name="color_mode_system">Follow system</string>
     <string name="color_mode_light">Light</string>
     <string name="color_mode_dark">Dark</string>
-    <string name="amoled">Pure black</string>
-    <string name="amoled_summary">Use a true black background in dark mode</string>
     <string name="connected_toast">Connected</string>
     <string name="connecting_toast">Connecting</string>
     <string name="disconnected_toast">Disconnected</string>

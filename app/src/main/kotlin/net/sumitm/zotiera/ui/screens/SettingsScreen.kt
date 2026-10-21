@@ -1,6 +1,5 @@
 package net.sumitm.zotiera.ui.screens
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,7 +27,6 @@ import net.sumitm.zotiera.ui.component.preference.PreferenceArrow
 import net.sumitm.zotiera.ui.component.preference.PreferenceGroup
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceSwitch
-import net.sumitm.zotiera.ui.component.preference.SectionTitle
 import net.sumitm.zotiera.ui.theme.ColorMode
 import net.sumitm.zotiera.util.Constants
 
@@ -39,8 +37,6 @@ fun SettingsScreen(
     onUiModeChange: (UiMode) -> Unit,
     colorMode: ColorMode,
     onColorModeChange: (ColorMode) -> Unit,
-    amoled: Boolean,
-    onAmoledChange: (Boolean) -> Unit,
     onOpenIdentities: () -> Unit,
     onOpenPlanet: () -> Unit,
     onOpenMoons: () -> Unit,
@@ -58,13 +54,31 @@ fun SettingsScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        AppHeader(
-            title = stringResource(R.string.settings),
-            subtitle = "Zotiera ${BuildConfig.VERSION_NAME}",
-        )
+        AppHeader(title = stringResource(R.string.settings))
 
-        SectionTitle(stringResource(R.string.appearance))
-        // 外观的几项属于同一组，放在一张卡片里
+        // 通用
+        PreferenceGroup {
+            PreferenceSwitch(
+                title = stringResource(R.string.simple_mode),
+                summary = stringResource(R.string.simple_mode_summary),
+                checked = simpleMode,
+                onCheckedChange = {
+                    simpleMode = it
+                    prefs.edit { putBoolean(Constants.PREF_SIMPLE_MODE, it) }
+                },
+            )
+            PreferenceSwitch(
+                title = stringResource(R.string.preferences_general_start_on_boot),
+                summary = stringResource(R.string.start_on_boot_summary),
+                checked = startOnBoot,
+                onCheckedChange = {
+                    startOnBoot = it
+                    prefs.edit { putBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, it) }
+                },
+            )
+        }
+
+        // 外观
         PreferenceGroup {
             PreferenceSelect(
                 title = stringResource(R.string.ui_style),
@@ -80,18 +94,9 @@ fun SettingsScreen(
                 selectedIndex = ColorMode.entries.indexOf(colorMode),
                 onSelected = { onColorModeChange(ColorMode.entries[it]) },
             )
-            // 纯黑只是深色的一种画法；不处在深色时没有意义，不显示
-            if (colorMode.isDark(isSystemInDarkTheme())) {
-                PreferenceSwitch(
-                    title = stringResource(R.string.amoled),
-                    summary = stringResource(R.string.amoled_summary),
-                    checked = amoled,
-                    onCheckedChange = onAmoledChange,
-                )
-            }
         }
 
-        SectionTitle(stringResource(R.string.preferences_network))
+        // 网络
         PreferenceGroup {
             PreferenceSwitch(
                 title = stringResource(R.string.preferences_network_use_cell_data),
@@ -113,7 +118,7 @@ fun SettingsScreen(
             )
         }
 
-        // 网络相关的管理入口，跟着网络设置走，不单独占一栏；简易模式只留 Moon
+        // 网络相关的管理入口；简易模式只留 Moon
         PreferenceGroup {
             if (!simpleMode) {
                 PreferenceArrow(
@@ -131,28 +136,6 @@ fun SettingsScreen(
                 title = stringResource(R.string.manage_moon),
                 summary = stringResource(R.string.moon_orbit_summary),
                 onClick = onOpenMoons,
-            )
-        }
-
-        SectionTitle(stringResource(R.string.preferences_general))
-        PreferenceGroup {
-            PreferenceSwitch(
-                title = stringResource(R.string.simple_mode),
-                summary = stringResource(R.string.simple_mode_summary),
-                checked = simpleMode,
-                onCheckedChange = {
-                    simpleMode = it
-                    prefs.edit { putBoolean(Constants.PREF_SIMPLE_MODE, it) }
-                },
-            )
-            PreferenceSwitch(
-                title = stringResource(R.string.preferences_general_start_on_boot),
-                summary = stringResource(R.string.start_on_boot_summary),
-                checked = startOnBoot,
-                onCheckedChange = {
-                    startOnBoot = it
-                    prefs.edit { putBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, it) }
-                },
             )
         }
 

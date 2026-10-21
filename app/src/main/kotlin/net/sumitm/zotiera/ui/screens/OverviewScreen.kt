@@ -138,10 +138,7 @@ fun OverviewScreen(
     Row(Modifier.fillMaxSize()) {
         Box(Modifier.weight(if (wide) 0.42f else 1f).fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
-                AppHeader(
-                    title = stringResource(R.string.app_name),
-                    subtitle = stringResource(R.string.network_list),
-                )
+                AppHeader(title = stringResource(R.string.app_name))
                 DeviceCard(
                     state = state,
                     onOpen = onOpenDevice,

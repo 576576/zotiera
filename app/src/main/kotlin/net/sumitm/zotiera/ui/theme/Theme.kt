@@ -25,17 +25,18 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 
 /**
- * 配色模式。AMOLED 不是第四种模式，而是深色下的一个开关
- * （见 [ZotieraTheme] 的 amoled 参数）。
+ * 配色模式。深色只有一种画法：底色纯黑、容器略微抬起。
  */
 enum class ColorMode(val value: Int) {
     SYSTEM(0), LIGHT(1), DARK(2);
 
     companion object {
-        /** 旧版本存过 3 = AMOLED，这里退回深色，由调用方补上 AMOLED 开关。 */
+        /** 旧版本存过 3 = AMOLED，按深色处理。 */
         const val LEGACY_AMOLED = 3
 
-        fun fromValue(value: Int) = entries.firstOrNull { it.value == value } ?: SYSTEM
+        /** 旧值 3 = AMOLED，按深色读回来，别让老用户掉回「跟随系统」。 */
+        fun fromValue(value: Int): ColorMode =
+            if (value == LEGACY_AMOLED) DARK else entries.firstOrNull { it.value == value } ?: SYSTEM
     }
 
     fun isDark(systemDark: Boolean): Boolean = when (this) {
@@ -60,9 +61,9 @@ data class ZotieraType(
         textDirection = TextDirection.Ltr,
     ),
     val titleLarge: TextStyle = TextStyle(
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
+        fontWeight = FontWeight.Bold,
     ),
     /** 键值行的等宽值：与 rowTitle 同一量级，避免一张卡片里字号忽大忽小。 */
     val monoValue: TextStyle = TextStyle(
@@ -94,17 +95,18 @@ val LocalDarkTheme = staticCompositionLocalOf { false }
 val SeedColor = Color(0xFFFF6A00)
 
 /**
- * AMOLED：背景与 surface 压到纯黑，容器只留一点点亮度。
+ * 深色配色：背景与 surface 压到纯黑，容器只抬一点点。
  *
- * 容器也压成纯黑的话，分组卡片和背景完全同色，界面退化为一片黑。
+ * 容器必须比纯黑亮，否则分组卡片和背景同色、看不出卡片边界；
+ * 但也不宜太亮——上限停在 [0xFF1A1A1A]。
  */
-fun ColorScheme.amoled(): ColorScheme = copy(
+fun ColorScheme.blackDark(): ColorScheme = copy(
     background = Color.Black,
     surface = Color.Black,
     surfaceContainerLowest = Color.Black,
-    surfaceContainerLow = Color(0xFF0B0B0B),
-    surfaceContainer = Color(0xFF101010),
-    surfaceContainerHigh = Color(0xFF151515),
+    surfaceContainerLow = Color(0xFF0C0C0C),
+    surfaceContainer = Color(0xFF131313),
+    surfaceContainerHigh = Color(0xFF171717),
     surfaceContainerHighest = Color(0xFF1A1A1A),
 )
 
@@ -112,12 +114,9 @@ fun ColorScheme.amoled(): ColorScheme = copy(
 fun ZotieraTheme(
     uiMode: UiMode,
     colorMode: ColorMode = ColorMode.SYSTEM,
-    /** 纯黑背景；只在深色下有意义 */
-    amoled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val dark = colorMode.isDark(isSystemInDarkTheme())
-    val amoledDark = amoled && dark
     // enableEdgeToEdge 只按启动时的明暗定一次系统栏图标颜色；运行时切深色后
     // 图标会留在深色上（黑底黑字），所以每次明暗变化都要重新声明
     val view = androidx.compose.ui.platform.LocalView.current
@@ -144,25 +143,23 @@ fun ZotieraTheme(
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
                         if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
                     else -> materialScheme(SeedColor, dark)
-                }.let { if (amoledDark) it.amoled() else it }
+                }.let { if (dark) it.blackDark() else it }
                 MaterialTheme(colorScheme = scheme, content = content)
             }
 
             UiMode.Miuix -> {
-                val controller = remember(dark, amoledDark) {
+                val controller = remember(dark) {
                     ThemeController(
                         colorSchemeMode = if (dark) ColorSchemeMode.Dark else ColorSchemeMode.Light,
-                        // AMOLED 要把面压到纯黑；Miuix 没有内置档位，改它自己的暗色板
-                        darkColors = if (amoledDark) {
-                            top.yukonga.miuix.kmp.theme.darkColorScheme().copy(
+                        // Miuix 自带的暗色板里卡片与背景几乎同色，深色统一换成黑底微抬的那套
+                        darkColors = top.yukonga.miuix.kmp.theme.darkColorScheme().let {
+                            it.copy(
                                 background = Color.Black,
                                 surface = Color.Black,
-                                surfaceContainer = Color(0xFF101010),
-                                surfaceContainerHigh = Color(0xFF151515),
+                                surfaceContainer = Color(0xFF131313),
+                                surfaceContainerHigh = Color(0xFF171717),
                                 surfaceContainerHighest = Color(0xFF1A1A1A),
                             )
-                        } else {
-                            top.yukonga.miuix.kmp.theme.darkColorScheme()
                         },
                     )
                 }

@@ -87,26 +87,13 @@ fun AppTopBar(
  * 这是 Material 与 Miuix 共用的排版，字号来自 [LocalZotieraType]，切换风格不跳。
  */
 @Composable
-fun AppHeader(title: String, subtitle: String? = null) {
+fun AppHeader(title: String) {
     Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp)) {
-        val type = LocalZotieraType.current
         val color = when (LocalUiMode.current) {
             UiMode.Miuix -> top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface
             UiMode.Material -> MaterialTheme.colorScheme.onSurface
         }
-        val subColor = when (LocalUiMode.current) {
-            UiMode.Miuix -> top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurfaceVariantSummary
-            UiMode.Material -> MaterialTheme.colorScheme.onSurfaceVariant
-        }
-        Text(text = title, style = type.titleLarge, color = color)
-        if (!subtitle.isNullOrEmpty()) {
-            Text(
-                text = subtitle,
-                style = type.rowSummary,
-                color = subColor,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
+        Text(text = title, style = LocalZotieraType.current.titleLarge, color = color)
     }
 }
 
