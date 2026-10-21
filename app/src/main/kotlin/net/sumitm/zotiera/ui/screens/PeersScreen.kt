@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,7 +14,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zerotier.sdk.PeerRole
-import kotlinx.coroutines.delay
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.NodeViewModel
 import net.sumitm.zotiera.ui.component.AppLargeTitlePage
@@ -26,14 +24,6 @@ import net.sumitm.zotiera.ui.theme.LocalDarkTheme
 @Composable
 fun PeersScreen(viewModel: NodeViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-
-    // 延迟与路径是实时量，停在这个页面时持续刷新
-    LaunchedEffect(Unit) {
-        while (true) {
-            viewModel.requestPeers()
-            delay(2000)
-        }
-    }
 
     AppLargeTitlePage(title = stringResource(R.string.peer_list)) {
         Column(Modifier.fillMaxSize()) {

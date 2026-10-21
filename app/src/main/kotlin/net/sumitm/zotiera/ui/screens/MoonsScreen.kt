@@ -32,8 +32,6 @@ import androidx.compose.ui.unit.dp
 import java.io.File
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
-import net.sumitm.zotiera.events.OrbitMoonEvent
-import net.sumitm.zotiera.events.RemoveMoonOrbitEvent
 import net.sumitm.zotiera.identity.InstanceStore
 import net.sumitm.zotiera.model.MoonOrbit
 import net.sumitm.zotiera.ui.NodeViewModel
@@ -46,14 +44,12 @@ import net.sumitm.zotiera.ui.component.AppTopBar
 import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
-import org.greenrobot.eventbus.EventBus
 
 @Composable
-fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: () -> Unit) {
+fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val repository = remember { (context.applicationContext as ZotieraApplication).getRepository() }
-    val bus = remember { EventBus.getDefault() }
 
     var refreshKey by remember { mutableIntStateOf(0) }
     var showAdd by remember { mutableStateOf(false) }
@@ -81,7 +77,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
             addedAt = System.currentTimeMillis(),
         )
         repository.insertMoonOrbit(moon)
-        bus.post(OrbitMoonEvent(listOf(moon)))
+        viewModel.orbitMoon(moon)
         refreshKey++
     }
 
@@ -145,11 +141,11 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
                                         moon.enabled = on
                                         repository.updateMoonOrbit(moon)
                                         if (on) {
-                                            bus.post(OrbitMoonEvent(listOf(moon)))
+                                            viewModel.orbitMoon(moon)
                                         } else {
                                             // 停用等于从引擎摘掉：删缓存文件再撤掉入轨
                                             moon.deleteCacheFile(instanceDir)
-                                            bus.post(RemoveMoonOrbitEvent(moon.moonWorldId, moon.moonSeed))
+                                            viewModel.removeMoonOrbit(moon)
                                         }
                                         refreshKey++
                                     },
@@ -213,7 +209,7 @@ fun MoonsScreen(@Suppress("UNUSED_PARAMETER") viewModel: NodeViewModel, onBack: 
             onConfirm = {
                 moon.deleteCacheFile(instanceDir)
                 repository.deleteMoonOrbit(moon)
-                bus.post(RemoveMoonOrbitEvent(moon.moonWorldId, moon.moonSeed))
+                viewModel.removeMoonOrbit(moon)
                 deleteMoon = null
                 refreshKey++
             },

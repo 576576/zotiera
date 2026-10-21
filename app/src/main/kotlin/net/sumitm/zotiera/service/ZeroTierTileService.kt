@@ -10,11 +10,10 @@ import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import net.sumitm.zotiera.R
+import net.sumitm.zotiera.state.NodeState
 import net.sumitm.zotiera.ZotieraApplication
-import net.sumitm.zotiera.events.StopEvent
 import net.sumitm.zotiera.ui.MainActivity
 import net.sumitm.zotiera.ui.toast
-import org.greenrobot.eventbus.EventBus
 
 /**
  * 快捷设置里的隧道开关。
@@ -41,7 +40,7 @@ class ZeroTierTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        if (ZeroTierOneService.isRunning) stopTunnel() else startTunnel()
+        if (NodeState.running.value) stopTunnel() else startTunnel()
         updateTile()
     }
 
@@ -59,13 +58,11 @@ class ZeroTierTileService : TileService() {
             openApp()
             return
         }
-        startService(Intent(this, ZeroTierOneService::class.java))
+        ServiceCommands.start(this)
     }
 
     private fun stopTunnel() {
-        // 应用仍在绑定服务时 stopService 无效，先让服务自己收尾
-        EventBus.getDefault().post(StopEvent())
-        stopService(Intent(this, ZeroTierOneService::class.java))
+        ServiceCommands.stop(this)
     }
 
     @SuppressLint("StartActivityAndCollapseDeprecated")
@@ -84,7 +81,7 @@ class ZeroTierTileService : TileService() {
 
     private fun updateTile() {
         val tile = qsTile ?: return
-        val running = ZeroTierOneService.isRunning
+        val running = NodeState.running.value
         tile.state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.label = getString(R.string.app_name)
         tile.subtitle = getString(if (running) R.string.tile_on else R.string.tile_off)
