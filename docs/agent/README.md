@@ -78,4 +78,4 @@ Android SDK 必需（compileSdk 37）；NDK 固定 `28.2.13676358`，CMake 由 A
 | --- | --- | --- |
 | [architecture.md](architecture.md) | 事实 | 模块、工具链、引擎与 JNI、数据层、实例、隧道、界面、能力清单、不变项 |
 | [fork-comparison.md](fork-comparison.md) | 事实 | 与上游 ZerotierFix 的逐项差异 |
-| [plan/coexist-mode.md](plan/coexist-mode.md) | 草案 | 与其它 VPN 共存：API 102 模块 + root 模式 tun 的可行性 |
+| [plan/coexist-mode.md](plan/coexist-mode.md) | 待 P0 | 与其它 VPN 共存：root 模式 tun + 策略路由，实施细节已定 |
