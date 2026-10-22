@@ -13,13 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -47,7 +45,11 @@ private val COMPONENTS = listOf(
 )
 
 @Composable
-fun AboutScreen(onBack: () -> Unit, onOpenLicenses: () -> Unit) {
+fun AboutScreen(
+    onBack: () -> Unit,
+    onOpenLicenses: () -> Unit,
+    embedded: Boolean = false,
+) {
     val context = LocalContext.current
     val type = LocalZotieraType.current
     val colors = appColors()
@@ -61,7 +63,7 @@ fun AboutScreen(onBack: () -> Unit, onOpenLicenses: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        AppTopBar(title = stringResource(R.string.about), onBack = onBack)
+        if (!embedded) AppTopBar(title = stringResource(R.string.about), onBack = onBack)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Spacer(Modifier.height(24.dp))
             Column(
@@ -69,10 +71,11 @@ fun AboutScreen(onBack: () -> Unit, onOpenLicenses: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
+                // 图形本身就是 n=3 的超椭圆，按原图显示，不要再裁成圆
                 Image(
                     painter = painterResource(R.drawable.ic_about),
                     contentDescription = null,
-                    modifier = Modifier.size(88.dp).clip(CircleShape),
+                    modifier = Modifier.size(88.dp),
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.app_name), style = type.titleLarge, color = colors.onSurface)
@@ -111,12 +114,15 @@ fun AboutScreen(onBack: () -> Unit, onOpenLicenses: () -> Unit) {
 }
 
 @Composable
-fun LicensesScreen(onBack: () -> Unit) {
+fun LicensesScreen(
+    onBack: () -> Unit,
+    embedded: Boolean = false,
+) {
     val type = LocalZotieraType.current
     val colors = appColors()
 
     Column(Modifier.fillMaxSize()) {
-        AppTopBar(title = stringResource(R.string.licenses), onBack = onBack)
+        if (!embedded) AppTopBar(title = stringResource(R.string.licenses), onBack = onBack)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Spacer(Modifier.height(8.dp))
             AppCard(Modifier.padding(horizontal = 16.dp)) {
