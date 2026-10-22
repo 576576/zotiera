@@ -74,6 +74,8 @@ Room 2.8.5，schema **v6**，`exportSchema = true`。
 - schema 从 v6 起只增不毁：改表必须带 `@AutoMigration` 或手写 `Migration`，没有破坏式兜底；
   v1–v5 是稳定前的开发库，不提供迁移（现网只有 v6）。首启由「没有身份就建一条」兜底。
 - 导出 schema 在 `data/schemas/`，KSP 编译时校验迁移与实体一致。
+- **线程**：`ZotieraRepository` 的公开方法全是 `suspend`，整段切到 `Dispatchers.IO`；DAO 不出 :data 模块，调用方不需要自己挑线程。数据库没有 `allowMainThreadQueries`，主线程查库会直接抛异常。
+- **种子数据**：官方行星与默认身份的补齐收敛在 `repository.ensureSeed()`（进程内一次，`Mutex` 保护）——界面第一次 `reload()` 前会等它，服务启动时也会调，谁先到都不会读到半成品。
 - 设置项是 SharedPreferences，文件 `<包名>_preferences`，读写统一走 `util/AppPrefs`（项目不依赖 `androidx.preference`）；
   键集中在 `util/Constants.kt`，启动时 `pruneObsoletePrefs` 删除已废弃的键。
 
@@ -120,6 +122,8 @@ files/
   显示 `startRequested=true`、`app=null`，但没有重启日志，进程也没起来；真机行为待验。
 - **并发**：服务持一个 `CoroutineScope(SupervisorJob + Dispatchers.IO)`；后台任务循环、UDP 收包、TUN 读、
   ARP/NDP 表的 1 秒清理都是协程，`delay` 取代 `Thread.sleep`，阻塞读靠关流/socket 超时退出。
+- **串行化**：命令处理与 JNI 配置回调都投到 `serialScope`（`Dispatchers.IO.limitedParallelism(1)`），同一时刻只有一个协程读写数据库、重建隧道。`onNetworkConfigurationUpdated` 是主线程上的同步回调，只把更新塞进 `Channel` 就返回，真正的处理在消费者协程里按顺序做。
+- 起节点已经不在主线程，Toast 与磁贴刷新要自己切回主线程（`showToast` / `ZeroTierTileService.refreshTile`）。
 - 服务本体仍在单个文件 `ZeroTierOneService.kt`：隧道部分与生命周期共用 `vpnSocket`、`tunnelFingerprint`，
   拆开要把这些字段放开给另一个类，收益不抵风险；`ServiceCommands` 已独立成文件。
 - 网络行开关 = 加入/离开该网络；设备卡单击 = 开关隧道，长按 = 进设备页。
@@ -156,6 +160,9 @@ files/
 按「部分」显示等于让人白等；而「还在请求配置」「需要认证」算还有可能，归「连接中」。
 
 卡片三行文字固定为：状态 / `版本：<versionName>` / `实例 · N 个网络`。
+
+`NodeUiState.loaded` 为 false（首次读库还没回来）时卡片按「未连接」画，不显示「没有网络」的红叉，
+避免冷启动闪一下红底大叉。
 
 设置页分组顺序：通用（简易模式、开机自启、从最近任务隐藏）→ 外观（界面语言、界面风格、颜色模式）→
 网络（移动网络、IPv6）→ 管理入口（行星 → 卫星 → 身份，简易模式下只留卫星）→ 关于。

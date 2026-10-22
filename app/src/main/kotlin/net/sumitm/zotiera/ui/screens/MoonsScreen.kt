@@ -20,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,6 +33,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import java.io.File
 import net.sumitm.zotiera.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.identity.InstanceStore
 import net.sumitm.zotiera.model.MoonOrbit
@@ -50,6 +55,7 @@ fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val repository = remember { (context.applicationContext as ZotieraApplication).repository }
+    val scope = rememberCoroutineScope()
 
     var refreshKey by remember { mutableIntStateOf(0) }
     var showAdd by remember { mutableStateOf(false) }
@@ -58,16 +64,19 @@ fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
     var deleteMoon by remember { mutableStateOf<MoonOrbit?>(null) }
     val store = remember { InstanceStore(context) }
     // 身份在服务起来之前可能还没定过，回落到默认身份
-    val activeUid = remember {
+    val activeUid by produceState(store.activeIdentityUid) {
         val stored = store.activeIdentityUid
-        if (repository.identity(stored) != null) stored else repository.defaultIdentity()?.uid ?: -1L
+        value = if (repository.identity(stored) != null) stored else repository.defaultIdentity()?.uid ?: -1L
     }
     val instanceDir = store.instanceDir(store.activePlanetId, activeUid)
-    val moons = remember(refreshKey) {
-        repository.moonOrbits().onEach { it.checkCacheFile(instanceDir) }
+    val moons by produceState(emptyList<MoonOrbit>(), refreshKey, instanceDir) {
+        // checkCacheFile 要看文件在不在，和查库一起放 IO
+        value = withContext(Dispatchers.IO) {
+            repository.moonOrbits().onEach { it.checkCacheFile(instanceDir) }
+        }
     }
 
-    fun addMoon(worldId: Long, seed: Long, fromFile: Boolean) {
+    suspend fun addMoon(worldId: Long, seed: Long, fromFile: Boolean) {
         if (repository.hasMoonOrbit(worldId)) return
         val moon = MoonOrbit(
             moonWorldId = worldId,
@@ -83,16 +92,22 @@ fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        if (bytes == null || bytes.size < 9 || bytes[0] != 0x01.toByte()) {
-            return@rememberLauncherForActivityResult
+        scope.launch {
+            val bytes = withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            }
+            if (bytes == null || bytes.size < 9 || bytes[0] != 0x01.toByte()) {
+                return@launch
+            }
+            var worldId = 0L
+            for (i in 1..8) worldId = (worldId shl 8) + (bytes[i].toLong() and 0xff)
+            withContext(Dispatchers.IO) {
+                val dest = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, worldId))
+                dest.parentFile?.mkdirs()
+                dest.writeBytes(bytes)
+            }
+            addMoon(worldId, worldId ushr 24, fromFile = true)
         }
-        var worldId = 0L
-        for (i in 1..8) worldId = (worldId shl 8) + (bytes[i].toLong() and 0xff)
-        val dest = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, worldId))
-        dest.parentFile?.mkdirs()
-        dest.writeBytes(bytes)
-        addMoon(worldId, worldId ushr 24, fromFile = true)
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -139,15 +154,17 @@ fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
                                     checked = moon.enabled,
                                     onCheckedChange = { on ->
                                         moon.enabled = on
-                                        repository.updateMoonOrbit(moon)
-                                        if (on) {
-                                            viewModel.orbitMoon(moon)
-                                        } else {
-                                            // 停用等于从引擎摘掉：删缓存文件再撤掉入轨
-                                            moon.deleteCacheFile(instanceDir)
-                                            viewModel.removeMoonOrbit(moon)
+                                        scope.launch {
+                                            repository.updateMoonOrbit(moon)
+                                            if (on) {
+                                                viewModel.orbitMoon(moon)
+                                            } else {
+                                                // 停用等于从引擎摘掉：删缓存文件再撤掉入轨
+                                                withContext(Dispatchers.IO) { moon.deleteCacheFile(instanceDir) }
+                                                viewModel.removeMoonOrbit(moon)
+                                            }
+                                            refreshKey++
                                         }
-                                        refreshKey++
                                     },
                                 )
                             },
@@ -207,11 +224,13 @@ fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
             title = stringResource(R.string.delete_moon_orbit),
             confirmLabel = stringResource(android.R.string.ok),
             onConfirm = {
-                moon.deleteCacheFile(instanceDir)
-                repository.deleteMoonOrbit(moon)
-                viewModel.removeMoonOrbit(moon)
                 deleteMoon = null
-                refreshKey++
+                scope.launch {
+                    withContext(Dispatchers.IO) { moon.deleteCacheFile(instanceDir) }
+                    repository.deleteMoonOrbit(moon)
+                    viewModel.removeMoonOrbit(moon)
+                    refreshKey++
+                }
             },
             onDismiss = { deleteMoon = null },
             dismissLabel = stringResource(android.R.string.cancel),
@@ -247,7 +266,7 @@ fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
                     val worldId = java.lang.Long.parseUnsignedLong(worldIdText, 16)
                     val seed = if (seedText.isEmpty()) worldId ushr 24
                     else java.lang.Long.parseUnsignedLong(seedText, 16)
-                    addMoon(worldId, seed, fromFile = false)
+                    scope.launch { addMoon(worldId, seed, fromFile = false) }
                     showAdd = false
                 }
             },

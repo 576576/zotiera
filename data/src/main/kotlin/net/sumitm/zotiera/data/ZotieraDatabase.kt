@@ -58,9 +58,6 @@ abstract class ZotieraDatabase : RoomDatabase() {
 
         @JvmStatic
         fun create(context: Context): ZotieraDatabase =
-            Room.databaseBuilder(context, ZotieraDatabase::class.java, NAME)
-                // 启动时的种子数据（官方行星、默认身份）仍是阻塞调用，见 ZotieraApplication。
-                .allowMainThreadQueries()
-                .build()
+            Room.databaseBuilder(context, ZotieraDatabase::class.java, NAME).build()
     }
 }

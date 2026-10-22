@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -126,8 +127,9 @@ fun OverviewScreen(
     val joinedNetworks = state.networks.filter { it.lastActivated }
     val activePlanetId: Long? = joinedNetworks.firstOrNull()?.planetId
     val activeIdentityUid: Long? = joinedNetworks.firstOrNull()?.identityUid
-    val planets = remember(state.networks) { repository.planets() }
-    val identities = remember(state.networks) { repository.identities() }
+    // 库在读：先给空表，读完再换；不要在主线程同步查
+    val planets by produceState(emptyList<Planet>(), state.networks) { value = repository.planets() }
+    val identities by produceState(emptyList<Identity>(), state.networks) { value = repository.identities() }
     val defaultPlanetId = planets.firstOrNull { it.isDefault }?.worldId ?: Planet.OFFICIAL_WORLD_ID
     val visibleNetworks = if (simpleMode) {
         state.networks.filter { it.planetId == defaultPlanetId }
@@ -251,7 +253,9 @@ fun OverviewScreen(
 
     // 点胶囊：换这条网络用哪个身份（行星不动）
     identityTarget?.let { network ->
-        val used = remember(network.networkId) { repository.usedIdentityUids(network.networkId) }
+        val used by produceState(emptySet<Long>(), network.networkId) {
+            value = repository.usedIdentityUids(network.networkId)
+        }
         val letter = planetLetter(planets.firstOrNull { it.worldId == network.planetId }?.ordinal ?: 0)
         AppDialog(
             title = stringResource(R.string.switch_identity),
@@ -347,7 +351,7 @@ private fun DeviceCard(
         tunnelRunning = state.tunnelRunning,
         nodeOnline = state.online,
         statuses = state.joinedNetworkIds.map { state.configs[it]?.status },
-    )
+    ).let { if (state.loaded) it else AppStatusTone.STOPPED }
     val title = stringResource(
         when (tone) {
             AppStatusTone.WORKING -> R.string.status_working

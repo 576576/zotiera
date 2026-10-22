@@ -7,8 +7,16 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.state.NodeState
 import net.sumitm.zotiera.ZotieraApplication
@@ -21,6 +29,8 @@ import net.sumitm.zotiera.ui.toast
  * 状态只看服务实例在不在跑；连哪些网络仍由应用内的各个开关决定。
  */
 class ZeroTierTileService : TileService() {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onStartListening() {
         super.onStartListening()
@@ -35,30 +45,41 @@ class ZeroTierTileService : TileService() {
 
     override fun onDestroy() {
         listening = null
+        scope.cancel()
         super.onDestroy()
     }
 
     override fun onClick() {
         super.onClick()
-        if (NodeState.running.value) stopTunnel() else startTunnel()
-        updateTile()
+        if (NodeState.running.value) {
+            stopTunnel()
+            updateTile()
+        } else {
+            // 读库要等，别卡住磁贴点击
+            scope.launch { startTunnel() }
+        }
     }
 
-    private fun startTunnel() {
+    private suspend fun startTunnel() {
         val hasNetwork = runCatching {
             (application as ZotieraApplication).repository.lastActivatedNetworks().isNotEmpty()
         }.getOrDefault(false)
         if (!hasNetwork) {
-            toast(this, R.string.tunnel_needs_network)
+            withContext(Dispatchers.Main) {
+                toast(this@ZeroTierTileService, R.string.tunnel_needs_network)
+            }
             return
         }
         // 没授权时无法在此启动 VPN：回到应用里走授权流程
         if (VpnService.prepare(this) != null) {
-            toast(this, R.string.tile_needs_permission)
-            openApp()
+            withContext(Dispatchers.Main) {
+                toast(this@ZeroTierTileService, R.string.tile_needs_permission)
+                openApp()
+            }
             return
         }
         ServiceCommands.start(this)
+        withContext(Dispatchers.Main) { updateTile() }
     }
 
     private fun stopTunnel() {
@@ -99,7 +120,13 @@ class ZeroTierTileService : TileService() {
          */
         @JvmStatic
         fun refreshTile(context: Context) {
-            listening?.updateTile()
+            // 服务的收尾逻辑现在跑在 IO 线程上，磁贴状态得回主线程改
+            val apply = Runnable { listening?.updateTile() }
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                apply.run()
+            } else {
+                Handler(Looper.getMainLooper()).post(apply)
+            }
             runCatching {
                 requestListeningState(
                     context,

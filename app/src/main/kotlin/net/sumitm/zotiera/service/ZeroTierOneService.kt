@@ -25,9 +25,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.identity.InstanceStore
@@ -38,7 +40,6 @@ import net.sumitm.zotiera.state.NodeStatusPayload
 import net.sumitm.zotiera.ui.MainActivity
 import net.sumitm.zotiera.util.AppPrefs
 import net.sumitm.zotiera.util.Constants
-import net.sumitm.zotiera.util.DatabaseUtils
 import net.sumitm.zotiera.util.InetAddressUtils
 import net.sumitm.zotiera.util.NetworkInfoUtils
 import java.io.FileInputStream
@@ -51,7 +52,6 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.Collections
 import java.util.LinkedHashSet
-import java.util.concurrent.locks.ReentrantReadWriteLock
 
 class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigListener {
 
@@ -91,6 +91,28 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
     private var vpnJob: Job? = null
     private var udpJob: Job? = null
 
+    /**
+     * 数据库与隧道重建串行化：命令处理与 JNI 回调都投到这里，同一时刻只有一个协程碰库。
+     *
+     * 单独一个单线程作用域，不和收发包的 [scope] 抢线程。
+     */
+    private val serialScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
+
+    /** JNI 回调必须同步返回，真正的处理丢进队列，保证与命令处理的先后顺序。 */
+    private val configUpdates = Channel<ConfigUpdate>(Channel.UNLIMITED)
+
+    private data class ConfigUpdate(
+        val networkId: Long,
+        val operation: VirtualNetworkConfigOperation,
+        val config: VirtualNetworkConfig,
+    )
+
+    init {
+        serialScope.launch {
+            for (update in configUpdates) handleConfigUpdate(update)
+        }
+    }
+
     // ---- 命令 ----
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -108,6 +130,12 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
             return START_NOT_STICKY
         }
 
+        serialScope.launch { handleCommand(action, intent) }
+        return START_STICKY
+    }
+
+    /** 命令处理体：读库与建隧道都要等，统一在 [serialScope] 上跑。 */
+    private suspend fun handleCommand(action: String, intent: Intent?) {
         val requested = when (action) {
             ServiceCommands.ACTION_JOIN -> {
                 val id = intent?.getLongExtra(ServiceCommands.EXTRA_NETWORK_ID, 0L) ?: 0L
@@ -121,9 +149,8 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
         }
 
         if (action == ServiceCommands.ACTION_START || action == ServiceCommands.ACTION_JOIN) {
-            if (!startNode(requested)) {
-                return START_NOT_STICKY
-            }
+            // 起不来时 startNode 内部已经 abortStart()，这里直接收手
+            if (!startNode(requested)) return
             joinedNetworkIds.addAll(requested)
             requested.forEach { joinNetwork(it) }
         }
@@ -152,26 +179,26 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
 
             else -> Unit
         }
-        return START_STICKY
     }
 
     private fun prefs() = AppPrefs.get(this)
 
-    private fun lastActivatedNetworkIds(): Set<Long> {
-        DatabaseUtils.readLock.lock()
-        return try {
-            repository().lastActivatedNetworks().map { it.networkId }.toSet()
-        } finally {
-            DatabaseUtils.readLock.unlock()
+    /** 起节点已经不在主线程了，Toast 要自己切回去。 */
+    private suspend fun showToast(messageRes: Int, duration: Int) {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(this@ZeroTierOneService, messageRes, duration).show()
         }
     }
+
+    private suspend fun lastActivatedNetworkIds(): Set<Long> =
+        repository().lastActivatedNetworks().map { it.networkId }.toSet()
 
     /**
      * 起节点：本地 UDP socket、Node、UDP 收包与后台任务循环。
      *
      * 已经起过就直接复用；[requested] 只用于判断「有没有网络可加」。
      */
-    private fun startNode(requested: Set<Long>): Boolean {
+    private suspend fun startNode(requested: Set<Long>): Boolean {
         NodeState.setRunning(true)
         ZeroTierTileService.refreshTile(this)
 
@@ -187,13 +214,13 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
         routeAllTraffic = preferences.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false)
         when (NetworkInfoUtils.getNetworkInfoCurrentConnection(this)) {
             NetworkInfoUtils.CurrentConnection.CONNECTION_NONE -> {
-                Toast.makeText(this, R.string.toast_no_network, Toast.LENGTH_SHORT).show()
+                showToast(R.string.toast_no_network, Toast.LENGTH_SHORT)
                 abortStart()
                 return false
             }
 
             NetworkInfoUtils.CurrentConnection.CONNECTION_MOBILE -> if (!useCellularData) {
-                Toast.makeText(this, R.string.toast_mobile_data, Toast.LENGTH_LONG).show()
+                showToast(R.string.toast_mobile_data, Toast.LENGTH_LONG)
                 abortStart()
                 return false
             }
@@ -250,13 +277,8 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
 
                 // 持久化当前节点信息
                 val address = newNode.address()
-                DatabaseUtils.writeLock.lock()
-                try {
-                    repository().setNodeId(instanceIdentityUid, address)
-                    store.syncUp(instancePlanetId, instanceIdentityUid)
-                } finally {
-                    DatabaseUtils.writeLock.unlock()
-                }
+                repository().setNodeId(instanceIdentityUid, address)
+                store.syncUp(instancePlanetId, instanceIdentityUid)
 
                 udp.setNode(newNode)
                 adapter.setNode(newNode)
@@ -352,6 +374,7 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
             Log.e(TAG, e.toString(), e)
         } finally {
             scope.cancel()
+            serialScope.cancel()
             super.onDestroy()
         }
     }
@@ -399,7 +422,7 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
     }
 
     /** 离开 ZT 网络。 */
-    fun leaveNetwork(networkId: Long) {
+    suspend fun leaveNetwork(networkId: Long) {
         val current = node
         if (current == null) {
             Log.e(TAG, "Can't leave network if ZeroTier isn't running")
@@ -495,58 +518,59 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
         Log.d(TAG, "Trace: $message")
     }
 
+    /**
+     * JNI 回调跑在主线程，必须立刻返回；真正的处理丢进队列，由单消费者串行执行。
+     */
     override fun onNetworkConfigurationUpdated(
         networkId: Long,
         operation: VirtualNetworkConfigOperation,
         config: VirtualNetworkConfig,
     ): Int {
+        configUpdates.trySend(ConfigUpdate(networkId, operation, config))
+        return 0
+    }
+
+    private suspend fun handleConfigUpdate(update: ConfigUpdate) {
+        val (networkId, operation, config) = update
         Log.i(TAG, "Virtual Network Config Operation: $operation")
-        DatabaseUtils.writeLock.lock()
-        try {
-            val network = repository().network(networkId)
-            if (network == null) {
-                throw IllegalStateException("Database is inconsistent")
-            }
-            when (operation) {
-                VirtualNetworkConfigOperation.VIRTUAL_NETWORK_CONFIG_OPERATION_UP ->
-                    Log.d(
-                        TAG,
-                        "Network Type: ${config.type} Network Status: ${config.status} Network Name: ${config.name}",
-                    )
+        val network = repository().network(networkId)
+        if (network == null) {
+            // 旧代码在这里抛异常给 JNI 调用方；改成异步后无处可抛，记一条就跳过
+            Log.e(TAG, "Config update for unknown network ${java.lang.Long.toHexString(networkId)}")
+            return
+        }
+        when (operation) {
+            VirtualNetworkConfigOperation.VIRTUAL_NETWORK_CONFIG_OPERATION_UP ->
+                Log.d(
+                    TAG,
+                    "Network Type: ${config.type} Network Status: ${config.status} Network Name: ${config.name}",
+                )
 
-                VirtualNetworkConfigOperation.VIRTUAL_NETWORK_CONFIG_OPERATION_CONFIG_UPDATE -> {
-                    Log.i(TAG, "Network Config Update!")
-                    val changed = setVirtualNetworkConfigAndUpdateDatabase(network, config)
-                    val ok = config.status == VirtualNetworkStatus.NETWORK_STATUS_OK
-                    val rebuilt = changed && rebuildTunnel()
-                    if (rebuilt || !ok) {
-                        NodeState.updateConfig(networkId, config)
-                    }
+            VirtualNetworkConfigOperation.VIRTUAL_NETWORK_CONFIG_OPERATION_CONFIG_UPDATE -> {
+                Log.i(TAG, "Network Config Update!")
+                val changed = setVirtualNetworkConfigAndUpdateDatabase(network, config)
+                val ok = config.status == VirtualNetworkStatus.NETWORK_STATUS_OK
+                val rebuilt = changed && rebuildTunnel()
+                if (rebuilt || !ok) {
+                    NodeState.updateConfig(networkId, config)
                 }
-
-                VirtualNetworkConfigOperation.VIRTUAL_NETWORK_CONFIG_OPERATION_DOWN,
-                VirtualNetworkConfigOperation.VIRTUAL_NETWORK_CONFIG_OPERATION_DESTROY -> {
-                    Log.d(TAG, "Network Down!")
-                    clearVirtualNetworkConfig(networkId)
-                    rebuildTunnel()
-                }
-
-                else -> Unit
             }
-            return 0
-        } finally {
-            DatabaseUtils.writeLock.unlock()
+
+            VirtualNetworkConfigOperation.VIRTUAL_NETWORK_CONFIG_OPERATION_DOWN,
+            VirtualNetworkConfigOperation.VIRTUAL_NETWORK_CONFIG_OPERATION_DESTROY -> {
+                Log.d(TAG, "Network Down!")
+                clearVirtualNetworkConfig(networkId)
+                rebuildTunnel()
+            }
+
+            else -> Unit
         }
     }
 
-    private fun setVirtualNetworkConfigAndUpdateDatabase(
+    private suspend fun setVirtualNetworkConfigAndUpdateDatabase(
         network: Network,
         config: VirtualNetworkConfig,
     ): Boolean {
-        val lock = DatabaseUtils.writeLock
-        if (lock is ReentrantReadWriteLock.WriteLock && !lock.isHeldByCurrentThread) {
-            throw IllegalStateException("DatabaseUtils.writeLock not held")
-        }
         val previous = getVirtualNetworkConfig(network.networkId)
         setVirtualNetworkConfig(network.networkId, config)
         config.name?.takeIf { it.isNotEmpty() }?.let { network.networkName = it }
@@ -572,7 +596,7 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
      *
      * 不做这层判断的话，每次 CONFIG_UPDATE 都会拆一次隧道，连接会周期抖动。
      */
-    private fun tunnelFingerprint(configs: Map<Long, VirtualNetworkConfig>): String {
+    private suspend fun tunnelFingerprint(configs: Map<Long, VirtualNetworkConfig>): String {
         val builder = StringBuilder()
         for (id in getJoinedNetworkIds()) {
             builder.append(id).append(';')
@@ -599,7 +623,7 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
      *
      * 每次都处理全部网络：只处理一个的话，加第二个网络会把第一个的地址和路由冲掉。
      */
-    private fun rebuildTunnel(): Boolean {
+    private suspend fun rebuildTunnel(): Boolean {
         val adapter = tunTapAdapter ?: return false
         if (node == null) {
             return false

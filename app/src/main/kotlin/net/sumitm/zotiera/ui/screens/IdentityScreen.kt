@@ -20,7 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +31,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import net.sumitm.zotiera.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.identity.IdentityStore
 import net.sumitm.zotiera.model.Identity
@@ -53,6 +58,7 @@ fun IdentityScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val repository = remember { (context.applicationContext as ZotieraApplication).repository }
     val store = remember { IdentityStore(context) }
+    val scope = rememberCoroutineScope()
 
     var refreshKey by remember { mutableIntStateOf(0) }
     var showAdd by remember { mutableStateOf(false) }
@@ -64,7 +70,9 @@ fun IdentityScreen(onBack: () -> Unit) {
     var exportTarget by remember { mutableStateOf<Identity?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    val identities = remember(refreshKey) { repository.identities() }
+    val identities by produceState(emptyList<Identity>(), refreshKey) {
+        value = repository.identities()
+    }
     // 文案在组合期取好，回调里不再摸 LocalContext 的资源
     val importFailed = stringResource(R.string.identity_import_failed)
     val existsMsg = stringResource(R.string.identity_exists)
@@ -75,25 +83,31 @@ fun IdentityScreen(onBack: () -> Unit) {
 
     val importIdentity = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        val imported = bytes?.let { store.parseZip(it) }
-        if (imported == null) {
-            message = importFailed
-            return@rememberLauncherForActivityResult
-        }
-        if (repository.identities().any { it.nodeId == imported.nodeId }) {
-            message = existsMsg
-            return@rememberLauncherForActivityResult
-        }
-        val uid = repository.insertIdentity(
-            Identity(
-                alias = String.format("%010x", imported.nodeId),
-                nodeId = imported.nodeId,
-                createdAt = System.currentTimeMillis(),
+        scope.launch {
+            // 读 zip、写密钥都是磁盘活，和查库一起放到 IO
+            val imported = withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(uri)
+                    ?.use { it.readBytes() }
+                    ?.let { store.parseZip(it) }
+            }
+            if (imported == null) {
+                message = importFailed
+                return@launch
+            }
+            if (repository.identities().any { it.nodeId == imported.nodeId }) {
+                message = existsMsg
+                return@launch
+            }
+            val uid = repository.insertIdentity(
+                Identity(
+                    alias = String.format("%010x", imported.nodeId),
+                    nodeId = imported.nodeId,
+                    createdAt = System.currentTimeMillis(),
+                )
             )
-        )
-        store.writeKeys(uid, imported.secret, imported.public)
-        refreshKey++
+            withContext(Dispatchers.IO) { store.writeKeys(uid, imported.secret, imported.public) }
+            refreshKey++
+        }
     }
 
     val exportIdentity = rememberLauncherForActivityResult(
@@ -140,8 +154,10 @@ fun IdentityScreen(onBack: () -> Unit) {
                                     enabled = !identity.isDefault,
                                     onCheckedChange = {
                                         identity.enabled = it
-                                        repository.updateIdentity(identity)
-                                        refreshKey++
+                                        scope.launch {
+                                            repository.updateIdentity(identity)
+                                            refreshKey++
+                                        }
                                     },
                                 )
                             }
@@ -179,11 +195,13 @@ fun IdentityScreen(onBack: () -> Unit) {
         ) {
             Column {
                 AppDialogAction(stringResource(R.string.identity_generate)) {
-                    repository.insertIdentity(
-                        Identity(alias = "", createdAt = System.currentTimeMillis())
-                    )
-                    showAdd = false
-                    refreshKey++
+                    scope.launch {
+                        repository.insertIdentity(
+                            Identity(alias = "", createdAt = System.currentTimeMillis())
+                        )
+                        showAdd = false
+                        refreshKey++
+                    }
                 }
                 AppDialogAction(stringResource(R.string.identity_import)) {
                     showAdd = false
@@ -206,9 +224,11 @@ fun IdentityScreen(onBack: () -> Unit) {
             Column {
                 if (!identity.isDefault) {
                     AppDialogAction(stringResource(R.string.identity_set_default)) {
-                        repository.setDefaultIdentity(identity.uid)
-                        menuIdentity = null
-                        refreshKey++
+                        scope.launch {
+                            repository.setDefaultIdentity(identity.uid)
+                            menuIdentity = null
+                            refreshKey++
+                        }
                     }
                 }
                 AppDialogAction(stringResource(R.string.identity_export)) {
@@ -246,8 +266,10 @@ fun IdentityScreen(onBack: () -> Unit) {
                 val alias = aliasDraft.trim()
                 if (alias.isNotEmpty()) {
                     identity.alias = alias
-                    repository.updateIdentity(identity)
-                    refreshKey++
+                    scope.launch {
+                        repository.updateIdentity(identity)
+                        refreshKey++
+                    }
                 }
                 renameTarget = null
             },
@@ -263,21 +285,26 @@ fun IdentityScreen(onBack: () -> Unit) {
     }
 
     deleteTarget?.let { identity ->
-        val inUse = remember(identity.uid) { repository.networks().any { it.identityUid == identity.uid } }
+        val inUse by produceState(false, identity.uid) {
+            value = repository.networks().any { it.identityUid == identity.uid }
+        }
         AppDialog(
             title = stringResource(R.string.action_delete),
             confirmLabel = stringResource(android.R.string.ok),
             onConfirm = {
                 if (inUse) {
                     message = inUseMsg
+                    deleteTarget = null
                 } else {
-                    store.dir(identity.uid).deleteRecursively()
-                    repository.deleteIdentity(identity)
-                    // 删掉的是默认身份时，把剩下的第一条扶正
-                    repository.ensureDefaultIdentity()
-                    refreshKey++
+                    deleteTarget = null
+                    scope.launch {
+                        withContext(Dispatchers.IO) { store.dir(identity.uid).deleteRecursively() }
+                        repository.deleteIdentity(identity)
+                        // 删掉的是默认身份时，把剩下的第一条扶正
+                        repository.ensureDefaultIdentity()
+                        refreshKey++
+                    }
                 }
-                deleteTarget = null
             },
             onDismiss = { deleteTarget = null },
             dismissLabel = stringResource(android.R.string.cancel),

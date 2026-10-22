@@ -37,6 +37,8 @@ data class NodeUiState(
     /** 每个已加入网络的实时配置，键是 network id */
     val configs: Map<Long, VirtualNetworkConfig> = emptyMap(),
     val peers: List<Peer> = emptyList(),
+    /** 首次读库是否完成；没完成之前概览不画「没有网络」的红叉 */
+    val loaded: Boolean = false,
 )
 
 /**
@@ -46,6 +48,7 @@ data class NodeUiState(
  * （[NodeUiState.joinedNetworkIds]，存在 `Network.lastActivated`）、详情选中（屏内局部状态）。
  *
  * 命令发给服务（[ServiceCommands]），状态从 [NodeState] 读，不再有请求-应答往返。
+ * 仓储方法都是挂起的，构造时不再直接查库；`init` 里读一次，之后每次写库由各自的方法重读。
  */
 class NodeViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -55,11 +58,7 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = AppPrefs.get(app)
 
     private val _state = MutableStateFlow(
-        NodeUiState(
-            networks = repository.networks(),
-            joinedNetworkIds = repository.lastActivatedNetworks().map { it.networkId }.toSet(),
-            routeAllTraffic = prefs.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false),
-        )
+        NodeUiState(routeAllTraffic = prefs.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false))
     )
     val state: StateFlow<NodeUiState> = _state.asStateFlow()
 
@@ -90,16 +89,24 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             NodeState.peers.collect { peers -> _state.update { it.copy(peers = peers) } }
         }
-        refresh()
+        viewModelScope.launch { reload() }
     }
 
     /** 重读数据库里的网络列表与成员资格；隧道的实际状态由服务上报。 */
     fun refresh() {
+        viewModelScope.launch { reload() }
+    }
+
+    private suspend fun reload() {
+        repository.ensureSeed()
+        val networks = repository.networks()
+        val joinedIds = repository.lastActivatedNetworks().map { it.networkId }.toSet()
         _state.update {
             it.copy(
-                networks = repository.networks(),
-                joinedNetworkIds = repository.lastActivatedNetworks().map { n -> n.networkId }.toSet(),
+                networks = networks,
+                joinedNetworkIds = joinedIds,
                 routeAllTraffic = prefs.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false),
+                loaded = true,
             )
         }
     }
@@ -127,32 +134,29 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
      * 一个网络都不剩时把隧道一起关掉——没有成员资格的隧道没有意义。
      */
     fun setJoined(network: Network, joined: Boolean) {
-        if (joined) {
-            val store = InstanceStore(getApplication())
-            if (store.activePlanetId != network.planetId || store.activeIdentityUid != network.identityUid) {
-                store.setActive(network.planetId, network.identityUid)
-            }
-        }
-        if (network.lastActivated != joined) {
-            network.lastActivated = joined
-            repository.updateNetwork(network)
-        }
-        if (_state.value.tunnelRunning) {
+        viewModelScope.launch {
             if (joined) {
-                ServiceCommands.join(getApplication(), network.networkId)
-            } else {
-                ServiceCommands.leave(getApplication(), network.networkId)
+                val store = InstanceStore(getApplication())
+                if (store.activePlanetId != network.planetId || store.activeIdentityUid != network.identityUid) {
+                    store.setActive(network.planetId, network.identityUid)
+                }
+            }
+            if (network.lastActivated != joined) {
+                network.lastActivated = joined
+                repository.updateNetwork(network)
+            }
+            if (_state.value.tunnelRunning) {
+                if (joined) {
+                    ServiceCommands.join(getApplication(), network.networkId)
+                } else {
+                    ServiceCommands.leave(getApplication(), network.networkId)
+                }
+            }
+            reload()
+            if (_state.value.joinedNetworkIds.isEmpty() && _state.value.tunnelRunning) {
+                stopTunnel()
             }
         }
-        val joinedIds = repository.lastActivatedNetworks().map { it.networkId }.toSet()
-        _state.update {
-            it.copy(networks = repository.networks(), joinedNetworkIds = joinedIds)
-        }
-        if (joinedIds.isEmpty() && _state.value.tunnelRunning) {
-            stopTunnel()
-            return
-        }
-        refresh()
     }
 
     /**
@@ -163,17 +167,19 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun setNetworkIdentity(network: Network, uid: Long) {
         if (network.identityUid == uid) return
-        val wasJoined = network.lastActivated
-        network.identityUid = uid
-        repository.updateNetwork(network)
-        repository.markIdentityUsed(network.networkId, uid)
-        if (wasJoined) {
-            InstanceStore(getApplication()).setActive(network.planetId, uid)
+        viewModelScope.launch {
+            val wasJoined = network.lastActivated
+            network.identityUid = uid
+            repository.updateNetwork(network)
+            repository.markIdentityUsed(network.networkId, uid)
+            if (wasJoined) {
+                InstanceStore(getApplication()).setActive(network.planetId, uid)
+            }
+            if (_state.value.tunnelRunning) {
+                stopTunnel()
+            }
+            reload()
         }
-        if (_state.value.tunnelRunning) {
-            stopTunnel()
-        }
-        refresh()
     }
 
     /** 全局「所有流量走 ZeroTier」。 */
@@ -184,11 +190,13 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setDnsMode(network: Network, mode: Int) {
-        val config = repository.networkConfig(network.networkConfigId) ?: return
-        config.dnsMode = mode
-        repository.insertNetworkConfig(config)
-        ServiceCommands.reconfigure(getApplication())
-        refresh()
+        viewModelScope.launch {
+            val config = repository.networkConfig(network.networkConfigId) ?: return@launch
+            config.dnsMode = mode
+            repository.insertNetworkConfig(config)
+            ServiceCommands.reconfigure(getApplication())
+            reload()
+        }
     }
 
     // ---- Moon ----
@@ -212,49 +220,48 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
         planetId: Long,
         identityUid: Long,
     ) {
-        if (repository.hasNetwork(networkId)) return
-        // 一个实例在连着时，别的实例的网络不能同时加入
-        if (repository.lastActivatedNetworks().any { it.planetId != planetId || it.identityUid != identityUid }) {
-            return
-        }
-        val config = NetworkConfig(
-            id = networkId,
-            routeViaZeroTier = false,
-            dnsMode = dnsMode,
-        )
-        repository.insertNetworkConfig(config)
-        repository.insertNetwork(
-            Network(
-                networkId = networkId,
-                networkIdStr = networkIdStr,
-                networkConfigId = networkId,
-                lastActivated = true,
-                planetId = planetId,
-                identityUid = identityUid,
+        viewModelScope.launch {
+            if (repository.hasNetwork(networkId)) return@launch
+            // 一个实例在连着时，别的实例的网络不能同时加入
+            if (repository.lastActivatedNetworks().any { it.planetId != planetId || it.identityUid != identityUid }) {
+                return@launch
+            }
+            val config = NetworkConfig(
+                id = networkId,
+                routeViaZeroTier = false,
+                dnsMode = dnsMode,
             )
-        )
-        repository.markIdentityUsed(networkId, identityUid)
-        // 新网络直接是「已加入」，实例跟着它走
-        InstanceStore(getApplication()).setActive(planetId, identityUid)
-        if (_state.value.tunnelRunning) {
-            ServiceCommands.join(getApplication(), networkId)
+            repository.insertNetworkConfig(config)
+            repository.insertNetwork(
+                Network(
+                    networkId = networkId,
+                    networkIdStr = networkIdStr,
+                    networkConfigId = networkId,
+                    lastActivated = true,
+                    planetId = planetId,
+                    identityUid = identityUid,
+                )
+            )
+            repository.markIdentityUsed(networkId, identityUid)
+            // 新网络直接是「已加入」，实例跟着它走
+            InstanceStore(getApplication()).setActive(planetId, identityUid)
+            if (_state.value.tunnelRunning) {
+                ServiceCommands.join(getApplication(), networkId)
+            }
+            reload()
         }
-        refresh()
     }
 
     fun deleteNetwork(network: Network) {
-        if (_state.value.tunnelRunning && network.lastActivated) {
-            ServiceCommands.leave(getApplication(), network.networkId)
+        viewModelScope.launch {
+            if (_state.value.tunnelRunning && network.lastActivated) {
+                ServiceCommands.leave(getApplication(), network.networkId)
+            }
+            repository.deleteNetwork(network)
+            reload()
+            if (_state.value.joinedNetworkIds.isEmpty() && _state.value.tunnelRunning) {
+                stopTunnel()
+            }
         }
-        repository.deleteNetwork(network)
-        val joinedIds = repository.lastActivatedNetworks().map { it.networkId }.toSet()
-        _state.update {
-            it.copy(networks = repository.networks(), joinedNetworkIds = joinedIds)
-        }
-        if (joinedIds.isEmpty() && _state.value.tunnelRunning) {
-            stopTunnel()
-            return
-        }
-        refresh()
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -72,14 +73,14 @@ fun PlanetScreen(onBack: () -> Unit) {
     var aliasDraft by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
 
-    val planets = remember(refreshKey) { repository.planets() }
+    val planets by produceState(emptyList<Planet>(), refreshKey) { value = repository.planets() }
     val inUseMsg = stringResource(R.string.planet_in_use)
     val wrongFormat = stringResource(R.string.planet_wrong_format)
     val existsFmt = stringResource(R.string.planet_exists)
     val urlFailed = stringResource(R.string.planet_url_failed)
 
     /** 解析行星文件头：第一个字节是类型，接着 8 个字节是 world id。 */
-    fun stage(bytes: ByteArray?): Boolean {
+    suspend fun stage(bytes: ByteArray?): Boolean {
         if (bytes == null || bytes.size < 9 || bytes[0] != 0x01.toByte()) {
             message = wrongFormat
             return false
@@ -102,7 +103,12 @@ fun PlanetScreen(onBack: () -> Unit) {
 
     val pickPlanet = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        stage(context.contentResolver.openInputStream(uri)?.use { it.readBytes() })
+        scope.launch {
+            val data = withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            }
+            stage(data)
+        }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -135,8 +141,10 @@ fun PlanetScreen(onBack: () -> Unit) {
                                     enabled = !planet.isDefault,
                                     onCheckedChange = {
                                         planet.enabled = it
-                                        repository.updatePlanet(planet)
-                                        refreshKey++
+                                        scope.launch {
+                                            repository.updatePlanet(planet)
+                                            refreshKey++
+                                        }
                                     },
                                 )
                             }
@@ -233,19 +241,23 @@ fun PlanetScreen(onBack: () -> Unit) {
             onConfirm = {
                 val alias = aliasDraft.trim()
                 if (alias.isNotEmpty()) {
-                    store.planetFile(worldId).parentFile?.mkdirs()
-                    store.planetFile(worldId).writeBytes(bytes)
-                    repository.insertPlanet(
-                        Planet(
-                            worldId = worldId,
-                            alias = alias,
-                            builtIn = false,
-                            addedAt = System.currentTimeMillis(),
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            store.planetFile(worldId).parentFile?.mkdirs()
+                            store.planetFile(worldId).writeBytes(bytes)
+                        }
+                        repository.insertPlanet(
+                            Planet(
+                                worldId = worldId,
+                                alias = alias,
+                                builtIn = false,
+                                addedAt = System.currentTimeMillis(),
+                            )
                         )
-                    )
-                    pendingBytes = null
-                    pendingWorldId = null
-                    refreshKey++
+                        pendingBytes = null
+                        pendingWorldId = null
+                        refreshKey++
+                    }
                 }
             },
             onDismiss = {
@@ -273,9 +285,11 @@ fun PlanetScreen(onBack: () -> Unit) {
             Column {
                 if (!planet.isDefault) {
                     AppDialogAction(stringResource(R.string.action_set_default)) {
-                        repository.setDefaultPlanet(planet.worldId)
-                        refreshKey++
-                        menuPlanet = null
+                        scope.launch {
+                            repository.setDefaultPlanet(planet.worldId)
+                            refreshKey++
+                            menuPlanet = null
+                        }
                     }
                 }
                 if (!planet.builtIn) {
@@ -301,8 +315,10 @@ fun PlanetScreen(onBack: () -> Unit) {
                 val alias = aliasDraft.trim()
                 if (alias.isNotEmpty()) {
                     planet.alias = alias
-                    repository.updatePlanet(planet)
-                    refreshKey++
+                    scope.launch {
+                        repository.updatePlanet(planet)
+                        refreshKey++
+                    }
                 }
                 renameTarget = null
             },
@@ -318,8 +334,8 @@ fun PlanetScreen(onBack: () -> Unit) {
     }
 
     deleteTarget?.let { planet ->
-        val inUse = remember(planet.worldId) {
-            repository.networks().any { it.planetId == planet.worldId }
+        val inUse by produceState(false, planet.worldId) {
+            value = repository.networks().any { it.planetId == planet.worldId }
         }
         AppDialog(
             title = stringResource(R.string.action_delete),
@@ -327,13 +343,16 @@ fun PlanetScreen(onBack: () -> Unit) {
             onConfirm = {
                 if (inUse) {
                     message = inUseMsg
+                    deleteTarget = null
                 } else {
-                    store.planetFile(planet.worldId).delete()
-                    repository.deletePlanet(planet)
-                    repository.ensureDefaultPlanet()
-                    refreshKey++
+                    deleteTarget = null
+                    scope.launch {
+                        withContext(Dispatchers.IO) { store.planetFile(planet.worldId).delete() }
+                        repository.deletePlanet(planet)
+                        repository.ensureDefaultPlanet()
+                        refreshKey++
+                    }
                 }
-                deleteTarget = null
             },
             onDismiss = { deleteTarget = null },
             dismissLabel = stringResource(android.R.string.cancel),
