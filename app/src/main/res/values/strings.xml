@@ -79,6 +79,7 @@
     </plurals>
     <string name="status_connecting">Connecting</string>
     <string name="status_working">Working</string>
+    <string name="status_working_partial">Working (partial)</string>
     <string name="status_disconnected">Not connected</string>
     <string name="version_line">Version: %1$s</string>
     <string name="device_title">Device</string>

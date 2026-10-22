@@ -78,6 +78,7 @@
     </plurals>
     <string name="status_connecting">连接中</string>
     <string name="status_working">工作中</string>
+    <string name="status_working_partial">工作中（部分）</string>
     <string name="status_disconnected">未连接</string>
     <string name="version_line">版本：%1$s</string>
     <string name="device_title">设备</string>

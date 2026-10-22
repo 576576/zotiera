@@ -34,7 +34,7 @@ import top.yukonga.miuix.kmp.basic.CardDefaults as MiuixCardDefaults
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 /** 状态卡的语气：决定底色与右下角那枚大图标。 */
-enum class AppStatusTone { WORKING, CONNECTING, STOPPED, EMPTY }
+enum class AppStatusTone { WORKING, WORKING_PARTIAL, CONNECTING, STOPPED, EMPTY }
 
 /** 卡片高度：三行文字上下排开，右下角图标超出边界被裁掉一角。 */
 private val CardHeight = 104.dp
@@ -127,7 +127,7 @@ fun AppStatusCard(
 }
 
 /**
- * 三种开关状态各一套配色：工作中绿、未连接黄、没有网络红。
+ * 语气与配色的对应：工作中绿、连接中与工作中（部分）黄底对勾、未连接黄底停止、没有可用网络红底叉。
  *
  * 深色下底色压到同色相的低明度，图标提亮，保证文字仍是浅色压深底。
  */
@@ -139,7 +139,9 @@ private fun statusStyle(tone: AppStatusTone, dark: Boolean): StatusStyle = when 
         glyph = R.drawable.ic_check_circle_outline,
     )
 
-    AppStatusTone.CONNECTING -> StatusStyle(
+    AppStatusTone.WORKING_PARTIAL,
+    AppStatusTone.CONNECTING,
+    -> StatusStyle(
         container = if (dark) Color(0xFF3A2E12) else Color(0xFFFFF4D1),
         icon = if (dark) Color(0xFFFFC940) else Color(0xFFE0A100),
         glyph = R.drawable.ic_check_circle_outline,

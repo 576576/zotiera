@@ -34,6 +34,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zerotier.sdk.VirtualNetworkStatus
 import net.sumitm.zotiera.BuildConfig
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
@@ -304,9 +305,36 @@ fun OverviewScreen(
 }
 
 /**
+ * 卡片语气。
+ *
+ * 「全被拒」排在「部分」之前：控制器不认这些网络时再等也不会变，显示成「还差一个就连上」是骗人。
+ * 一个都没连上但仍有可能连上（还在拉配置、需要认证）时算「连接中」，不算「部分」。
+ *
+ * [statuses] 与已加入网络一一对应，还没拿到配置的位置是 null。
+ */
+internal fun statusToneOf(
+    tunnelRunning: Boolean,
+    nodeOnline: Boolean,
+    statuses: List<VirtualNetworkStatus?>,
+): AppStatusTone = when {
+    statuses.isEmpty() -> AppStatusTone.EMPTY
+    !tunnelRunning -> AppStatusTone.STOPPED
+    !nodeOnline -> AppStatusTone.CONNECTING
+    statuses.all { it.isRejected } -> AppStatusTone.EMPTY
+    statuses.all { it == VirtualNetworkStatus.NETWORK_STATUS_OK } -> AppStatusTone.WORKING
+    statuses.any { it == VirtualNetworkStatus.NETWORK_STATUS_OK } -> AppStatusTone.WORKING_PARTIAL
+    else -> AppStatusTone.CONNECTING
+}
+
+/** 控制器明确不认这条网络：被拒或不存在，再等也不会变成已连接。 */
+private val VirtualNetworkStatus?.isRejected: Boolean
+    get() = this == VirtualNetworkStatus.NETWORK_STATUS_ACCESS_DENIED ||
+        this == VirtualNetworkStatus.NETWORK_STATUS_NOT_FOUND
+
+/**
  * 设备卡：状态、版本、当前实例与网络数；单击开关隧道，长按进设备页。
  *
- * 没有加入任何网络时卡片是红底大叉，底行留空。
+ * 没有加入任何网络、或加入的网络全被控制器拒绝时，卡片是红底大叉。
  */
 @Composable
 private fun DeviceCard(
@@ -315,15 +343,15 @@ private fun DeviceCard(
     onOpen: () -> Unit,
     onToggleTunnel: () -> Unit,
 ) {
-    val tone = when {
-        state.joinedNetworkIds.isEmpty() -> AppStatusTone.EMPTY
-        !state.tunnelRunning -> AppStatusTone.STOPPED
-        state.online -> AppStatusTone.WORKING
-        else -> AppStatusTone.CONNECTING
-    }
+    val tone = statusToneOf(
+        tunnelRunning = state.tunnelRunning,
+        nodeOnline = state.online,
+        statuses = state.joinedNetworkIds.map { state.configs[it]?.status },
+    )
     val title = stringResource(
         when (tone) {
             AppStatusTone.WORKING -> R.string.status_working
+            AppStatusTone.WORKING_PARTIAL -> R.string.status_working_partial
             AppStatusTone.CONNECTING -> R.string.status_connecting
             else -> R.string.status_disconnected
         }

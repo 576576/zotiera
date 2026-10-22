@@ -136,17 +136,22 @@ files/
 | `AppLargeTitlePage` | 顶层页顶栏：大标题随内容上滑收缩成一条并停顶（Miuix `MiuixScrollBehavior` / Material `exitUntilCollapsedScrollBehavior`，Material 固定 56/104dp 与 Miuix 同高） |
 | `AppTopBar` | 详情页顶栏：返回键 + 标题，固定 |
 | `BarWithoutTopInset` | 顶栏内部把 `systemBars` 顶部标成已消费，状态栏留白只让一次 |
-| `AppStatusCard` | 概览设备卡：单击开关隧道、长按进设备页；三态配色 + 右下角大图标 |
+| `AppStatusCard` | 概览设备卡：单击开关隧道、长按进设备页；五种语气 + 右下角大图标 |
 | `AppRoleChip` / `AppSwitch` / `AppListRow` / `AppDialog` / `AppFab` | 列表、开关、弹窗、浮动按钮 |
 
 设备卡状态：
 
 | 状态 | 条件 | 外观 | 底行 |
 | --- | --- | --- | --- |
-| 工作中 | 隧道运行且节点在线 | 绿底 + 空心大对勾 | `A1 · N 个网络` |
-| 连接中 | 隧道运行、节点未上线 | 黄底 + 空心大对勾 | 同上 |
+| 工作中 | 隧道运行、节点在线、所有已加入网络 `OK` | 绿底 + 空心大对勾 | `A1 · N 个网络` |
+| 工作中（部分） | 隧道运行、节点在线，至少一个网络 `OK`、至少一个不是 | 黄底 + 空心大对勾 | 同上 |
+| 连接中 | 隧道运行、节点未上线；或一个网络都没连上但还有可能在连 | 黄底 + 空心大对勾 | 同上 |
 | 未连接 | 有网络、隧道关闭 | 黄底 + 空心停止图标 | 同上 |
-| 没有网络 | 未加入任何网络 | 红底 + 空心大叉 | 空 |
+| 没有可用网络 | 未加入任何网络，或加入的全部被控制器拒绝（`ACCESS_DENIED` / `NOT_FOUND`） | 红底 + 空心大叉 | 未加入任何网络时为空 |
+
+判定顺序即上表顺序，实现在 `screens/OverviewScreen.kt` 的 `statusToneOf`，单测见
+`test/…/StatusToneTest.kt`。「全被拒」排在「部分」之前：控制器不认的网络再等也不会好，
+按「部分」显示等于让人白等；而「还在请求配置」「需要认证」算还有可能，归「连接中」。
 
 卡片三行文字固定为：状态 / `版本：<versionName>` / `实例 · N 个网络`。
 
