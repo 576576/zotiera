@@ -5,7 +5,6 @@ import android.content.Context
 import android.util.Log
 import net.sumitm.zotiera.data.ZotieraDatabase
 import net.sumitm.zotiera.data.ZotieraRepository
-import net.sumitm.zotiera.identity.InstanceStore
 import net.sumitm.zotiera.util.AppLanguage
 import net.sumitm.zotiera.util.AppPrefs
 
@@ -25,8 +24,6 @@ class ZotieraApplication : Application() {
         Log.i("Application", "Starting Application")
         pruneObsoletePrefs()
         repository = ZotieraRepository(ZotieraDatabase.create(this))
-        // 行为稳定前不做数据接续：旧布局整个丢掉，身份由引擎重新生成
-        InstanceStore(this).resetLegacyLayout()
         repository.ensureOfficialPlanet()
         repository.ensureDefaultIdentity()
     }

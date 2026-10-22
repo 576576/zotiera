@@ -13,7 +13,7 @@ import net.sumitm.zotiera.model.Planet
 /**
  * 唯一的持久化入口。对外只暴露这个类，Room 的 DAO 不出 :data 模块。
  *
- * 同步方法供迁移期的 Java 代码使用；Compose 版改用挂起版本。
+ * 方法都是同步的；DAO 只在 :data 内部可见。
  */
 class ZotieraRepository(private val db: ZotieraDatabase) {
 

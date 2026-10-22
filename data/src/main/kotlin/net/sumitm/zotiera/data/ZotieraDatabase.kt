@@ -14,6 +14,12 @@ import net.sumitm.zotiera.model.NetworkConfig
 import net.sumitm.zotiera.model.NetworkIdentity
 import net.sumitm.zotiera.model.Planet
 
+/**
+ * 应用数据库。
+ *
+ * schema 从 v6 起只增不毁：改表必须同时加 `@AutoMigration` 或手写 `Migration`，
+ * 不允许再用破坏式兜底，否则用户一升级就丢网络与身份。
+ */
 @Database(
     entities = [
         Network::class,
@@ -53,10 +59,8 @@ abstract class ZotieraDatabase : RoomDatabase() {
         @JvmStatic
         fun create(context: Context): ZotieraDatabase =
             Room.databaseBuilder(context, ZotieraDatabase::class.java, NAME)
-                // 迁移期：旧 UI 有在主线程直读数据库的调用点，Compose 版改为 suspend 后移除。
+                // 启动时的种子数据（官方行星、默认身份）仍是阻塞调用，见 ZotieraApplication。
                 .allowMainThreadQueries()
-                // 行为稳定前不做数据迁移：旧版本的库直接丢掉，由「没有身份就建一条」兜底
-                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
     }
 }

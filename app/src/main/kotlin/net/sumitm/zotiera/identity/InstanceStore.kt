@@ -83,25 +83,6 @@ class InstanceStore(private val context: Context) {
         activeIdentityUid = uid
     }
 
-    // ---- 一次性清掉旧版本留下的数据 ----
-
-    /**
-     * 行为稳定前不做数据接续：第一次跑到这一版时，把旧布局（`files/` 根目录）与
-     * 之前拆出来的身份/行星目录整个丢掉，让引擎重新生成身份。
-     *
-     * 只按 [PREF_DATA_EPOCH] 执行一次，之后正常启动不再碰用户数据。
-     */
-    fun resetLegacyLayout() {
-        if (prefs.getInt(PREF_DATA_EPOCH, 0) >= DATA_EPOCH) return
-        runCatching {
-            root.deleteRecursively()
-            identitiesRoot.deleteRecursively()
-            planetsRoot.deleteRecursively()
-            LEGACY_ROOT_ENTRIES.forEach { File(context.filesDir, it).deleteRecursively() }
-        }
-        prefs.edit(commit = true) { putInt(PREF_DATA_EPOCH, DATA_EPOCH) }
-    }
-
     companion object {
         const val INSTANCES_DIR = "instances"
         const val IDENTITIES_DIR = "identities"
@@ -112,14 +93,7 @@ class InstanceStore(private val context: Context) {
 
         private val IDENTITY_FILES = listOf("identity.secret", "identity.public")
 
-        /** 旧布局里引擎直接写在 `files/` 根目录的那些条目。 */
-        private val LEGACY_ROOT_ENTRIES = listOf(
-            "identity.secret", "identity.public", "planet", "planet.custom",
-            "networks.d", "peers.d", "moons.d", "profileInstalled",
-        )
 
         /** 数据布局变了就 +1，旧数据在第一次启动时清掉。 */
-        private const val DATA_EPOCH = 1
-        private const val PREF_DATA_EPOCH = "data_epoch"
     }
 }

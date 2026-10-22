@@ -71,7 +71,9 @@ Room 2.8.5，schema **v6**，`exportSchema = true`。
 | `assigned_addresses` | 每个网络分配到的地址 |
 | `moon_orbits` | moon 轨道 |
 
-- 行为稳定前不做数据接续：`fallbackToDestructiveMigration(dropAllTables = true)`，首启由「没有身份就建一条」兜底。
+- schema 从 v6 起只增不毁：改表必须带 `@AutoMigration` 或手写 `Migration`，没有破坏式兜底；
+  v1–v5 是稳定前的开发库，不提供迁移（现网只有 v6）。首启由「没有身份就建一条」兜底。
+- 导出 schema 在 `data/schemas/`，KSP 编译时校验迁移与实体一致。
 - 设置项是 SharedPreferences，文件 `<包名>_preferences`，读写统一走 `util/AppPrefs`（项目不依赖 `androidx.preference`）；
   键集中在 `util/Constants.kt`，启动时 `pruneObsoletePrefs` 删除已废弃的键。
 
@@ -230,7 +232,6 @@ files/
 
 - 系统只允许一个活动 `VpnService`：本应用启动会停掉其它 VPN，反之亦然。共存方案（root 模式 tun + 策略路由）已设计完但无限期搁置，见 [`plan/coexist-mode.md`](plan/coexist-mode.md)。
 - 旧包数据（含 `identity.secret`）无法自动继承，只能人工导出导入。
-- Room 在行为稳定前使用破坏式迁移，升级会清空本应用数据库与文件。
 - Legacy Central 与新 Central（service account）均不支持。
 
 ## 13. 相关计划
