@@ -2,6 +2,7 @@ name: Release
 
 # 发布唯一入口：推送 main 出自动 alpha；手动 dispatch 可选 alpha / beta / release、
 # 勾选要出的架构、填发行说明。三个通道都直接发布（alpha / beta 是 prerelease）。
+# alpha 出测试包：包名带 .pr 后缀、仓库内固定密钥签名，可与正式版并存；beta / release 用正式签名。
 
 on:
   push:

@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       channel:
-        description: pr 用测试密钥与 .pr 后缀；alpha / beta / release 都用正式签名
+        description: alpha 用测试密钥与 .pr 后缀；beta / release 用正式签名
         type: string
         required: true
       version_name:
@@ -63,11 +63,15 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ "${{ inputs.channel }}" = "pr" ]; then
-            TASK=":app:assemblePr"
-          else
-            TASK=":app:assembleRelease"
-          fi
+          # alpha 是测试包：包名带 .pr、用仓库内固定密钥，能跟正式版并存；
+          # beta 与 release 才是正式签名
+          case "${{ inputs.channel }}" in
+            alpha) TASK=":app:assemblePr" ;;
+            beta | release) TASK=":app:assembleRelease" ;;
+            *)
+              echo "::error::未知通道 ${{ inputs.channel }}" >&2
+              exit 1 ;;
+          esac
           ABI_ARG=""
           [ -z "$ABI" ] || ABI_ARG="-PzotieraAbi=$ABI"
           ./gradlew "$TASK" ${ABI_ARG:+"$ABI_ARG"} \

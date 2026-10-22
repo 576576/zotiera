@@ -13,16 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # PR 只做检查：lint 加单测，不出包
   lint:
     name: 质量门禁
     uses: ./.github/workflows/lint.yml
-
-  build:
-    name: 构建
-    needs: lint
-    uses: ./.github/workflows/build.yml
-    with:
-      # PR 只验证能不能构建，产物不发布
-      channel: pr
-      version_name: 0.0.0-pr
-      version_code: '1'
