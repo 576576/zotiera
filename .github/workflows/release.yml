@@ -19,14 +19,18 @@ on:
         type: choice
         options: [alpha, beta, release]
         default: alpha
+      arch_all:
+        description: Android all
+        type: boolean
+        default: true
       arch_arm64:
-        description: arm64-v8a
+        description: Android arm64
         type: boolean
-        default: true
+        default: false
       arch_x64:
-        description: x86_64
+        description: Android x64
         type: boolean
-        default: true
+        default: false
       release_notes:
         description: 发行说明（单行，字面量 \n 表示换行）
         type: string
@@ -67,15 +71,23 @@ jobs:
           engine="${major}.${minor}.${patch}"
           commits=$(git rev-list --count HEAD)
 
-          # dispatch 输入在 push 事件里是空串，按事件分支，不要直接读输入
+          # dispatch 输入在 push 事件里是空串，按事件分支，不要直接读输入。
+          # 矩阵项直接是架构名；勾了 all 就出一个两 ABI 合一的包，arm64 / x64 各出单架构包。
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             channel="${{ inputs.channel }}"
             abis=""
-            [ "${{ inputs.arch_arm64 }}" = "true" ] && abis="arm64-v8a"
-            [ "${{ inputs.arch_x64 }}" = "true" ] && abis="${abis:+$abis,}x86_64"
+            if [ "${{ inputs.arch_all }}" = "true" ]; then
+              abis="all"
+            fi
+            if [ "${{ inputs.arch_arm64 }}" = "true" ]; then
+              abis="${abis:+$abis,}arm64-v8a"
+            fi
+            if [ "${{ inputs.arch_x64 }}" = "true" ]; then
+              abis="${abis:+$abis,}x86_64"
+            fi
           else
             channel="alpha"
-            abis="arm64-v8a,x86_64"
+            abis="all"
           fi
 
           if [ -z "$abis" ]; then

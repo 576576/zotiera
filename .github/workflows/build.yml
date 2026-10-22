@@ -1,7 +1,7 @@
 name: Build
 
 # 可复用构建工作流（workflow_call）：只负责把包装出来，不发布。
-# 产物名固定为 Zotiera-<version>-<abi>.apk；不传 abi 时两个 ABI 合一，abi 记作 all。
+# 产物名固定为 Zotiera-<version>-<abi>.apk；abi 传 all 时两个 ABI 打在一个包里。
 
 on:
   workflow_call:
@@ -17,10 +17,9 @@ on:
         type: string
         required: true
       abi:
-        description: 只出这一个 ABI（arm64-v8a / x86_64）；留空则两个都打
+        description: 出哪个包：all（arm64-v8a + x86_64 合一）/ arm64-v8a / x86_64
         type: string
-        required: false
-        default: ''
+        required: true
     secrets:
       ANDROID_KEYSTORE_BASE64:
         required: false
@@ -36,7 +35,7 @@ permissions:
 
 jobs:
   build:
-    name: 构建 ${{ inputs.abi || '全架构' }}
+    name: 构建 ${{ inputs.abi }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -72,8 +71,12 @@ jobs:
               echo "::error::未知通道 ${{ inputs.channel }}" >&2
               exit 1 ;;
           esac
+          # all 不传 -PzotieraAbi，Gradle 侧按两个 ABI 一起打
           ABI_ARG=""
-          [ -z "$ABI" ] || ABI_ARG="-PzotieraAbi=$ABI"
+          case "$ABI" in
+            all) ;;
+            *) ABI_ARG="-PzotieraAbi=$ABI" ;;
+          esac
           ./gradlew "$TASK" ${ABI_ARG:+"$ABI_ARG"} \
             -PzotieraVersionName="$VERSION_NAME" \
             -PzotieraVersionCode="$VERSION_CODE" --stacktrace
@@ -88,8 +91,8 @@ jobs:
             echo "没有产出 apk" >&2
             exit 1
           fi
-          # 没指定架构时是两个 ABI 合一的包，名字里记成 all
-          NAME="Zotiera-${VERSION_NAME}-${ABI:-all}.apk"
+          # 包名里的架构段就用矩阵项：all / arm64-v8a / x86_64
+          NAME="Zotiera-${VERSION_NAME}-${ABI}.apk"
           mv "$SRC" "$NAME"
           ls -l "$NAME"
       - uses: actions/upload-artifact@v7
