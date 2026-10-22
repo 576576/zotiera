@@ -30,7 +30,7 @@ docs/agent/
 10. **一次只改一个变量**：一项改动只解决一个里程碑任务；顺手重构会掩盖回归来源。
 11. **提交前跑通构建**：涉及 `:core` 或子模块时两个 ABI 都要过。网络行为只能真机验证，编译通过不等于功能可用。
 12. **页面层不许自绘控件**：`ui/screens/**` 里出现 `DropdownMenu(`、`AlertDialog(`、`Switch(`、`Modifier.border(` 这类底层控件，`UiConventionsTest` 直接失败；风格分支只允许待在 `ui/component/**`。
-13. **本地出包不用等吩咐**：代码一改完就跑 `scripts/build-local.sh`，三种产物（arm64-v8a / x86_64 / all）拷进 `../zt-playground`，在交付说明里给出实际路径。
+13. **本地出包不用等吩咐**：代码一改完就跑 `scripts/build-local.sh`，三种产物（arm64-v8a / x86_64 / all）拷进 `../zt-playground`，在交付说明里给出实际路径。这个脚本不进仓库（`.gitignore` 忽略 `scripts/`），本地自备。
 
 ## 构建
 
@@ -41,7 +41,7 @@ git submodule update --init --recursive   # 缺了核心，:core 直接失败
 scripts/build-local.sh                    # 三种架构各出一份，拷到 ../zt-playground
 ```
 
-`scripts/build-local.sh` 是本地出包的正规入口：版本号按 `release.yml` 的规则推（`<engine>-r<提交数>`），
+`scripts/build-local.sh` 不进仓库，本地自备；它是本地出包的正规入口：版本号按 `release.yml` 的规则推（`<engine>-r<提交数>`），
 产物名 `Zotiera-<版本>-<arch>.apk`，逐个校验包内 ABI 后拷到 `../zt-playground`（或 `--out` 指定的目录）。
 默认走 `.pr` 测试签名，`-c release` 才用正式签名并且要求 4 个 `ANDROID_*` 变量齐全。
 

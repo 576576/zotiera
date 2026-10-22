@@ -20,3 +20,6 @@ local.properties
 build/
 .externalNativeBuild/
 .cxx/
+
+# 本地出包脚本不进仓库
+/scripts/
