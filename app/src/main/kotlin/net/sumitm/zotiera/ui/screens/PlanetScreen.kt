@@ -155,7 +155,7 @@ fun PlanetScreen(onBack: () -> Unit) {
                 }
             }
             AppFab(
-                label = stringResource(R.string.add_planet),
+                label = stringResource(R.string.add),
                 icon = R.drawable.ic_add,
                 onClick = { showAdd = true },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),

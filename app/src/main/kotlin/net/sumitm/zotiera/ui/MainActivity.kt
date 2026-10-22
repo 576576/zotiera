@@ -231,7 +231,7 @@ private fun ZotieraApp(
 
     AppScaffold(
         bottomBar = {
-            if (!wide && currentRoute != "moons") {
+            if (!wide) {
                 AppBottomBar(items, currentRoute, ::navigate)
             }
         },

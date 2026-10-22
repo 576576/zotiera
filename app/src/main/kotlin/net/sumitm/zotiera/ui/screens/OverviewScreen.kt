@@ -209,7 +209,7 @@ fun OverviewScreen(
                 }
             }
             AppFab(
-                label = stringResource(R.string.join_network),
+                label = stringResource(R.string.add),
                 icon = R.drawable.ic_add,
                 onClick = { showJoin = true },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
