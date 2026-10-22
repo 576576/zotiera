@@ -137,7 +137,7 @@ files/
 | --- | --- |
 | `AppLargeTitlePage` | 顶层页顶栏：大标题随内容上滑收缩成一条并停顶（Miuix `MiuixScrollBehavior` / Material `exitUntilCollapsedScrollBehavior`，Material 固定 56/104dp 与 Miuix 同高） |
 | `AppTopBar` | 详情页顶栏：返回键 + 标题，固定 |
-| `BarWithoutTopInset` | 顶栏内部把 `systemBars` 顶部标成已消费，状态栏留白只让一次 |
+| `BarWithoutTopInset` | 顶栏内部把 `systemBars ∪ displayCutout` 的顶部标成已消费，状态栏留白只让一次 |
 | `AppStatusCard` | 概览设备卡：单击开关隧道、长按进设备页；五种语气 + 右下角大图标 |
 | `AppRoleChip` / `AppSwitch` / `AppListRow` / `AppDialog` / `AppFab` | 列表、开关、弹窗、浮动按钮 |
 
@@ -159,6 +159,8 @@ files/
 
 设置页分组顺序：通用（简易模式、开机自启、从最近任务隐藏）→ 外观（界面语言、界面风格、颜色模式）→
 网络（移动网络、IPv6）→ 管理入口（行星 → 卫星 → 身份，简易模式下只留卫星）→ 关于。
+
+**系统栏留白**：`AppScaffold` 显式给 `contentWindowInsets = systemBars ∪ displayCutout`，顶部取两者最大值而不是相加——相加会让刘海机多让出一整个状态栏的高度（实测 62px）。不含输入法 inset，键盘弹出时内容不被顶起。
 
 **图标**：15 个图标以 vector drawable 放在 `res/drawable/ic_*.xml`（Material Symbols Rounded，Apache-2.0），
 组件参数用 `@DrawableRes Int`，内部按框架能力取 `painterResource` 或 `ImageVector.vectorResource`。

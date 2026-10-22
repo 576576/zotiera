@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -48,15 +50,33 @@ data class NavDestination(
     @param:DrawableRes val icon: Int,
 )
 
+/**
+ * 页面骨架。系统栏留白只在这里让一次。
+ *
+ * 顶部取状态栏与刘海的**最大值**，不是相加：两个 inset 相加会让刘海机多让出一整个状态栏的高度。
+ * 不含输入法，键盘弹出时内容不该被整体顶起。
+ */
 @Composable
 fun AppScaffold(
     topBar: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
     when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixScaffold(topBar = topBar, bottomBar = bottomBar, content = content)
-        UiMode.Material -> Scaffold(topBar = topBar, bottomBar = bottomBar, content = content)
+        UiMode.Miuix -> MiuixScaffold(
+            topBar = topBar,
+            bottomBar = bottomBar,
+            contentWindowInsets = insets,
+            content = content,
+        )
+
+        UiMode.Material -> Scaffold(
+            topBar = topBar,
+            bottomBar = bottomBar,
+            contentWindowInsets = insets,
+            content = content,
+        )
     }
 }
 
@@ -103,7 +123,7 @@ fun AppTopBar(
 private fun BarWithoutTopInset(content: @Composable () -> Unit) {
     Box(
         Modifier.consumeWindowInsets(
-            WindowInsets.systemBars.only(WindowInsetsSides.Top),
+            WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top),
         ),
     ) { content() }
 }
