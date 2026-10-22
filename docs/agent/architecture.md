@@ -228,7 +228,7 @@ files/
 
 ## 12. 已知限制
 
-- 系统只允许一个活动 `VpnService`：本应用启动会停掉其它 VPN，反之亦然（共存方案见 [`plan/coexist-mode.md`](plan/coexist-mode.md)）。
+- 系统只允许一个活动 `VpnService`：本应用启动会停掉其它 VPN，反之亦然。共存方案（root 模式 tun + 策略路由）已设计完但无限期搁置，见 [`plan/coexist-mode.md`](plan/coexist-mode.md)。
 - 旧包数据（含 `identity.secret`）无法自动继承，只能人工导出导入。
 - Room 在行为稳定前使用破坏式迁移，升级会清空本应用数据库与文件。
 - Legacy Central 与新 Central（service account）均不支持。
@@ -237,4 +237,4 @@ files/
 
 | 文档 | 状态 |
 | --- | --- |
-| [`plan/coexist-mode.md`](plan/coexist-mode.md) | 草案（root 模式 tun + 策略路由，待 P0 验证） |
+| [`plan/coexist-mode.md`](plan/coexist-mode.md) | 搁置（root 模式 tun + 策略路由，设计完成，未做 P0） |
