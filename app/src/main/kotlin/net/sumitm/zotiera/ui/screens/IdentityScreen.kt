@@ -53,6 +53,12 @@ import net.sumitm.zotiera.ui.theme.LocalZotieraType
  *
  * 「生成新身份」只建一行，密钥等这个身份第一次启用时由引擎补齐；「从文件导入」直接写正本。
  */
+/** 一次读出来的身份列表，以及其中哪些在磁盘上已有密钥。 */
+private data class IdentityList(
+    val identities: List<Identity> = emptyList(),
+    val withKeys: Set<Long> = emptySet(),
+)
+
 @Composable
 fun IdentityScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -70,9 +76,14 @@ fun IdentityScreen(onBack: () -> Unit) {
     var exportTarget by remember { mutableStateOf<Identity?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    val identities by produceState(emptyList<Identity>(), refreshKey) {
-        value = repository.identities()
+    // 密钥是否存在要 stat 文件，和查库一起在 IO 上一次算完，组合期不再碰磁盘
+    val loaded by produceState(IdentityList(), refreshKey) {
+        value = withContext(Dispatchers.IO) {
+            val rows = repository.identities()
+            IdentityList(rows, rows.filter { store.hasKeys(it.uid) }.map { it.uid }.toSet())
+        }
     }
+    val identities = loaded.identities
     // 文案在组合期取好，回调里不再摸 LocalContext 的资源
     val importFailed = stringResource(R.string.identity_import_failed)
     val existsMsg = stringResource(R.string.identity_exists)
@@ -132,7 +143,7 @@ fun IdentityScreen(onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(identities, key = { it.uid }) { identity ->
-                    val active = store.hasKeys(identity.uid) || identity.nodeId != null
+                    val active = identity.uid in loaded.withKeys || identity.nodeId != null
                     AppListRow(
                         title = identity.alias.ifEmpty { stringResource(R.string.identity_default_alias, identity.ordinal) },
                         subtitle = identity.nodeIdString.ifEmpty { stringResource(R.string.identity_not_generated) },
@@ -232,7 +243,7 @@ fun IdentityScreen(onBack: () -> Unit) {
                     }
                 }
                 AppDialogAction(stringResource(R.string.identity_export)) {
-                    if (store.hasKeys(identity.uid)) {
+                    if (identity.uid in loaded.withKeys) {
                         exportTarget = identity
                         val name = if (identity.nodeId != 0L) {
                             String.format("%010x", identity.nodeId)

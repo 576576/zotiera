@@ -43,6 +43,8 @@ class ZotieraApplication : Application() {
         repository = ZotieraRepository(ZotieraDatabase.create(this))
         // 种子数据异步补：界面第一次读库前会 ensureSeed() 等着，谁先到都不会读到半成品
         appScope.launch { repository.ensureSeed() }
+        // 先把 filesDir 解析出来（第一次会做文件存在性检查），别让界面组合期去碰磁盘
+        appScope.launch { filesDir }
     }
 
     /** 这一版已经不再读的偏好键，启动时删掉，免得留在 shared_prefs 里。 */

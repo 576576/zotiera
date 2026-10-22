@@ -21,9 +21,10 @@ import java.io.File
  */
 class InstanceStore(private val context: Context) {
 
-    private val root = File(context.filesDir, INSTANCES_DIR)
-    private val identitiesRoot = File(context.filesDir, IDENTITIES_DIR)
-    private val planetsRoot = File(context.filesDir, PLANETS_DIR)
+    // 目录按需解析：构造常发生在界面组合期，而 getFilesDir() 会做一次文件存在性检查
+    private val root by lazy { File(context.filesDir, INSTANCES_DIR) }
+    private val identitiesRoot by lazy { File(context.filesDir, IDENTITIES_DIR) }
+    private val planetsRoot by lazy { File(context.filesDir, PLANETS_DIR) }
     private val prefs = AppPrefs.get(context)
 
     fun instanceDir(planetId: Long, uid: Long): File = File(root, "$planetId-$uid")

@@ -209,7 +209,7 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
         }
 
         val preferences = prefs()
-        val useCellularData = preferences.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, false)
+        val useCellularData = preferences.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, true)
         disableIPv6 = preferences.getBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, false)
         routeAllTraffic = preferences.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false)
         when (NetworkInfoUtils.getNetworkInfoCurrentConnection(this)) {

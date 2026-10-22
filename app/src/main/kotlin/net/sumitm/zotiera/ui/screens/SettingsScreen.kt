@@ -47,7 +47,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val prefs = remember { AppPrefs.get(context) }
 
-    var cellular by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, false)) }
+    var cellular by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, true)) }
     var disableIpv6 by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, false)) }
     var startOnBoot by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_GENERAL_START_ZEROTIER_ON_BOOT, false)) }
     var simpleMode by remember { mutableStateOf(prefs.getBoolean(Constants.PREF_SIMPLE_MODE, true)) }

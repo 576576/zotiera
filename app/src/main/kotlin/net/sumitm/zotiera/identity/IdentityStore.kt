@@ -22,7 +22,8 @@ data class ImportedIdentity(
  */
 class IdentityStore(private val context: Context) {
 
-    private val root = File(context.filesDir, InstanceStore.IDENTITIES_DIR)
+    // 按需解析：构造发生在界面组合期，而 getFilesDir() 会做一次文件存在性检查
+    private val root by lazy { File(context.filesDir, InstanceStore.IDENTITIES_DIR) }
 
     fun dir(uid: Long): File = File(root, uid.toString())
 
