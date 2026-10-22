@@ -18,19 +18,18 @@ Material / Miuix look and several networks online at the same time.
   latency, preferred path)
 - Three DNS modes: none / network DNS / custom
 - Identity import / export (zip with both key files)
-- Seven UI languages (English, Chinese, French, Russian, Spanish, Japanese, or follow system);
+- Six UI languages (English, Chinese, French, Russian, Spanish, Japanese) or follow the system;
   on Android 13+ the app language can also be set in system settings
 
 ## Screenshots
 
 ![Home tabs](../images/user-guide/home-tabs.png)
 
-Left: overview · middle: peer list · right: settings
+Miuix light (left: overview · middle: peer list · right: settings)
 
 ![Tablet](../images/user-guide/tablet-dark.png)
 
-Tablet ratio (16:10) in dark Material style: the bottom tabs become a navigation rail; the overview
-stays in the left column and the device page (long-press the status card) opens in the right pane.
+Tablet ratio (16:10), Material dark: navigation moves to the left, the device page opens in the right pane.
 
 ## Requirements
 

@@ -138,8 +138,8 @@
     <string name="app_language_system">System default</string>
     <string name="switch_identity">Switch identity</string>
     <string name="identity_current">current</string>
-    <string name="switch_identity_confirm_title">Not used on this network</string>
-    <string name="switch_identity_confirm_body">Changing the identity swaps the node: membership of the old node on this network does not carry over, and an admin may have to authorize the new node. Continue?</string>
+    <string name="switch_identity_confirm_title">Identity not used on this network</string>
+    <string name="switch_identity_confirm_body">Switching changes the node ID; membership of the old identity does not carry over, and the new node may need authorization. Continue?</string>
     <string name="import_from_file">Import from file</string>
     <string name="import_from_url">Import from URL</string>
     <string name="planet_url_label">Planet file URL</string>

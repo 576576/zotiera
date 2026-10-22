@@ -139,7 +139,7 @@
     <string name="switch_identity">Cambiar identidad</string>
     <string name="identity_current">actual</string>
     <string name="switch_identity_confirm_title">Identidad no usada en esta red</string>
-    <string name="switch_identity_confirm_body">Cambiar de identidad cambia de nodo: la pertenencia del nodo anterior a esta red no se traslada y puede que un administrador tenga que autorizar el nuevo nodo. ¿Continuar?</string>
+    <string name="switch_identity_confirm_body">El cambio altera el ID del nodo; la pertenencia de la identidad anterior no se hereda y el nuevo nodo puede requerir autorización. ¿Continuar?</string>
     <string name="import_from_file">Importar desde archivo</string>
     <string name="import_from_url">Importar desde URL</string>
     <string name="planet_url_label">URL del archivo planet</string>

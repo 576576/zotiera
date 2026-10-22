@@ -138,8 +138,8 @@
     <string name="app_language_system">Langue du système</string>
     <string name="switch_identity">Changer d’identité</string>
     <string name="identity_current">actuelle</string>
-    <string name="switch_identity_confirm_title">Identité non utilisée sur ce réseau</string>
-    <string name="switch_identity_confirm_body">Changer d’identité change de nœud : l’appartenance de l’ancien nœud à ce réseau n’est pas reprise, et un administrateur devra peut-être autoriser le nouveau nœud. Continuer ?</string>
+    <string name="switch_identity_confirm_title">Identité inutilisée sur ce réseau</string>
+    <string name="switch_identity_confirm_body">Le changement modifie l’ID du nœud ; l’adhésion de l’ancienne identité n’est pas reprise, et le nouveau nœud peut nécessiter une autorisation. Continuer ?</string>
     <string name="import_from_file">Importer depuis un fichier</string>
     <string name="import_from_url">Importer depuis une URL</string>
     <string name="planet_url_label">URL du fichier planet</string>

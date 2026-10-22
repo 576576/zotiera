@@ -137,8 +137,8 @@
     <string name="app_language_system">跟随系统</string>
     <string name="switch_identity">切换身份</string>
     <string name="identity_current">当前</string>
-    <string name="switch_identity_confirm_title">未在此网络使用过</string>
-    <string name="switch_identity_confirm_body">换身份等于换一个节点：原身份在这条网络上的成员资格不会跟过来，可能需要管理员重新授权。确定切换？</string>
+    <string name="switch_identity_confirm_title">此身份未在此网络使用过</string>
+    <string name="switch_identity_confirm_body">切换后节点 ID 改变，原身份在该网络的成员资格不继承，新节点可能需要重新授权。确定继续吗？</string>
     <string name="import_from_file">从文件导入</string>
     <string name="import_from_url">从 URL 导入</string>
     <string name="planet_url_label">行星文件 URL</string>

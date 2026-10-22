@@ -141,7 +141,7 @@
     <string name="switch_identity">Сменить идентичность</string>
     <string name="identity_current">текущая</string>
     <string name="switch_identity_confirm_title">Идентичность не использовалась в этой сети</string>
-    <string name="switch_identity_confirm_body">Смена идентичности означает смену узла: членство старого узла в этой сети не переносится, и новому узлу может потребоваться разрешение администратора. Продолжить?</string>
+    <string name="switch_identity_confirm_body">При смене меняется ID узла: членство прежней идентичности не переносится, новому узлу может потребоваться разрешение. Продолжить?</string>
     <string name="import_from_file">Импорт из файла</string>
     <string name="import_from_url">Импорт по URL</string>
     <string name="planet_url_label">URL файла planet</string>
