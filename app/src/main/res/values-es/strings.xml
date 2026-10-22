@@ -28,6 +28,7 @@
     <string name="moon_orbit_info">Información de la órbita moon</string>
     <string name="add">Añadir</string>
     <string name="no_data">Sin datos</string>
+    <string name="copied_to_clipboard">Copiado al portapapeles</string>
     <string name="peer_list">Lista de pares</string>
     <string name="peer_role_planet">Nodo raíz</string>
     <string name="peer_role_leaf">Nodo hoja</string>

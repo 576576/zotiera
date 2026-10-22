@@ -28,6 +28,7 @@
     <string name="moon_orbit_info">Сведения об орбите moon</string>
     <string name="add">Добавить</string>
     <string name="no_data">Нет данных</string>
+    <string name="copied_to_clipboard">Скопировано в буфер обмена</string>
     <string name="peer_list">Список узлов</string>
     <string name="peer_role_planet">Корневой узел</string>
     <string name="peer_role_leaf">Листовой узел</string>

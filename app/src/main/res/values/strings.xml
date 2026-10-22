@@ -28,6 +28,7 @@
     <string name="moon_orbit_info">Moon Orbit Information</string>
     <string name="add">Add</string>
     <string name="no_data">No data</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
     <string name="peer_list">Peer List</string>
     <string name="peer_role_planet">Planet</string>
     <string name="peer_role_leaf">Leaf</string>

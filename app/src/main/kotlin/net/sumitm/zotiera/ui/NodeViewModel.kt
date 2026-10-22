@@ -37,6 +37,8 @@ data class NodeUiState(
     /** 每个已加入网络的实时配置，键是 network id */
     val configs: Map<Long, VirtualNetworkConfig> = emptyMap(),
     val peers: List<Peer> = emptyList(),
+    /** 默认身份的节点 ID（10 位小写十六进制）；密钥还没生成时为空 */
+    val identityNodeId: String = "",
     /** 首次读库是否完成；没完成之前概览不画「没有网络」的红叉 */
     val loaded: Boolean = false,
 )
@@ -101,10 +103,12 @@ class NodeViewModel(app: Application) : AndroidViewModel(app) {
         repository.ensureSeed()
         val networks = repository.networks()
         val joinedIds = repository.lastActivatedNetworks().map { it.networkId }.toSet()
+        val identityNodeId = repository.defaultIdentity()?.nodeIdString.orEmpty()
         _state.update {
             it.copy(
                 networks = networks,
                 joinedNetworkIds = joinedIds,
+                identityNodeId = identityNodeId,
                 routeAllTraffic = prefs.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false),
                 loaded = true,
             )

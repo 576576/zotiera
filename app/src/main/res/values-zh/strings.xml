@@ -28,6 +28,7 @@
     <string name="moon_orbit_info">Moon 入轨信息</string>
     <string name="add">添加</string>
     <string name="no_data">无数据</string>
+    <string name="copied_to_clipboard">已复制到剪贴板</string>
     <string name="peer_list">结点列表</string>
     <string name="peer_role_planet">根结点</string>
     <string name="peer_role_leaf">叶结点</string>

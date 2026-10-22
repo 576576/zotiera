@@ -28,6 +28,7 @@
     <string name="moon_orbit_info">Moon 軌道の情報</string>
     <string name="add">追加</string>
     <string name="no_data">データなし</string>
+    <string name="copied_to_clipboard">クリップボードにコピーしました</string>
     <string name="peer_list">ピア一覧</string>
     <string name="peer_role_planet">根ノード</string>
     <string name="peer_role_leaf">葉ノード</string>

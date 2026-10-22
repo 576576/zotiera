@@ -223,11 +223,18 @@ fun AppListRow(
 
 /** 卡片容器（详情页的分组）。 */
 @Composable
-fun AppCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun AppCard(
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    // 只有需要长按的卡片才挂手势：普通卡片点一下不该有涟漪
+    val base = if (onLongClick == null) modifier
+    else modifier.combinedClickable(onClick = {}, onLongClick = onLongClick)
     when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixCard(modifier.fillMaxWidth()) { Column(content = content) }
+        UiMode.Miuix -> MiuixCard(base.fillMaxWidth()) { Column(content = content) }
         UiMode.Material -> androidx.compose.material3.Surface(
-            modifier = modifier.fillMaxWidth(),
+            modifier = base.fillMaxWidth(),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) { Column(content = content) }

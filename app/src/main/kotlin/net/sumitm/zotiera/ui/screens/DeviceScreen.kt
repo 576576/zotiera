@@ -1,5 +1,6 @@
 package net.sumitm.zotiera.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,7 +11,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.sumitm.zotiera.BuildConfig
@@ -37,6 +41,10 @@ fun DeviceScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val type = LocalZotieraType.current
     val joined = state.networks.filter { it.networkId in state.joinedNetworkIds }
+    // 长按版本卡复制默认身份的节点 ID：控制器批准节点时直接粘这个
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    val identityNodeId = state.identityNodeId
 
     // 隧道实际 MTU：各网络取最小值，与服务的算法一致；都没有时显示 -
     val tunnelMtu = state.configs.values
@@ -49,14 +57,28 @@ fun DeviceScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // 1) 版本
+            // 1) 版本与身份：长按整张卡复制身份
             item {
-                AppCard {
+                AppCard(
+                    onLongClick = if (identityNodeId.isEmpty()) {
+                        null
+                    } else {
+                        {
+                            clipboard.setText(AnnotatedString(identityNodeId))
+                            Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ) {
                     Column(Modifier.padding(vertical = 8.dp)) {
                         AppKeyValueRow(stringResource(R.string.client_version), BuildConfig.VERSION_NAME, mono = true)
                         AppKeyValueRow(
                             stringResource(R.string.core_version),
                             state.coreVersion.ifEmpty { "-" },
+                            mono = true,
+                        )
+                        AppKeyValueRow(
+                            stringResource(R.string.identity_label),
+                            identityNodeId.ifEmpty { "-" },
                             mono = true,
                         )
                     }
