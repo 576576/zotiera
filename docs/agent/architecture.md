@@ -137,6 +137,15 @@ files/
 单 Activity + Navigation Compose。风格分 Miuix（默认）与 Material 3 两套，分支只出现在 `ui/component/`。
 
 **顶层页**：概览（`overview`）、结点列表（`peers`）、设置（`settings`），窄屏底部导航、宽屏导航栏。
+
+**宽屏分栏**：`isWideLayout()` 判定（宽 ≥ 840dp，或 ≥ 600dp 且宽高比 < 1.2）。导航栏在左，
+内容区按「左栏 0.42、右栏 0.58」分：概览页始终分栏（右栏空着时显示「选择一个网络」），
+其它顶层页在打开二级页时才分。左栏宽屏下不再居中限宽（840dp 上限只给单栏用）。
+
+**二级页只有一份状态**：`details: List<Detail>`（含设备、网络详情、行星、卫星、身份、关于、许可），
+宽屏铺在右栏、窄屏盖在顶层页上；`Detail` 是 `sealed interface`，`SAVER` 让它在旋转后不丢。
+导航栈里只有顶层页（`popUpTo(graph.id) { inclusive = true }`），返回由 `BackHandler` 收一层二级页，
+收完才轮得到系统处理。宽屏的二级页不画顶栏（`embedded = true`），退出靠返回手势。
 **推入页**：`device`、`network/{id}`、`moons`、`planet`、`identities`、`about`、`licenses`。
 
 | 组件 | 行为 |

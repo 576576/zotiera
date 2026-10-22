@@ -29,7 +29,11 @@ import net.sumitm.zotiera.ui.theme.LocalZotieraType
  * 从概览页的设备卡进入；与单个网络的详情页是两回事。
  */
 @Composable
-fun DeviceScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
+fun DeviceScreen(
+    viewModel: NodeViewModel,
+    onBack: () -> Unit,
+    embedded: Boolean = false,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val type = LocalZotieraType.current
     val joined = state.networks.filter { it.networkId in state.joinedNetworkIds }
@@ -40,7 +44,7 @@ fun DeviceScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
         .minOrNull()
 
     Column(Modifier.fillMaxSize()) {
-        AppTopBar(title = stringResource(R.string.device_title), onBack = onBack)
+        if (!embedded) AppTopBar(title = stringResource(R.string.device_title), onBack = onBack)
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),

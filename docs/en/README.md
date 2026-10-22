@@ -29,8 +29,8 @@ Left: overview · middle: peer list · right: settings
 
 ![Tablet](../images/user-guide/tablet-dark.png)
 
-Tablet ratio (16:10) in dark mode: the bottom tabs become a navigation rail and the content area
-uses the full width (the screenshot shows the device page).
+Tablet ratio (16:10) in dark Material style: the bottom tabs become a navigation rail; the overview
+stays in the left column and the device page (long-press the status card) opens in the right pane.
 
 Emulators cannot reproduce the typography and controls of the Miuix style; Miuix looks as
 designed only on real devices.

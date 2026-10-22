@@ -51,7 +51,11 @@ import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 
 @Composable
-fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
+fun MoonsScreen(
+    viewModel: NodeViewModel,
+    onBack: () -> Unit,
+    embedded: Boolean = false,
+) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val repository = remember { (context.applicationContext as ZotieraApplication).repository }
@@ -125,7 +129,7 @@ fun MoonsScreen(viewModel: NodeViewModel, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        AppTopBar(title = stringResource(R.string.manage_moon), onBack = onBack)
+        if (!embedded) AppTopBar(title = stringResource(R.string.manage_moon), onBack = onBack)
         Box(Modifier.fillMaxSize()) {
             if (moons.isEmpty()) {
                 Text(

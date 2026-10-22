@@ -60,7 +60,10 @@ private data class IdentityList(
 )
 
 @Composable
-fun IdentityScreen(onBack: () -> Unit) {
+fun IdentityScreen(
+    onBack: () -> Unit,
+    embedded: Boolean = false,
+) {
     val context = LocalContext.current
     val repository = remember { (context.applicationContext as ZotieraApplication).repository }
     val store = remember { IdentityStore(context) }
@@ -135,7 +138,7 @@ fun IdentityScreen(onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        AppTopBar(title = stringResource(R.string.manage_identity), onBack = onBack)
+        if (!embedded) AppTopBar(title = stringResource(R.string.manage_identity), onBack = onBack)
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

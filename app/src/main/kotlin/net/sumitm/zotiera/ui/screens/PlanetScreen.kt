@@ -54,7 +54,10 @@ import net.sumitm.zotiera.ui.theme.LocalZotieraType
  * 结构照卫星页：列表 + 右下角添加按钮；每行尾部有启用开关，默认行星不能停用。
  */
 @Composable
-fun PlanetScreen(onBack: () -> Unit) {
+fun PlanetScreen(
+    onBack: () -> Unit,
+    embedded: Boolean = false,
+) {
     val context = LocalContext.current
     val repository = remember { (context.applicationContext as ZotieraApplication).repository }
     val store = remember { InstanceStore(context) }
@@ -112,7 +115,7 @@ fun PlanetScreen(onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        AppTopBar(title = stringResource(R.string.manage_planet), onBack = onBack)
+        if (!embedded) AppTopBar(title = stringResource(R.string.manage_planet), onBack = onBack)
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

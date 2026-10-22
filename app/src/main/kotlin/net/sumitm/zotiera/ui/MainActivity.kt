@@ -8,10 +8,12 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -20,6 +22,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -32,7 +35,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -41,27 +47,26 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ui.component.AppBottomBar
 import net.sumitm.zotiera.ui.component.AppNavigationRail
 import net.sumitm.zotiera.ui.component.AppScaffold
 import net.sumitm.zotiera.ui.component.NavDestination
 import net.sumitm.zotiera.ui.component.ScreenSurface
+import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.isWideLayout
 import net.sumitm.zotiera.ui.screens.AboutScreen
 import net.sumitm.zotiera.ui.screens.DeviceScreen
 import net.sumitm.zotiera.ui.screens.IdentityScreen
 import net.sumitm.zotiera.ui.screens.LicensesScreen
 import net.sumitm.zotiera.ui.screens.MoonsScreen
+import net.sumitm.zotiera.ui.screens.NetworkDetailPane
 import net.sumitm.zotiera.ui.screens.NetworkDetailScreen
 import net.sumitm.zotiera.ui.screens.OverviewScreen
 import net.sumitm.zotiera.ui.screens.PeersScreen
@@ -200,6 +205,10 @@ private fun ZotieraApp(
     val wide = isWideLayout()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // 二级页只有这一份状态：宽屏铺在右栏，窄屏盖在顶层页上，旋转前后不会丢。
+    // 用列表是因为关于页还能再开一层许可页。
+    var details by rememberSaveable(stateSaver = Detail.SAVER) { mutableStateOf(emptyList<Detail>()) }
+    val detail = details.lastOrNull()
 
     // 隧道状态是全局的，提示放在这里，切到别的页面也能看到
     var wasRunning by remember { mutableStateOf<Boolean?>(null) }
@@ -216,12 +225,17 @@ private fun ZotieraApp(
     }
 
     fun navigate(route: String) {
+        // 换顶层页就不再保留二级页，否则设置页会拖着概览页的设备页
+        details = emptyList()
         navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            // 导航栈里只留一个顶层页：二级页不在栈里，返回键才不会把顶层页当成「上一层」弹掉
+            popUpTo(navController.graph.id) { inclusive = true }
             launchSingleTop = true
-            restoreState = true
         }
     }
+
+    // 概览页在宽屏下始终分栏（右栏空着时提示选一个网络），其它顶层页有二级页时才分
+    val splitView = wide && (detail != null || currentRoute == "overview")
 
     val items = listOf(
         NavDestination("overview", stringResource(R.string.network_list), R.drawable.ic_dns),
@@ -244,31 +258,26 @@ private fun ZotieraApp(
             if (wide) {
                 AppNavigationRail(items, currentRoute, ::navigate, Modifier.fillMaxHeight())
             }
-            // 宽屏铺满会把行尾控件推到对侧，限制可读宽度并居中
-            Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            // 窄屏铺满会把行尾控件推到对侧，限制可读宽度并居中；分栏时左栏只占 0.42
+            Box(
+                Modifier.weight(if (splitView) 0.42f else 1f).fillMaxSize(),
+                contentAlignment = Alignment.TopCenter,
+            ) {
                 NavHost(
                     navController = navController,
                     startDestination = "overview",
                     modifier = Modifier.widthIn(max = 840.dp).fillMaxSize(),
-                    // 入栈：新页从右侧整屏滑入；出栈：上面的页整屏右移退出，下面的页不动。
-                    // 两个方向幅度一致，系统预测性返回手势走的就是 popExitTransition，手感才对得上。
-                    enterTransition = {
-                        slideInHorizontally(tween(NAV_DURATION)) { it }
-                    },
-                    exitTransition = {
-                        slideOutHorizontally(tween(NAV_DURATION)) { -it / 6 }
-                    },
+                    enterTransition = { EnterTransition.None },
+                    exitTransition = { ExitTransition.None },
                     popEnterTransition = { EnterTransition.None },
-                    popExitTransition = {
-                        slideOutHorizontally(tween(NAV_DURATION)) { it }
-                    },
+                    popExitTransition = { ExitTransition.None },
                 ) {
                     // 三个顶层页平级：切换不做位移动画，只是换内容
                     tab("overview") {
                         OverviewScreen(
                             viewModel = viewModel,
-                            onOpenDevice = { navController.navigate("device") },
-                            onOpenNetwork = { id -> navController.navigate("network/$id") },
+                            onOpenDevice = { details = details + Detail.Device },
+                            onOpenNetwork = { id -> details = details + Detail.Network(id) },
                         )
                     }
                     tab("peers") { PeersScreen(viewModel) }
@@ -280,66 +289,188 @@ private fun ZotieraApp(
                             colorMode = colorMode,
                             onColorModeChange = onColorModeChange,
                             onLanguageChange = onLanguageChange,
-                            onOpenIdentities = { navController.navigate("identities") },
-                            onOpenPlanet = { navController.navigate("planet") },
-                            onOpenMoons = { navController.navigate("moons") },
-                            onOpenAbout = { navController.navigate("about") },
+                            onOpenIdentities = { details = details + Detail.Identities },
+                            onOpenPlanet = { details = details + Detail.Planet },
+                            onOpenMoons = { details = details + Detail.Moons },
+                            onOpenAbout = { details = details + Detail.About },
                         )
                     }
+                }
 
-                    // 以下是从顶层页推入的详情页，走滑入/滑出
-                    composable("device") {
-                        ScreenSurface {
-                            DeviceScreen(viewModel, onBack = { navController.popBackStack() })
-                        }
-                    }
-                    composable(
-                        route = "network/{id}",
-                        arguments = listOf(navArgument("id") { type = NavType.LongType }),
-                    ) { entry ->
-                        val id = entry.arguments?.getLong("id") ?: 0L
-                        val network = state.networks.firstOrNull { it.networkId == id }
-                        if (network == null) {
-                            // 网络被删掉了，别停在一个空详情页上。
-                            // 按 route 退到概览：这一段可能重复进入，只弹一层会连概览一起弹掉；栈里只剩概览时这里是 no-op。
-                            LaunchedEffect(Unit) {
-                                navController.popBackStack(route = "overview", inclusive = false)
-                            }
+                // 窄屏：二级页盖在顶层页上，顶层页的滚动位置留着
+                AnimatedContent(
+                    targetState = if (wide) null else detail,
+                    transitionSpec = {
+                        if (targetState != null) {
+                            slideInHorizontally(tween(NAV_DURATION)) { it } togetherWith
+                                ExitTransition.None
                         } else {
-                            ScreenSurface {
-                                NetworkDetailScreen(
-                                    viewModel = viewModel,
-                                    network = network,
-                                    config = state.configs[id],
-                                    onBack = { navController.popBackStack() },
-                                )
-                            }
+                            EnterTransition.None togetherWith
+                                slideOutHorizontally(tween(NAV_DURATION)) { it }
                         }
-                    }
-                    composable("moons") {
-                        ScreenSurface {
-                            MoonsScreen(viewModel, onBack = { navController.popBackStack() })
-                        }
-                    }
-                    composable("identities") {
-                        ScreenSurface { IdentityScreen(onBack = { navController.popBackStack() }) }
-                    }
-                    composable("planet") {
-                        ScreenSurface { PlanetScreen(onBack = { navController.popBackStack() }) }
-                    }
-                    composable("about") {
-                        ScreenSurface {
-                            AboutScreen(
-                                onBack = { navController.popBackStack() },
-                                onOpenLicenses = { navController.navigate("licenses") },
-                            )
-                        }
-                    }
-                    composable("licenses") {
-                        ScreenSurface { LicensesScreen(onBack = { navController.popBackStack() }) }
+                    },
+                    label = "detail",
+                ) { target ->
+                    if (target != null) {
+                        DetailPage(
+                            detail = target,
+                            viewModel = viewModel,
+                            onOpen = { details = details + it },
+                            onClose = { details = details.dropLast(1) },
+                        )
                     }
                 }
             }
+            if (splitView) {
+                Box(Modifier.weight(0.58f).fillMaxSize()) {
+                    if (detail != null) {
+                        DetailPage(
+                            detail = detail,
+                            viewModel = viewModel,
+                            onOpen = { details = details + it },
+                            onClose = { details = details.dropLast(1) },
+                        )
+                    } else {
+                        // 只有概览页会把空右栏露出来，给个提示；别的顶层页没有二级页时不分栏
+                        Text(
+                            text = stringResource(R.string.select_a_network),
+                            color = appColors().onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                }
+            }
+        }
+    }
+    // 放在最后：返回处理是后注册者优先，写在 NavHost 前面会被导航栈先吃掉
+    BackHandler(enabled = details.isNotEmpty()) { details = details.dropLast(1) }
+}
+
+/**
+ * 宽屏右栏里的二级页，按路由名与网络 ID 存盘。
+ *
+ * 窄屏仍走导航栈，两边用的是同一批页面。
+ */
+private sealed interface Detail {
+    val route: String
+
+    data object Device : Detail {
+        override val route = "device"
+    }
+
+    data class Network(val id: Long) : Detail {
+        override val route = "network"
+    }
+
+    data object Moons : Detail {
+        override val route = "moons"
+    }
+
+    data object Identities : Detail {
+        override val route = "identities"
+    }
+
+    data object Planet : Detail {
+        override val route = "planet"
+    }
+
+    data object About : Detail {
+        override val route = "about"
+    }
+
+    data object Licenses : Detail {
+        override val route = "licenses"
+    }
+
+    companion object {
+        fun of(route: String, networkId: Long): Detail? = when (route) {
+            "device" -> Device
+            "network" -> Network(networkId)
+            "moons" -> Moons
+            "identities" -> Identities
+            "planet" -> Planet
+            "about" -> About
+            "licenses" -> Licenses
+            else -> null
+        }
+
+        /** 一摞页面按「路由名、网络 ID」交替铺平存盘。 */
+        val SAVER = listSaver<List<Detail>, Any>(
+            save = { list -> list.flatMap { listOf(it.route, (it as? Network)?.id ?: 0L) } },
+            restore = { flat ->
+                flat.chunked(2).mapNotNull { Detail.of(it[0] as String, it[1] as Long) }
+            },
+        )
+    }
+}
+
+/**
+ * 二级页。宽屏铺在右栏、不画顶栏（退出靠返回手势或换选），窄屏铺成整页、带头返回。
+ */
+@Composable
+private fun DetailPage(
+    detail: Detail,
+    viewModel: NodeViewModel,
+    onOpen: (Detail) -> Unit,
+    onClose: () -> Unit,
+) {
+    val embedded = isWideLayout()
+    when (detail) {
+        Detail.Device -> ScreenSurface {
+            DeviceScreen(viewModel, onBack = onClose, embedded = embedded)
+        }
+
+        is Detail.Network -> {
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            val network = state.networks.firstOrNull { it.networkId == detail.id }
+            if (network == null) {
+                // 网络刚被删掉：自己收起来，别停在空页上
+                LaunchedEffect(detail.id) { onClose() }
+            } else if (embedded) {
+                ScreenSurface {
+                    NetworkDetailPane(
+                        network = network,
+                        config = state.configs[network.networkId],
+                        onDelete = {
+                            viewModel.deleteNetwork(network)
+                            onClose()
+                        },
+                    )
+                }
+            } else {
+                ScreenSurface {
+                    NetworkDetailScreen(
+                        viewModel = viewModel,
+                        network = network,
+                        config = state.configs[network.networkId],
+                        onBack = onClose,
+                    )
+                }
+            }
+        }
+
+        Detail.Moons -> ScreenSurface {
+            MoonsScreen(viewModel, onBack = onClose, embedded = embedded)
+        }
+
+        Detail.Identities -> ScreenSurface {
+            IdentityScreen(onBack = onClose, embedded = embedded)
+        }
+
+        Detail.Planet -> ScreenSurface {
+            PlanetScreen(onBack = onClose, embedded = embedded)
+        }
+
+        Detail.About -> ScreenSurface {
+            AboutScreen(
+                onBack = onClose,
+                onOpenLicenses = { onOpen(Detail.Licenses) },
+                embedded = embedded,
+            )
+        }
+
+        Detail.Licenses -> ScreenSurface {
+            LicensesScreen(onBack = onClose, embedded = embedded)
         }
     }
 }
