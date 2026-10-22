@@ -1,8 +1,9 @@
 # 与上游 ZerotierFix 的差异
 
-- 状态：事实文档
-- 更新日期：2026-10-21
+- 状态：事实文档，固定在这一版，后续版本不再更新
+- 更新日期：2026-10-22
 - 对比对象：`kaaass/ZerotierFix` `0373a58`（release 1.0.10，2023-09-17）
+- Zotiera 基准：1.16.2-2
 - 事实来源：本地 `ZerotierFix/` 副本、其 GitHub release 元数据、[`agent/architecture.md`](agent/architecture.md)
 
 两者同源于官方 ZeroTier Android 客户端的反编译修补版。本仓库换掉了引擎、数据层与整套 UI，
@@ -14,6 +15,7 @@
 | --- | --- | --- |
 | ZeroTier 引擎 | 1.12.2（fork 子模块 `d028a247`） | 1.16.2（上游 `fc5c3ec`） |
 | versionName | `1.0.10` | `1.16.2-<revision>` |
+| 实现语言 | Java | Kotlin（Java 只余生成的测试模板） |
 | 包名 | `net.kaaass.zerotierfix` | `net.sumitm.zotiera`（`.pr` 通道 `net.sumitm.zotiera.pr`） |
 | compile / target / minSdk | 33 / 33 / 19 | 37 / 36 / 30 |
 | Gradle / AGP / JDK | 7.5 / 7.4.2 / 11 | 9.7.1 / 9.4.1 / 21 |
@@ -22,7 +24,7 @@
 | 数据层 | GreenDAO，schema 22 | Room，schema 6 |
 | UI | Fragment + XML layout + Material 2 | 单 Activity + Compose（Miuix / Material 3） |
 | 签名 | CI 后置签名 | 双通道：`.pr` 固定 keystore / 正式包 `ANDROID_*` |
-| 包大小 | 8.3 MB | 5.4 MB（双 ABI 7.4 MB） |
+| 包大小 | 8.3 MB | 5.5 MB（双 ABI 7.5 MB） |
 | 许可 | GPL-2.0 | AGPL-3.0-or-later；核心 MPL-2.0 |
 
 ## 2. 能力差异
