@@ -29,9 +29,9 @@
     <string name="add">追加</string>
     <string name="no_data">データなし</string>
     <string name="peer_list">ピア一覧</string>
-    <string name="peer_role_planet">Planet</string>
-    <string name="peer_role_leaf">リーフ</string>
-    <string name="peer_role_moon">Moon</string>
+    <string name="peer_role_planet">根ノード</string>
+    <string name="peer_role_leaf">葉ノード</string>
+    <string name="peer_role_moon">月ノード</string>
     <string name="copy_moon_world_id_to_clipboard">Moon のワールド ID をコピー</string>
     <string name="import_via_file">ファイルから読み込む</string>
     <string name="planet_wrong_format">planet ファイルの形式が正しくありません</string>

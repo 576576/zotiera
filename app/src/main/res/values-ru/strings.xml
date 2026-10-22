@@ -29,9 +29,9 @@
     <string name="add">Добавить</string>
     <string name="no_data">Нет данных</string>
     <string name="peer_list">Список узлов</string>
-    <string name="peer_role_planet">Planet</string>
-    <string name="peer_role_leaf">Лист</string>
-    <string name="peer_role_moon">Moon</string>
+    <string name="peer_role_planet">Корневой узел</string>
+    <string name="peer_role_leaf">Листовой узел</string>
+    <string name="peer_role_moon">Лунный узел</string>
     <string name="copy_moon_world_id_to_clipboard">Скопировать ID мира moon</string>
     <string name="import_via_file">Импорт из файла</string>
     <string name="planet_wrong_format">Неверный формат файла planet</string>

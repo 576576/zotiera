@@ -29,9 +29,9 @@
     <string name="add">Añadir</string>
     <string name="no_data">Sin datos</string>
     <string name="peer_list">Lista de pares</string>
-    <string name="peer_role_planet">Planet</string>
-    <string name="peer_role_leaf">Hoja</string>
-    <string name="peer_role_moon">Moon</string>
+    <string name="peer_role_planet">Nodo raíz</string>
+    <string name="peer_role_leaf">Nodo hoja</string>
+    <string name="peer_role_moon">Nodo luna</string>
     <string name="copy_moon_world_id_to_clipboard">Copiar el ID del mundo moon</string>
     <string name="import_via_file">Importar desde archivo</string>
     <string name="planet_wrong_format">Formato de archivo planet incorrecto</string>
