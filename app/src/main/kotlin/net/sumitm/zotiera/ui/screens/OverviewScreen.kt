@@ -60,6 +60,7 @@ import net.sumitm.zotiera.ui.component.isWideLayout
 import net.sumitm.zotiera.ui.component.planetLetter
 import net.sumitm.zotiera.ui.component.preference.PreferenceSelect
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
+import net.sumitm.zotiera.ui.component.statusAccent
 import net.sumitm.zotiera.ui.toast
 import net.sumitm.zotiera.util.AppPrefs
 import net.sumitm.zotiera.util.Constants
@@ -190,6 +191,8 @@ fun OverviewScreen(
                             NetworkRow(
                                 network = network,
                                 joined = network.lastActivated,
+                                status = state.configs[network.networkId]?.status,
+                                tunnelRunning = state.tunnelRunning,
                                 enabled = enabled,
                                 // 同行星时差异在身份上，提示就报身份名
                                 hint = if (enabled) null else String.format(
@@ -386,10 +389,30 @@ private fun DeviceCard(
  * 已经连着别的实例时 [enabled] 为 false，副标题换成提示；[chip] 非空时在开关左边显示
  * 「行星字母 + 身份序号」一枚胶囊，点它换这条网络用的身份。
  */
+/**
+ * 网络行的语气，null 表示不给图标染色。
+ *
+ * 开关关着不算状态。隧道没开时所有已选网络都还没连上，算「连接中」。
+ * 控制器明确拒绝或找不到的网络再等也不会好，按「不可用」显示。
+ */
+internal fun networkTone(
+    joined: Boolean,
+    tunnelRunning: Boolean,
+    status: VirtualNetworkStatus?,
+): AppStatusTone? = when {
+    !joined -> null
+    status.isRejected -> AppStatusTone.EMPTY
+    !tunnelRunning -> AppStatusTone.CONNECTING
+    status == VirtualNetworkStatus.NETWORK_STATUS_OK -> AppStatusTone.WORKING
+    else -> AppStatusTone.CONNECTING
+}
+
 @Composable
 private fun NetworkRow(
     network: Network,
     joined: Boolean,
+    status: VirtualNetworkStatus?,
+    tunnelRunning: Boolean,
     enabled: Boolean,
     hint: String?,
     chip: Pair<String, Color>?,
@@ -408,7 +431,9 @@ private fun NetworkRow(
         },
         monoSubtitle = hint == null,
         leading = R.drawable.ic_language,
-        leadingTint = if (joined) appColors().primary else Color.Unspecified,
+        // 开关关着时不染色；开着就按网络本身的状态给色，蓝色只代表「没状态可报」
+        leadingTint = networkTone(joined, tunnelRunning, status)?.let { statusAccent(it) }
+            ?: Color.Unspecified,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (chip != null) {

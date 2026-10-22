@@ -151,6 +151,20 @@ fun ZotieraTheme(
                 val controller = remember(dark) {
                     ThemeController(
                         colorSchemeMode = if (dark) ColorSchemeMode.Dark else ColorSchemeMode.Light,
+                        // 浅色：页面底色淡灰、卡片与底栏留白，两者不同色才分得清层次。
+                        // secondaryContainer 是输入框底、secondaryVariant 是对话框按钮底，
+                        // 默认值都接近纯白，压在白色弹窗上等于看不见，这里各降一档。
+                        lightColors = top.yukonga.miuix.kmp.theme.lightColorScheme().let {
+                            it.copy(
+                                background = Color(0xFFF2F2F7),
+                                surface = Color(0xFFF2F2F7),
+                                surfaceContainer = Color(0xFFFFFFFF),
+                                surfaceContainerHigh = Color(0xFFFFFFFF),
+                                surfaceContainerHighest = Color(0xFFF7F7FA),
+                                secondaryContainer = Color(0xFFEFEFF4),
+                                secondaryVariant = Color(0xFFECECF2),
+                            )
+                        },
                         // Miuix 自带的暗色板里卡片与背景几乎同色，深色统一换成这套
                         darkColors = top.yukonga.miuix.kmp.theme.darkColorScheme().let {
                             it.copy(

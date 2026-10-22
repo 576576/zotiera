@@ -126,6 +126,10 @@ fun AppStatusCard(
     }
 }
 
+/** 语气对应的强调色：状态卡的大图标与网络行的小图标共用同一套。 */
+@Composable
+fun statusAccent(tone: AppStatusTone): Color = statusStyle(tone, LocalDarkTheme.current).icon
+
 /**
  * 语气与配色的对应：工作中绿、连接中与工作中（部分）黄底对勾、未连接黄底停止、没有可用网络红底叉。
  *

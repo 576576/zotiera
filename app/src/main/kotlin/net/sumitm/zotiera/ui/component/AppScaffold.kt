@@ -28,6 +28,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
@@ -43,6 +44,7 @@ import top.yukonga.miuix.kmp.basic.NavigationRail as MiuixNavigationRail
 import top.yukonga.miuix.kmp.basic.NavigationRailItem as MiuixNavigationRailItem
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 data class NavDestination(
     val route: String,
@@ -167,7 +169,8 @@ fun AppLargeTitlePage(title: String, content: @Composable () -> Unit) {
 @Composable
 fun AppBottomBar(items: List<NavDestination>, current: String?, onSelect: (String) -> Unit) {
     when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixNavigationBar {
+        // 底栏单独一档白，和淡灰的页面底色分开；两者同色时内容滚到底会被拦腰截断
+        UiMode.Miuix -> MiuixNavigationBar(color = MiuixTheme.colorScheme.surfaceContainer) {
             items.forEach { item ->
                 MiuixNavigationBarItem(
                     selected = item.route == current,
@@ -192,20 +195,28 @@ fun AppBottomBar(items: List<NavDestination>, current: String?, onSelect: (Strin
 }
 
 @Composable
-fun AppNavigationRail(items: List<NavDestination>, current: String?, onSelect: (String) -> Unit) {
+fun AppNavigationRail(
+    items: List<NavDestination>,
+    current: String?,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixNavigationRail {
-            items.forEach { item ->
-                MiuixNavigationRailItem(
-                    selected = item.route == current,
-                    onClick = { onSelect(item.route) },
-                    icon = ImageVector.vectorResource(item.icon),
-                    label = item.label,
-                )
+        // Miuix 导轨按内容定高，白底会在末项下面截断；底色画在外层，导轨本身透明
+        UiMode.Miuix -> Box(modifier.background(MiuixTheme.colorScheme.surfaceContainer)) {
+            MiuixNavigationRail(color = Color.Transparent) {
+                items.forEach { item ->
+                    MiuixNavigationRailItem(
+                        selected = item.route == current,
+                        onClick = { onSelect(item.route) },
+                        icon = ImageVector.vectorResource(item.icon),
+                        label = item.label,
+                    )
+                }
             }
         }
 
-        UiMode.Material -> NavigationRail {
+        UiMode.Material -> NavigationRail(modifier = modifier) {
             items.forEach { item ->
                 NavigationRailItem(
                     selected = item.route == current,

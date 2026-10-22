@@ -2,6 +2,7 @@ package net.sumitm.zotiera
 
 import com.zerotier.sdk.VirtualNetworkStatus
 import net.sumitm.zotiera.ui.component.AppStatusTone
+import net.sumitm.zotiera.ui.screens.networkTone
 import net.sumitm.zotiera.ui.screens.statusToneOf
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -68,5 +69,34 @@ class StatusToneTest {
         assertEquals(AppStatusTone.CONNECTING, tone(statuses = listOf(authRequired)))
         // 一条被拒、另一条还没结论：不是「全被拒」，仍在连接中
         assertEquals(AppStatusTone.CONNECTING, tone(statuses = listOf(denied, null)))
+    }
+
+    private fun rowTone(
+        joined: Boolean = true,
+        tunnelRunning: Boolean = true,
+        status: VirtualNetworkStatus?,
+    ) = networkTone(joined, tunnelRunning, status)
+
+    @Test
+    fun rowWithoutSwitchIsNotColored() {
+        assertEquals(null, rowTone(joined = false, status = ok))
+        assertEquals(null, rowTone(joined = false, status = denied))
+    }
+
+    @Test
+    fun rowReflectsNetworkStatus() {
+        assertEquals(AppStatusTone.WORKING, rowTone(status = ok))
+        assertEquals(AppStatusTone.EMPTY, rowTone(status = denied))
+        assertEquals(AppStatusTone.EMPTY, rowTone(status = notFound))
+        assertEquals(AppStatusTone.CONNECTING, rowTone(status = requesting))
+        assertEquals(AppStatusTone.CONNECTING, rowTone(status = authRequired))
+        assertEquals(AppStatusTone.CONNECTING, rowTone(status = null))
+    }
+
+    @Test
+    fun rowIsConnectingWhileTunnelIsOff() {
+        assertEquals(AppStatusTone.CONNECTING, rowTone(tunnelRunning = false, status = ok))
+        // 隧道关着但控制器已经明确拒绝：等下去也不会好，仍按不可用
+        assertEquals(AppStatusTone.EMPTY, rowTone(tunnelRunning = false, status = denied))
     }
 }

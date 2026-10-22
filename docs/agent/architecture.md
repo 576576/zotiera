@@ -74,6 +74,8 @@ Room 2.8.5，schema **v6**，`exportSchema = true`。
 - schema 从 v6 起只增不毁：改表必须带 `@AutoMigration` 或手写 `Migration`，没有破坏式兜底；
   v1–v5 是稳定前的开发库，不提供迁移（现网只有 v6）。首启由「没有身份就建一条」兜底。
 - 导出 schema 在 `data/schemas/`，KSP 编译时校验迁移与实体一致。
+- **文件目录**：`InstanceStore` / `IdentityStore` 的目录字段是 `by lazy`——`Context.getFilesDir()` 第一次会 stat 一次
+  文件，而这两个 Store 的构造发生在界面组合期。`Application` 启动时另外在 IO 上先取一次 `filesDir` 预热。
 - **线程**：`ZotieraRepository` 的公开方法全是 `suspend`，整段切到 `Dispatchers.IO`；DAO 不出 :data 模块，调用方不需要自己挑线程。数据库没有 `allowMainThreadQueries`，主线程查库会直接抛异常。
 - **种子数据**：官方行星与默认身份的补齐收敛在 `repository.ensureSeed()`（进程内一次，`Mutex` 保护）——界面第一次 `reload()` 前会等它，服务启动时也会调，谁先到都不会读到半成品。
 - 设置项是 SharedPreferences，文件 `<包名>_preferences`，读写统一走 `util/AppPrefs`（项目不依赖 `androidx.preference`）；
@@ -161,6 +163,10 @@ files/
 
 卡片三行文字固定为：状态 / `版本：<versionName>` / `实例 · N 个网络`。
 
+网络行左侧的地球图标按该网络自己的状态染色，取的是同一套强调色（`statusAccent`）：
+开关关着不染色；`OK` 绿；`ACCESS_DENIED` / `NOT_FOUND` 红；其余（还在请求配置、需要认证、还没拿到配置、
+隧道没开）一律黄。实现在 `OverviewScreen.networkTone`，单测同 `StatusToneTest`。
+
 `NodeUiState.loaded` 为 false（首次读库还没回来）时卡片按「未连接」画，不显示「没有网络」的红叉，
 避免冷启动闪一下红底大叉。
 
@@ -177,6 +183,22 @@ files/
 `Theme.Zotiera.Light` / `Theme.Zotiera.Dark` 由 `MainActivity.applyWindowTheme()` 在 `super.onCreate` 之前按
 应用内的颜色模式 `setTheme`。界面全由 Compose 绘制，XML 主题只管 Compose 画出第一帧之前的窗口底色。
 系统启动画面只认清单主题，运行时的 `setTheme` 改不到它。
+
+**配色**：Miuix 那套在 `ZotieraTheme` 里整块替换（`ThemeController` 的 `lightColors` / `darkColors`），不逐个控件调色。
+
+| 档位 | 浅色 | 用途 |
+| --- | --- | --- |
+| `background` / `surface` | `#F2F2F7` | 页面底色 |
+| `surfaceContainer` | `#FFFFFF` | 卡片、顶栏、底栏、导航栏 |
+| `secondaryContainer` | `#EFEFF4` | 输入框底 |
+| `secondaryVariant` | `#ECECF2` | 对话框按钮底 |
+
+底色与卡片必须不同色：两者都是白时卡片没有边界，看起来像一整片留白。输入框与对话框按钮的默认值接近纯白，
+压在白色卡片或弹窗上等于看不见，各降一档。深色不走这套，仍是 `#121212` 底 + `#1E1E1E` 卡片。
+
+**底栏与浮动按钮**：底栏（`AppBottomBar`）与宽屏导航栏（`AppNavigationRail`）显式用 `surfaceContainer`，
+和淡灰页面分开，内容滚到底不至于被拦腰截断；Miuix 的导轨按内容定高，白底由外层 `Box` 画，导轨本身透明。
+`AppFab` 显式用 `primary` / `onPrimary`——Miuix 按钮的默认底色在淡灰页面上几乎与底色同色。
 
 **语言**：`values`（英文）+ `values-zh`；`res/xml/locales_config.xml` 声明 `en` / `zh-Hans` 并挂到
 `android:localeConfig`，API 33+ 可在系统设置里改本应用语言。`AppLanguage` 以系统值为准并回写偏好，

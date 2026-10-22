@@ -42,10 +42,12 @@ import net.sumitm.zotiera.ui.LocalUiMode
 import net.sumitm.zotiera.ui.UiMode
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 import top.yukonga.miuix.kmp.basic.Button as MiuixButton
+import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card as MiuixCard
 import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 fun AppButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
@@ -345,7 +347,15 @@ fun AppKeyValueRow(label: String, value: String, mono: Boolean = false) {
 @Composable
 fun AppFab(label: String, @DrawableRes icon: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixButton(onClick = onClick, modifier = modifier) {
+        // 显式给主色：Miuix 的默认按钮底色在淡灰页面上几乎看不见
+        UiMode.Miuix -> MiuixButton(
+            onClick = onClick,
+            modifier = modifier,
+            colors = MiuixButtonDefaults.buttonColors(
+                color = MiuixTheme.colorScheme.primary,
+                contentColor = MiuixTheme.colorScheme.onPrimary,
+            ),
+        ) {
             MiuixIcon(painter = painterResource(icon), contentDescription = null)
             Spacer(Modifier.width(8.dp))
             MiuixText(label)

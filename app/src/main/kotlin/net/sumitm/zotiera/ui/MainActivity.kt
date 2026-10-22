@@ -22,6 +22,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -240,7 +241,9 @@ private fun ZotieraApp(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (wide) AppNavigationRail(items, currentRoute, ::navigate)
+            if (wide) {
+                AppNavigationRail(items, currentRoute, ::navigate, Modifier.fillMaxHeight())
+            }
             // 宽屏铺满会把行尾控件推到对侧，限制可读宽度并居中
             Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 NavHost(
