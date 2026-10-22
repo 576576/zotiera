@@ -10,7 +10,6 @@
 docs/agent/
 ├── README.md          本文件：约定、硬约束、索引
 ├── architecture.md    现状：模块、数据、实例、网络行为、界面（事实）
-├── fork-comparison.md 与上游 ZerotierFix 的差异（能力、兼容性、包体）
 └── plan/              未完成的计划
     └── coexist-mode.md
 ```
@@ -77,5 +76,4 @@ Android SDK 必需（compileSdk 37）；NDK 固定 `28.2.13676358`，CMake 由 A
 | 文档 | 状态 | 内容 |
 | --- | --- | --- |
 | [architecture.md](architecture.md) | 事实 | 模块、工具链、引擎与 JNI、数据层、实例、隧道、界面、能力清单、不变项 |
-| [fork-comparison.md](fork-comparison.md) | 事实 | 与上游 ZerotierFix 的逐项差异 |
 | [plan/coexist-mode.md](plan/coexist-mode.md) | 搁置 | 与其它 VPN 共存：root 模式 tun + 策略路由，设计完成，未排期 |

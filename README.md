@@ -15,14 +15,19 @@
 - 网络详情（状态、MAC、MTU、DNS、分配地址）与对等节点列表（角色、版本、延迟、首选路径）
 - DNS 三种模式：不使用 / 网络下发 / 自定义
 - 身份导入 / 导出（zip，含两个密钥文件）
-- 中英文界面，API 33+ 可在系统设置里单独设置本应用语言
+- 七种界面语言（英、中、法、俄、西、日，另可跟随系统），API 33+ 可在系统设置里单独设置
 
 ## 截图
 
-![对等节点](assets/images/screenshots/peers-material-dark.png)
+![主页](docs/images/user-guide/home-tabs.png)
 
-Material 深色风格。模拟器渲染不出 Miuix 风格的字体与控件观感，Miuix 在实机上才是设计的样子。
-其余截图见 [`assets/images/screenshots/`](assets/images/screenshots/readme.md)。
+左：概览 · 中：结点列表 · 右：设置
+
+![平板](docs/images/user-guide/tablet-dark.png)
+
+平板比例（16:10）、深色模式：底部标签变成左侧导航栏，内容区整块显示当前页面（图为设备页）。
+
+模拟器渲染不出 Miuix 风格的字体与控件观感，实机为准。
 
 ## 要求
 
@@ -50,10 +55,12 @@ git submodule update --init --recursive
 
 ## 文档
 
+- [使用指南](docs/user-guide.md)
+- [从 ZerotierFix 迁移身份](docs/migrate-from-zerotierfix.md)
+- [参与翻译](docs/i18n-contributing.md)
+- [与上游 ZerotierFix 的差异](docs/fork-comparison.md)
 - [现状与架构](docs/agent/architecture.md)
-- [与上游 ZerotierFix 的差异](docs/agent/fork-comparison.md)
 - [未完成计划](docs/agent/plan/)
-- [界面截图](assets/images/screenshots/readme.md)
 
 ## 鸣谢
 

@@ -3,7 +3,7 @@
 - 状态：事实文档
 - 更新日期：2026-10-21
 - 对比对象：`kaaass/ZerotierFix` `0373a58`（release 1.0.10，2023-09-17）
-- 事实来源：本地 `ZerotierFix/` 副本、其 GitHub release 元数据、[`architecture.md`](architecture.md)
+- 事实来源：本地 `ZerotierFix/` 副本、其 GitHub release 元数据、[`agent/architecture.md`](agent/architecture.md)
 
 两者同源于官方 ZeroTier Android 客户端的反编译修补版。本仓库换掉了引擎、数据层与整套 UI，
 能力面更大，兼容面更窄。

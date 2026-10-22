@@ -200,9 +200,10 @@ files/
 和淡灰页面分开，内容滚到底不至于被拦腰截断；Miuix 的导轨按内容定高，白底由外层 `Box` 画，导轨本身透明。
 `AppFab` 显式用 `primary` / `onPrimary`——Miuix 按钮的默认底色在淡灰页面上几乎与底色同色。
 
-**语言**：`values`（英文）+ `values-zh`；`res/xml/locales_config.xml` 声明 `en` / `zh-Hans` 并挂到
+**语言**：`values`（英文，基准）+ `values-zh` / `values-fr` / `values-ru` / `values-es` / `values-ja`，
+每个目录 139 条文案加一组复数，键名与基准完全一致。`res/xml/locales_config.xml` 声明这六种语言并挂到
 `android:localeConfig`，API 33+ 可在系统设置里改本应用语言。`AppLanguage` 以系统值为准并回写偏好，
-应用内切换同时写系统；30–32 只有偏好。
+应用内切换同时写系统；30–32 只有偏好。新增语言的五个步骤写在 [`../i18n-contributing.md`](../i18n-contributing.md)。
 
 ## 8. 身份文件
 
@@ -255,7 +256,7 @@ files/
 | --- | --- |
 | `com.zerotier.sdk` 包名、类名、方法签名 | JNI 符号绑死 |
 | VPN 行为语义（路由、MTU、DNS、多播、planet/moon 机制） | 用户依赖的功能面 |
-| 中英文文案 key 与语义 | 已发布文案 |
+| 各语言文案 key 与语义 | 已发布文案 |
 | 上游版权与 MPL-2.0 声明义务 | 合规 |
 | `externals/core` 工作区 | 核心源码只在 fork 分支演化 |
 

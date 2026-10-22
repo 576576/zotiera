@@ -18,15 +18,22 @@ Material / Miuix look and several networks online at the same time.
   latency, preferred path)
 - Three DNS modes: none / network DNS / custom
 - Identity import / export (zip with both key files)
-- Chinese and English UI; on Android 13+ the app language can also be set in system settings
+- Seven UI languages (English, Chinese, French, Russian, Spanish, Japanese, or follow system);
+  on Android 13+ the app language can also be set in system settings
 
 ## Screenshots
 
-![Peer list](../../assets/images/screenshots/peers-material-dark.png)
+![Home tabs](../images/user-guide/home-tabs.png)
 
-Material dark style. Emulators cannot reproduce the typography and controls of the Miuix style;
-Miuix looks as designed only on real devices. More screenshots in
-[`assets/images/screenshots/`](../../assets/images/screenshots/readme.md).
+Left: overview · middle: peer list · right: settings
+
+![Tablet](../images/user-guide/tablet-dark.png)
+
+Tablet ratio (16:10) in dark mode: the bottom tabs become a navigation rail and the content area
+uses the full width (the screenshot shows the device page).
+
+Emulators cannot reproduce the typography and controls of the Miuix style; Miuix looks as
+designed only on real devices.
 
 ## Requirements
 
@@ -55,10 +62,12 @@ Versions follow the ZeroTier engine: `versionName = <engine>-<revision>` (e.g. `
 
 ## Docs
 
+- [User guide](../user-guide.md) (Chinese)
+- [Migrating an identity from ZerotierFix](../migrate-from-zerotierfix.md) (Chinese)
+- [Contributing translations](../i18n-contributing.md) (Chinese and English)
+- [Differences from upstream ZerotierFix](../fork-comparison.md) (Chinese)
 - [Architecture and current state](../agent/architecture.md) (Chinese)
-- [Differences from upstream ZerotierFix](../agent/fork-comparison.md) (Chinese)
 - [Open plans](../agent/plan/) (Chinese)
-- [Screenshots](../../assets/images/screenshots/readme.md)
 
 ## License and credits
 
