@@ -184,6 +184,10 @@ fun SettingsScreen(
 private fun languageName(tag: String): String = when (tag) {
     "zh" -> "简体中文"
     "en" -> "English"
+    "fr" -> "Français"
+    "ru" -> "Русский"
+    "es" -> "Español"
+    "ja" -> "日本語"
     else -> tag
 }
 

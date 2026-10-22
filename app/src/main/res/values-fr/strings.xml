@@ -1,0 +1,155 @@
+<resources>
+    <string name="app_name">Zotiera</string>
+
+    <string name="delete_network">Supprimer</string>
+    <string name="delete_network_warning">Cela ne retire le réseau que de la liste. Il faudra l’ajouter à nouveau pour vous reconnecter.</string>
+    <string name="dns_label_string">DNS</string>
+    <string name="ip_addresses_label">Adresses IP</string>
+    <string name="join_network">Ajouter un réseau</string>
+    <string name="network_id">ID du réseau</string>
+    <string name="network_dns_mode">Mode DNS</string>
+    <string name="network_dns_mode_no_dns">Aucun DNS</string>
+    <string name="network_dns_mode_network_dns">DNS du réseau</string>
+    <string name="network_dns_mode_custom_dns">DNS personnalisé</string>
+    <string name="network_status_access_denied">Accès refusé</string>
+    <string name="network_status_client_too_old">Client trop ancien</string>
+    <string name="network_status_not_found">Réseau introuvable</string>
+    <string name="network_status_ok">OK</string>
+    <string name="network_status_port_error">Erreur de port</string>
+    <string name="preferences_general_start_on_boot">Démarrer Zotiera au démarrage de l’appareil</string>
+    <string name="preferences_network_disable_ipv6">Désactiver IPv6</string>
+    <string name="preferences_network_use_cell_data">Utiliser les données mobiles</string>
+    <string name="settings">Paramètres</string>
+    <string name="toast_no_network">Aucune connexion réseau. ZeroTier ne peut pas démarrer.</string>
+    <string name="toast_mobile_data">Vous êtes sur les données mobiles. Activez « Utiliser les données mobiles » pour démarrer ZeroTier.</string>
+    <string name="moon_world_id">ID du monde moon :</string>
+    <string name="moon_seed">Graine du moon :</string>
+    <string name="delete_moon_orbit">Supprimer</string>
+    <string name="moon_orbit_info">Informations sur l’orbite moon</string>
+    <string name="add">Ajouter</string>
+    <string name="no_data">Aucune donnée</string>
+    <string name="peer_list">Liste des pairs</string>
+    <string name="peer_role_planet">Planet</string>
+    <string name="peer_role_leaf">Feuille</string>
+    <string name="peer_role_moon">Moon</string>
+    <string name="copy_moon_world_id_to_clipboard">Copier l’ID du monde moon</string>
+    <string name="import_via_file">Importer depuis un fichier</string>
+    <string name="planet_wrong_format">Format de fichier planet incorrect</string>
+    <string name="downloading">Téléchargement</string>
+    <string name="wait_to_fetch">En attente de récupération</string>
+    <string name="delete_cache">Supprimer le cache</string>
+    <string name="external_file">Fichier externe</string>
+    <string name="cached">En cache</string>
+    <string name="channel_name">Notifications d’état de connexion</string>
+    <string name="channel_description">État de la connexion</string>
+    <string name="notification_title_connected">Connecté</string>
+    <string name="notification_text_connected">Connecté à : %1$s</string>
+    <string name="peer_version_unknown" translatable="false">unknown</string>
+    <string name="export_moon_file">Exporter le fichier moon</string>
+    <string name="ui_style">Style de l’interface</string>
+    <string name="network_list">Aperçu</string>
+    <string name="ui_style_summary">Choisissez l’apparence de l’application</string>
+    <string name="use_cell_data_summary">Autoriser ZeroTier à fonctionner sur les données mobiles</string>
+    <string name="disable_ipv6_summary">Ignorer les adresses et routes IPv6 fournies par les réseaux</string>
+    <string name="start_on_boot_summary">Se reconnecter après un redémarrage</string>
+    <string name="moon_orbit_summary">Rejoindre un satellite moon pour accélérer le premier contact</string>
+    <string name="select_a_network">Sélectionnez un réseau</string>
+    <string name="color_mode">Mode de couleur</string>
+    <string name="color_mode_system">Suivre le système</string>
+    <string name="color_mode_light">Clair</string>
+    <string name="color_mode_dark">Sombre</string>
+    <string name="connected_toast">Connecté</string>
+    <string name="connecting_toast">Connexion</string>
+    <string name="disconnected_toast">Déconnecté</string>
+    <string name="tile_on">Connecté</string>
+    <string name="tile_off">Déconnecté</string>
+    <string name="tile_needs_permission">Autorisez d’abord le VPN dans Zotiera</string>
+    <string name="network_status_label">État</string>
+    <string name="route_all_traffic">Router tout le trafic</string>
+    <string name="route_all_traffic_summary">Nécessite des routes configurées sur le réseau</string>
+    <string name="network_status_requesting">Demande de configuration</string>
+    <string name="network_status_auth_required">Authentification requise</string>
+    <string name="color_mode_summary">Suivre le système, clair ou sombre</string>
+    <string name="network_name_label">Nom</string>
+    <string name="mac_address_label">Adresse MAC</string>
+    <string name="notification_text_connected_multi">%d réseaux</string>
+    <plurals name="network_count">
+        <item quantity="one">%d réseau</item>
+        <item quantity="other">%d réseaux</item>
+    </plurals>
+    <string name="status_connecting">Connexion</string>
+    <string name="status_working">En service</string>
+    <string name="status_working_partial">En service (partiel)</string>
+    <string name="status_disconnected">Non connecté</string>
+    <string name="version_line">Version : %1$s</string>
+    <string name="device_title">Appareil</string>
+    <string name="client_version">Version du client</string>
+    <string name="core_version">Version du cœur</string>
+    <string name="tunnel_mtu">MTU du tunnel</string>
+    <string name="tunnel_needs_network">Rejoignez d’abord au moins un réseau</string>
+    <!-- 设置页尾部的入口与关于页 -->
+    <string name="manage_planet">Gérer les planets</string>
+    <string name="manage_planet_summary">Serveurs racines intégrés et importés</string>
+    <string name="manage_moon">Gérer les moons</string>
+    <string name="about">À propos</string>
+    <string name="licenses">Licences des composants</string>
+    <string name="licenses_summary">Noms des composants et identifiants de licence</string>
+    <string name="licenses_note">Le texte complet des licences se trouve sur la page de publication de chaque projet et dans le fichier LICENSE de ce dépôt.</string>
+    <string name="open_source_repo">Voir le code sur GitHub</string>
+    <string name="disclaimer">Avertissement</string>
+    <string name="disclaimer_body">Zotiera est un client tiers, sans lien avec ZeroTier, Inc. et sans son approbation. ZeroTier est une marque de ZeroTier, Inc.\n\nCe logiciel est fourni sous AGPL-3.0-or-later, sans garantie d’aucune sorte. Si vous rejoignez un réseau qui ne vous appartient pas, respectez ses règles et la loi applicable.</string>
+    <string name="manage_identity">Gérer les identités</string>
+    <string name="manage_identity_summary">ID de nœud et clés de cette instance</string>
+    <string name="add_planet">Ajouter un planet</string>
+    <string name="add_identity">Ajouter une identité</string>
+    <string name="alias_label">Alias</string>
+    <string name="action_rename">Renommer</string>
+    <string name="action_delete">Supprimer</string>
+    <string name="planet_builtin">Intégré</string>
+    <string name="planet_from_file">Fichier</string>
+    <string name="planet_exists">Déjà ajouté : %1$s</string>
+    <string name="planet_in_use">Des réseaux utilisent encore ce planet. Retirez-les d’abord.</string>
+    <string name="identity_not_generated">Pas encore généré</string>
+    <string name="identity_generate">Générer une nouvelle identité</string>
+    <string name="identity_import">Importer depuis un fichier</string>
+    <string name="identity_export">Exporter l’identité</string>
+    <string name="identity_export_no_keys">Cette identité n’a pas encore de clés. Connectez-la une première fois.</string>
+    <string name="identity_export_failed">Échec de l’export.</string>
+    <string name="identity_export_done">Exporté. Le fichier contient une clé privée : ne le mettez pas en ligne.</string>
+    <string name="identity_default_alias">Identité %1$d</string>
+    <string name="identity_import_failed">Ce fichier n’est pas un export d’identité valide.</string>
+    <string name="identity_exists">Cette identité est déjà ajoutée.</string>
+    <string name="identity_in_use">Des réseaux utilisent encore cette identité. Retirez-les d’abord.</string>
+    <string name="simple_mode">Mode simple</string>
+    <string name="simple_mode_summary">Masquer la gestion des planets et des identités ; seule l’instance par défaut est utilisée</string>
+    <string name="planet_label">Planet</string>
+    <string name="identity_label">Identité</string>
+    <string name="instance_busy_hint">Déconnectez %1$s d’abord</string>
+    <string name="official_planet">Planet officiel</string>
+    <string name="identity_badge_default">Par défaut</string>
+    <string name="identity_set_default">Définir par défaut</string>
+    <string name="action_set_default">Définir par défaut</string>
+    <string name="planet_default_tag">Par défaut</string>
+    <string name="hide_from_recents">Masquer des applications récentes</string>
+    <string name="hide_from_recents_summary">Prend effet au prochain lancement ; l’application disparaît des applications récentes</string>
+    <string name="app_language">Langue de l’interface</string>
+    <string name="app_language_summary">S’applique à cette application uniquement</string>
+    <string name="app_language_system">Langue du système</string>
+    <string name="switch_identity">Changer d’identité</string>
+    <string name="identity_current">actuelle</string>
+    <string name="switch_identity_confirm_title">Identité non utilisée sur ce réseau</string>
+    <string name="switch_identity_confirm_body">Changer d’identité change de nœud : l’appartenance de l’ancien nœud à ce réseau n’est pas reprise, et un administrateur devra peut-être autoriser le nouveau nœud. Continuer ?</string>
+    <string name="import_from_file">Importer depuis un fichier</string>
+    <string name="import_from_url">Importer depuis une URL</string>
+    <string name="planet_url_label">URL du fichier planet</string>
+    <string name="planet_url_failed">Échec du téléchargement. Vérifiez l’adresse et votre connexion.</string>
+    <string name="delete_irreversible_warning">Cette action est irréversible. Les éléments suivants seront définitivement supprimés :</string>
+</resources>
+
+
+
+
+
+
+
+

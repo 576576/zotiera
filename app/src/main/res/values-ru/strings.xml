@@ -1,0 +1,157 @@
+<resources>
+    <string name="app_name">Zotiera</string>
+
+    <string name="delete_network">Удалить</string>
+    <string name="delete_network_warning">Сеть удаляется только из списка. Чтобы подключиться снова, её придётся добавить заново.</string>
+    <string name="dns_label_string">DNS</string>
+    <string name="ip_addresses_label">IP-адреса</string>
+    <string name="join_network">Добавить сеть</string>
+    <string name="network_id">ID сети</string>
+    <string name="network_dns_mode">Режим DNS</string>
+    <string name="network_dns_mode_no_dns">Без DNS</string>
+    <string name="network_dns_mode_network_dns">DNS сети</string>
+    <string name="network_dns_mode_custom_dns">Свой DNS</string>
+    <string name="network_status_access_denied">Доступ запрещён</string>
+    <string name="network_status_client_too_old">Клиент устарел</string>
+    <string name="network_status_not_found">Сеть не найдена</string>
+    <string name="network_status_ok">OK</string>
+    <string name="network_status_port_error">Ошибка порта</string>
+    <string name="preferences_general_start_on_boot">Запускать Zotiera при включении устройства</string>
+    <string name="preferences_network_disable_ipv6">Отключить IPv6</string>
+    <string name="preferences_network_use_cell_data">Использовать мобильные данные</string>
+    <string name="settings">Настройки</string>
+    <string name="toast_no_network">Нет подключения к сети. ZeroTier не может запуститься.</string>
+    <string name="toast_mobile_data">Сейчас используется мобильная сеть. Включите «Использовать мобильные данные», чтобы запустить ZeroTier.</string>
+    <string name="moon_world_id">ID мира moon:</string>
+    <string name="moon_seed">Сид moon:</string>
+    <string name="delete_moon_orbit">Удалить</string>
+    <string name="moon_orbit_info">Сведения об орбите moon</string>
+    <string name="add">Добавить</string>
+    <string name="no_data">Нет данных</string>
+    <string name="peer_list">Список узлов</string>
+    <string name="peer_role_planet">Planet</string>
+    <string name="peer_role_leaf">Лист</string>
+    <string name="peer_role_moon">Moon</string>
+    <string name="copy_moon_world_id_to_clipboard">Скопировать ID мира moon</string>
+    <string name="import_via_file">Импорт из файла</string>
+    <string name="planet_wrong_format">Неверный формат файла planet</string>
+    <string name="downloading">Загрузка</string>
+    <string name="wait_to_fetch">Ожидание загрузки</string>
+    <string name="delete_cache">Удалить кэш</string>
+    <string name="external_file">Внешний файл</string>
+    <string name="cached">В кэше</string>
+    <string name="channel_name">Уведомления о состоянии</string>
+    <string name="channel_description">Состояние подключения</string>
+    <string name="notification_title_connected">Подключено</string>
+    <string name="notification_text_connected">Подключено к: %1$s</string>
+    <string name="peer_version_unknown" translatable="false">unknown</string>
+    <string name="export_moon_file">Экспортировать файл moon</string>
+    <string name="ui_style">Стиль интерфейса</string>
+    <string name="network_list">Обзор</string>
+    <string name="ui_style_summary">Как выглядит приложение</string>
+    <string name="use_cell_data_summary">Разрешить ZeroTier работать в мобильной сети</string>
+    <string name="disable_ipv6_summary">Игнорировать IPv6-адреса и маршруты из сетей</string>
+    <string name="start_on_boot_summary">Переподключаться после перезагрузки</string>
+    <string name="moon_orbit_summary">Подключить спутник moon, чтобы быстрее найти узлы</string>
+    <string name="select_a_network">Выберите сеть</string>
+    <string name="color_mode">Цветовая схема</string>
+    <string name="color_mode_system">Как в системе</string>
+    <string name="color_mode_light">Светлая</string>
+    <string name="color_mode_dark">Тёмная</string>
+    <string name="connected_toast">Подключено</string>
+    <string name="connecting_toast">Подключение</string>
+    <string name="disconnected_toast">Отключено</string>
+    <string name="tile_on">Подключено</string>
+    <string name="tile_off">Отключено</string>
+    <string name="tile_needs_permission">Сначала разрешите VPN в Zotiera</string>
+    <string name="network_status_label">Состояние</string>
+    <string name="route_all_traffic">Направлять весь трафик</string>
+    <string name="route_all_traffic_summary">Нужны маршруты, заданные в сети</string>
+    <string name="network_status_requesting">Запрос конфигурации</string>
+    <string name="network_status_auth_required">Требуется аутентификация</string>
+    <string name="color_mode_summary">Как в системе, светлая или тёмная</string>
+    <string name="network_name_label">Имя</string>
+    <string name="mac_address_label">MAC-адрес</string>
+    <string name="notification_text_connected_multi">%d сетей</string>
+    <plurals name="network_count">
+        <item quantity="one">%d сеть</item>
+        <item quantity="few">%d сети</item>
+        <item quantity="many">%d сетей</item>
+        <item quantity="other">%d сети</item>
+    </plurals>
+    <string name="status_connecting">Подключение</string>
+    <string name="status_working">Работает</string>
+    <string name="status_working_partial">Работает (частично)</string>
+    <string name="status_disconnected">Не подключено</string>
+    <string name="version_line">Версия: %1$s</string>
+    <string name="device_title">Устройство</string>
+    <string name="client_version">Версия клиента</string>
+    <string name="core_version">Версия ядра</string>
+    <string name="tunnel_mtu">MTU туннеля</string>
+    <string name="tunnel_needs_network">Сначала добавьте хотя бы одну сеть</string>
+    <!-- 设置页尾部的入口与关于页 -->
+    <string name="manage_planet">Управление planet</string>
+    <string name="manage_planet_summary">Встроенные и импортированные корневые серверы</string>
+    <string name="manage_moon">Управление moon</string>
+    <string name="about">О приложении</string>
+    <string name="licenses">Лицензии компонентов</string>
+    <string name="licenses_summary">Названия компонентов и идентификаторы лицензий</string>
+    <string name="licenses_note">Полные тексты лицензий есть на страницах релизов соответствующих проектов и в файле LICENSE этого репозитория.</string>
+    <string name="open_source_repo">Исходный код на GitHub</string>
+    <string name="disclaimer">Отказ от ответственности</string>
+    <string name="disclaimer_body">Zotiera — сторонний клиент, не связанный с ZeroTier, Inc. и не одобренный ею. ZeroTier — торговая марка ZeroTier, Inc.\n\nПрограмма распространяется по AGPL-3.0-or-later без каких-либо гарантий. Подключаясь к чужой сети, соблюдайте её правила и местные законы.</string>
+    <string name="manage_identity">Управление идентичностями</string>
+    <string name="manage_identity_summary">ID узла и ключи этого экземпляра</string>
+    <string name="add_planet">Добавить planet</string>
+    <string name="add_identity">Добавить идентичность</string>
+    <string name="alias_label">Псевдоним</string>
+    <string name="action_rename">Переименовать</string>
+    <string name="action_delete">Удалить</string>
+    <string name="planet_builtin">Встроенный</string>
+    <string name="planet_from_file">Файл</string>
+    <string name="planet_exists">Уже добавлено: %1$s</string>
+    <string name="planet_in_use">Этот planet ещё используется сетями. Сначала удалите их.</string>
+    <string name="identity_not_generated">Ещё не создана</string>
+    <string name="identity_generate">Создать новую идентичность</string>
+    <string name="identity_import">Импорт из файла</string>
+    <string name="identity_export">Экспорт идентичности</string>
+    <string name="identity_export_no_keys">У этой идентичности ещё нет ключей. Подключите её хотя бы раз.</string>
+    <string name="identity_export_failed">Не удалось экспортировать.</string>
+    <string name="identity_export_done">Экспортировано. В файле закрытый ключ — не выкладывайте его.</string>
+    <string name="identity_default_alias">Идентичность %1$d</string>
+    <string name="identity_import_failed">Это не корректный экспорт идентичности.</string>
+    <string name="identity_exists">Эта идентичность уже добавлена.</string>
+    <string name="identity_in_use">Эта идентичность ещё используется сетями. Сначала удалите их.</string>
+    <string name="simple_mode">Простой режим</string>
+    <string name="simple_mode_summary">Скрыть управление planet и идентичностями; используется только экземпляр по умолчанию</string>
+    <string name="planet_label">Planet</string>
+    <string name="identity_label">Идентичность</string>
+    <string name="instance_busy_hint">Сначала отключите %1$s</string>
+    <string name="official_planet">Официальный planet</string>
+    <string name="identity_badge_default">По умолчанию</string>
+    <string name="identity_set_default">Сделать по умолчанию</string>
+    <string name="action_set_default">Сделать по умолчанию</string>
+    <string name="planet_default_tag">По умолчанию</string>
+    <string name="hide_from_recents">Скрыть из недавних</string>
+    <string name="hide_from_recents_summary">Применится при следующем запуске; приложение пропадёт из списка недавних</string>
+    <string name="app_language">Язык интерфейса</string>
+    <string name="app_language_summary">Только для этого приложения</string>
+    <string name="app_language_system">Как в системе</string>
+    <string name="switch_identity">Сменить идентичность</string>
+    <string name="identity_current">текущая</string>
+    <string name="switch_identity_confirm_title">Идентичность не использовалась в этой сети</string>
+    <string name="switch_identity_confirm_body">Смена идентичности означает смену узла: членство старого узла в этой сети не переносится, и новому узлу может потребоваться разрешение администратора. Продолжить?</string>
+    <string name="import_from_file">Импорт из файла</string>
+    <string name="import_from_url">Импорт по URL</string>
+    <string name="planet_url_label">URL файла planet</string>
+    <string name="planet_url_failed">Не удалось скачать. Проверьте адрес и подключение.</string>
+    <string name="delete_irreversible_warning">Отменить это нельзя. Будет безвозвратно удалено:</string>
+</resources>
+
+
+
+
+
+
+
+

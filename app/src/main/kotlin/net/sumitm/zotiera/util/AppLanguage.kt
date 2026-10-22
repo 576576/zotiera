@@ -21,7 +21,7 @@ object AppLanguage {
     const val SYSTEM = ""
 
     /** 可选语言；标签与系统 Locale 一致。 */
-    val TAGS = listOf(SYSTEM, "en", "zh")
+    val TAGS = listOf(SYSTEM, "en", "zh", "fr", "ru", "es", "ja")
 
     @JvmStatic
     fun current(context: Context): String {
@@ -72,11 +72,10 @@ object AppLanguage {
         return normalize(locales[0]?.toLanguageTag().orEmpty())
     }
 
-    /** 只保留本项目带资源的两种语言，其它值一律按跟随系统处理。 */
-    private fun normalize(tag: String): String = when {
-        tag.startsWith("zh", ignoreCase = true) -> "zh"
-        tag.startsWith("en", ignoreCase = true) -> "en"
-        else -> SYSTEM
+    /** 只保留本项目带资源的语言，其它值一律按跟随系统处理。 */
+    private fun normalize(tag: String): String {
+        val lang = tag.substringBefore('-').lowercase()
+        return if (lang in TAGS) lang else SYSTEM
     }
 
     /** 传给 LocaleList 的标签要带书写系统，才能命中 values-zh。 */
