@@ -54,5 +54,9 @@ class MoonOrbit @JvmOverloads constructor(
         const val SOURCE_MANUAL = "manual"
         const val SOURCE_FILE = "file"
         const val SOURCE_URL = "url"
+
+        /** 引擎 `World::Type`，序列化文件第一个 Byte 的值。 */
+        const val TYPE_PLANET = 1     // World::TYPE_PLANET
+        const val TYPE_MOON = 127     // World::TYPE_MOON
     }
 }

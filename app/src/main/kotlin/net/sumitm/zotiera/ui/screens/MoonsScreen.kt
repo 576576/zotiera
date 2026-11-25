@@ -66,6 +66,12 @@ fun MoonsScreen(
     var pendingExport by remember { mutableStateOf<MoonOrbit?>(null) }
     var menuMoon by remember { mutableStateOf<MoonOrbit?>(null) }
     var deleteMoon by remember { mutableStateOf<MoonOrbit?>(null) }
+    /** 导入/导出失败时显示提示，不再静默吞掉 */
+    var message by remember { mutableStateOf<String?>(null) }
+    val wrongFormat = stringResource(R.string.moon_wrong_format)
+    val existsFmt = stringResource(R.string.moon_exists)
+    val readFailed = stringResource(R.string.moon_read_failed)
+    val writeFailed = stringResource(R.string.moon_write_failed)
     val store = remember { InstanceStore(context) }
     // 身份在服务起来之前可能还没定过，回落到默认身份
     val activeUid by produceState(store.activeIdentityUid) {
@@ -94,23 +100,50 @@ fun MoonsScreen(
         refreshKey++
     }
 
+    /**
+     * 解析卫星文件头：第一个字节是文件类型（0x7f 才是卫星 World::TYPE_MOON），
+     * 接着 8 个字节是 world id。
+     *
+     * @return 解析出的 world id，解析失败/重复时返回 null 并在 message 里告知用户
+     */
+    suspend fun stage(bytes: ByteArray?): Long? {
+        if (bytes == null || bytes.size < 9 || bytes[0] != MoonOrbit.TYPE_MOON.toByte()) {
+            message = wrongFormat
+            return null
+        }
+        var worldId = 0L
+        for (i in 1..8) worldId = (worldId shl 8) + (bytes[i].toLong() and 0xff)
+        if (repository.moonOrbit(worldId) != null) {
+            message = String.format(existsFmt, java.lang.Long.toHexString(worldId))
+            return null
+        }
+        return worldId
+    }
+
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val bytes = withContext(Dispatchers.IO) {
-                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            }
-            if (bytes == null || bytes.size < 9 || bytes[0] != 0x01.toByte()) {
+            // Android 10 起文件走 SAF，读 URI 可能没有权限或抛安全异常，先包起来
+            val bytes = runCatching {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                }
+            }.getOrNull()
+            if (bytes == null) {
+                message = readFailed
                 return@launch
             }
-            var worldId = 0L
-            for (i in 1..8) worldId = (worldId shl 8) + (bytes[i].toLong() and 0xff)
-            withContext(Dispatchers.IO) {
+            val worldId = stage(bytes) ?: return@launch
+            val error = withContext(Dispatchers.IO) {
                 val dest = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, worldId))
                 dest.parentFile?.mkdirs()
-                dest.writeBytes(bytes)
+                runCatching { dest.writeBytes(bytes) }.exceptionOrNull()
             }
-            addMoon(worldId, worldId ushr 24, fromFile = true)
+            if (error != null) {
+                message = error.message.takeIf { it?.isNotEmpty() == true } ?: writeFailed
+            } else {
+                addMoon(worldId, worldId ushr 24, fromFile = true)
+            }
         }
     }
 
@@ -184,6 +217,17 @@ fun MoonsScreen(
                 onClick = { showAdd = true },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             )
+        }
+    }
+
+    message?.let { text ->
+        AppDialog(
+            title = stringResource(R.string.manage_moon),
+            confirmLabel = stringResource(android.R.string.ok),
+            onConfirm = { message = null },
+            onDismiss = { message = null },
+        ) {
+            Text(text, color = appColors().onSurface)
         }
     }
 

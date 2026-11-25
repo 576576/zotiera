@@ -26,6 +26,10 @@
     <string name="moon_seed">Moon 种子:</string>
     <string name="delete_moon_orbit">删除</string>
     <string name="moon_orbit_info">Moon 入轨信息</string>
+    <string name="moon_wrong_format">Moon 文件格式错误</string>
+    <string name="moon_exists">已添加: %1$s</string>
+    <string name="moon_read_failed">选中的文件无法打开，请重试</string>
+    <string name="moon_write_failed">保存 moon 文件失败</string>
     <string name="add">添加</string>
     <string name="no_data">无数据</string>
     <string name="copied_to_clipboard">已复制到剪贴板</string>
