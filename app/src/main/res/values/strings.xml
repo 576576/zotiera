@@ -45,6 +45,8 @@
     <string name="channel_description">Connection Status</string>
     <string name="notification_title_connected">Connected</string>
     <string name="notification_text_connected">Connected to: %1$s</string>
+    <string name="notification_title_preparing">Starting up</string>
+    <string name="notification_text_preparing">Waiting for the network to join</string>
     <string name="peer_version_unknown" translatable="false">unknown</string>
     <string name="export_moon_file">Export moon file</string>
     <string name="ui_style">Interface style</string>

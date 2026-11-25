@@ -5,6 +5,9 @@ object Constants {
     /** 界面风格：material / miuix */
     const val PREF_UI_STYLE = "ui_style"
 
+    /** 开机启动后，等数据网络就绪的最长时间（秒）。Android 10 的广播先于移动网起来 */
+    const val NETWORK_READY_TIMEOUT = 60
+
     /** 全局：所有流量走 ZeroTier */
     const val PREF_ROUTE_ALL_TRAFFIC = "route_all_traffic"
 

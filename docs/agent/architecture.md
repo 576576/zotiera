@@ -31,7 +31,7 @@
 | Gradle / AGP | 9.7.1 / 9.4.1（AGP 9 自带 Kotlin 支持） |
 | Kotlin / KSP | Compose 插件 2.3.21 / KSP 2.3.12 |
 | JDK | 21（Android Studio JBR） |
-| SDK | compileSdk 37 / targetSdk 36 / minSdk 30 |
+| SDK | compileSdk 37 / targetSdk 36 / minSdk 29 |
 | NDK | 28.2.13676358，CMake 由 AGP 提供 |
 | ABI | `arm64-v8a` + `x86_64`，16KB 页对齐 |
 | 依赖要点 | Compose BOM 2026.09.00、Material3 1.5.0-alpha29、Miuix 0.9.4、Room 2.8.5、kotlinx-coroutines |
@@ -119,6 +119,8 @@ files/
 - **命令与状态**：界面不再和服务互相发事件。命令走 `startService` + action（`ServiceCommands`：
   `START` / `STOP` / `JOIN` / `LEAVE` / `RECONFIGURE` / `ORBIT` / `DEORBIT`），状态走 `NodeState`
   （`running` / `status` / `configs` 三个 `StateFlow`，`peers` 是 `WhileSubscribed(2000)` 的轮询流）。
+- **开机自启**：`BOOT_COMPLETED` 广播先于数据网络，所以 `onStartCommand` 启动（`startId == 1`）时会先占个前台通知（`startForeground()`），避免系统把还在等网络的后台服务杀掉（Android 10 的"能自启动但连不上"）；随后等服务里有网络了再建隧道，网络就绪前不 `abortStart`，最长等 60 秒（`Constants.NETWORK_READY_TIMEOUT`）。Android 14+ 先查 `POST_NOTIFICATIONS` 权限，没有权限时不传前台。
+
 - **返回值**：`START_STICKY`；`intent == null` 走与 `START` 相同的路径，重新 join 全部已加入网络并重建隧道。
   这条路径只在系统真的重拉服务时才走到：模拟器（API 36）上 `kill -9` 之后 `dumpsys activity services`
   显示 `startRequested=true`、`app=null`，但没有重启日志，进程也没起来；真机行为待验。
@@ -212,7 +214,7 @@ files/
 **语言**：`values`（英文，基准）+ `values-zh` / `values-fr` / `values-ru` / `values-es` / `values-ja`，
 每个目录 139 条文案加一组复数，键名与基准完全一致。`res/xml/locales_config.xml` 声明这六种语言并挂到
 `android:localeConfig`，API 33+ 可在系统设置里改本应用语言。`AppLanguage` 以系统值为准并回写偏好，
-应用内切换同时写系统；30–32 只有偏好。新增语言的五个步骤写在 [`../i18n-contributing.md`](../i18n-contributing.md)。
+应用内切换同时写系统；29–32 只有偏好。新增语言的五个步骤写在 [`../i18n-contributing.md`](../i18n-contributing.md)。
 
 ## 8. 身份文件
 
@@ -252,7 +254,7 @@ files/
 | 事件 | EventBus，27 个事件类 | `sealed interface NodeEvent` + `SharedFlow` |
 | 并发 | 裸 `Thread` + `runOnUiThread` | 协程 + `StateFlow` |
 | 构建 | Gradle 7.5 / AGP 7.4.2 / JDK 11 | Gradle 9.7.1 / AGP 9.4.1 / JDK 21 |
-| SDK | 33 / 33 / 19 | 37 / 36 / 30 |
+| SDK | 33 / 33 / 19 | 37 / 36 / 29 |
 | ABI | 4 个 | `arm64-v8a` + `x86_64` |
 | 备份 / 明文 | `allowBackup=true`、全局明文 | `allowBackup=false`、`networkSecurityConfig` 白名单 |
 | 签名 | 仅 CI 后置签名 | 双通道签名 |

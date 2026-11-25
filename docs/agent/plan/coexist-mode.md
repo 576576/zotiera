@@ -215,7 +215,7 @@ val fd = msg.msg_control
 ## 模块（API 102）接入
 
 - 依赖：`compileOnly("io.github.libxposed:api:102.0.0")`，状态查询 `implementation("io.github.libxposed:service:102.0.0")`。
-  API 102 的 AAR 要求 minSdk 26，本项目 30，满足。
+  API 102 的 AAR 要求 minSdk 26，本项目 29，满足。
 - 资源：
   - `src/main/resources/META-INF/xposed/module.prop`：`minApiVersion=102`、`targetApiVersion=102`、`staticScope=true`
   - `src/main/resources/META-INF/xposed/java_init.list`：入口类全名

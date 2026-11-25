@@ -33,7 +33,7 @@ Tablet ratio (16:10), Material dark: navigation moves to the left, the device pa
 
 ## Requirements
 
-- Android 11 (API 30) or newer
+- Android 10 (API 29) or newer
 - 64-bit only: `arm64-v8a`, `x86_64`
 
 ## Building

@@ -21,7 +21,7 @@ docs/agent/
 1. **包名 `net.sumitm.zotiera` 不再改**：`applicationId` 与 `namespace` 必须一致。改包名等于新应用，老用户数据无法继承。
 2. **`com.zerotier.sdk` 包名与类名不可动**：JNI 符号（`Java_com_zerotier_sdk_Node_*`）与之绑死，改名等于重写整套 JNI。
 3. **版本号以引擎为主**：`versionName = "<engine>-<revision>"`（如 `1.16.2-1`），`versionCode = major*1e6 + minor*1e4 + patch*100 + revision`。引擎版本唯一来源是 `externals/core/version.h`，修订号在 `version.txt`。
-4. **minSdk 30 / targetSdk 36 / compileSdk 37 是下限**：不为更老设备引入兼容分支，不写 `SDK_INT < 30` 的兜底。
+4. **minSdk 29 / targetSdk 36 / compileSdk 37 是下限**：不为更老设备引入兼容分支，不写 `SDK_INT < 29` 的兜底。
 5. **ABI 只保留 64 位**：`arm64-v8a` + `x86_64`。不加回 `armeabi-v7a` / `x86`。
 6. **签名分两条通道**：`.pr` 通道（appId `net.sumitm.zotiera.pr`、应用名 `Zotiera PR`）用仓库内固定 keystore，只用于测试，**不得分发**；正式包只认 4 个 `ANDROID_*` 环境变量，缺变量必须构建失败。
 7. **Room schema 与迁移**：不沿用旧 GreenDAO 表名列名。**从 v6 起 schema 只增不毁**——改表必须同时给 `@AutoMigration` 或手写 `Migration`，禁止用 `fallbackToDestructiveMigration` 之类会清库的兜底；`data/schemas/` 下的导出 schema 不许手工编辑。

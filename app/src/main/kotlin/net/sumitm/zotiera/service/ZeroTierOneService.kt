@@ -1,11 +1,15 @@
 package net.sumitm.zotiera.service
 
+import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.VpnService
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.widget.Toast
@@ -81,6 +85,8 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
     private var notificationManager: NotificationManager? = null
     private var tunTapAdapter: TunTapAdapter? = null
     private var udpCom: UdpCom? = null
+    /** 是否已经主动 startForeground（开机广播启动的那个） */
+    private var isFront = false
 
     private var input: FileInputStream? = null
     private var output: FileOutputStream? = null
@@ -122,7 +128,12 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
             return START_NOT_STICKY
         }
         this.startId = startId
-        // 系统在进程被杀后重新拉起时 intent 为空，按「启动」处理，把隧道恢复起来
+        // Android 10 开机自启：由广播启动的后台服务如果只停留在后台，系统会在系统重建隧道前
+        // 把服务杀掉（连接刚被杀 → "自启动成功，但网络连不上"）。startId == 1 说明这次是第一回启动，
+        // 先主动出発前台通知，等隧道建好之后会被 updateConnectedNotification() 的通知替换。
+        if (startId == 1) {
+            startPreparingForeground()
+        }
         val action = intent?.action ?: ServiceCommands.ACTION_START
 
         if (action == ServiceCommands.ACTION_STOP) {
@@ -181,7 +192,91 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
         }
     }
 
+    /** 只在 startNode() 那一小段安全地起点的代码上共同使用。 */
     private fun prefs() = AppPrefs.get(this)
+
+    /**
+     * 启动中的前台通知：由于 Android 10 开机自启的广播服务不能在后台久留，
+     * 先带一个前台通知活下来（隧道建好之后会被已连接的通知替换）。
+     */
+    private fun startPreparingForeground() {
+        // Android 14+ 没有通知权限时 startForeground() 会直接抛 SecurityException，先察权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                Log.i(TAG, "Notification permission not granted, skip startForeground for now")
+                return
+            }
+        }
+        ensureNotificationChannel()
+        val notification = NotificationCompat.Builder(this, Constants.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_zerotier)
+            .setContentTitle(getString(R.string.notification_title_preparing))
+            .setContentText(getString(R.string.notification_text_preparing))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
+            .setColor(ContextCompat.getColor(applicationContext, R.color.zerotier_orange))
+            .build()
+        startFront(ZT_NOTIFICATION_TAG, notification)
+    }
+
+    /** 通知渠道：`startForeground` 依赖它存在，API 26+ 没有渠道会挂。 */
+    private fun ensureNotificationChannel() {
+        val manager = (getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)
+            ?: return
+        if (manager.getNotificationChannel(Constants.CHANNEL_ID) == null) {
+            val channel = NotificationChannel(
+                Constants.CHANNEL_ID,
+                getString(R.string.channel_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = getString(R.string.channel_description)
+            }
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    /** 开始前台状态，并记一下自己（清理时有用）。 */
+    private fun startFront(tag: Int, notification: android.app.Notification) {
+        try {
+            startForeground(tag, notification)
+            isFront = true
+        } catch (e: Exception) {
+            Log.e(TAG, "Cannot start foreground service", e)
+        }
+    }
+
+    /** 结束前台状态（[stopForeground(true)] 会同时清掉通知）。 */
+    private fun stopFront() {
+        if (isFront) {
+            try {
+                stopForeground(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping foreground", e)
+            }
+            isFront = false
+        }
+    }
+
+    /**
+     * 等待网络就绪：Android 10 开机时 `BOOT_COMPLETED` 广播先于数据网络（移动网在重启后才会连上），
+     * 没网络时如果不等，隧道就建不起来。每 1 秒刷新一次，超过最大等待时间才判断为没有。
+     */
+    private suspend fun waitForNetworkReady(): NetworkInfoUtils.CurrentConnection {
+        val deadline = System.currentTimeMillis() + Constants.NETWORK_READY_TIMEOUT * 1000L
+        while (true) {
+            val conn = NetworkInfoUtils.getNetworkInfoCurrentConnection(this)
+            if (conn != NetworkInfoUtils.CurrentConnection.CONNECTION_NONE) return conn
+            if (System.currentTimeMillis() >= deadline) {
+                Log.w(TAG, "Network never became ready after ${Constants.NETWORK_READY_TIMEOUT}s")
+                return NetworkInfoUtils.CurrentConnection.CONNECTION_NONE
+            }
+            delay(1000)
+        }
+    }
 
     /** 起节点已经不在主线程了，Toast 要自己切回去。 */
     private suspend fun showToast(messageRes: Int, duration: Int) {
@@ -197,6 +292,8 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
      * 起节点：本地 UDP socket、Node、UDP 收包与后台任务循环。
      *
      * 已经起过就直接复用；[requested] 只用于判断「有没有网络可加」。
+     * 注意：Android 10 开机时数据网络通常还没就绪（广播先于网络），
+     * 所以没有网络时不 abort 而是要等一等，不能直接放弃。
      */
     private suspend fun startNode(requested: Set<Long>): Boolean {
         NodeState.setRunning(true)
@@ -212,7 +309,8 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
         val useCellularData = preferences.getBoolean(Constants.PREF_NETWORK_USE_CELLULAR_DATA, true)
         disableIPv6 = preferences.getBoolean(Constants.PREF_NETWORK_DISABLE_IPV6, false)
         routeAllTraffic = preferences.getBoolean(Constants.PREF_ROUTE_ALL_TRAFFIC, false)
-        when (NetworkInfoUtils.getNetworkInfoCurrentConnection(this)) {
+        // 网络还不算，开机时网络可能后面才连上：每 1 秒刷新一次，到截至时间就回头
+        when (waitForNetworkReady()) {
             NetworkInfoUtils.CurrentConnection.CONNECTION_NONE -> {
                 showToast(R.string.toast_no_network, Toast.LENGTH_SHORT)
                 abortStart()
@@ -332,12 +430,14 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
 
     /** 启动条件不满足：把开关与磁贴退回未连接，再停掉自己。 */
     private fun abortStart() {
+        stopFront()
         NodeState.setRunning(false)
         ZeroTierTileService.refreshTile(this)
         stopSelf(startId)
     }
 
     fun stopZeroTier() {
+        stopFront()
         NodeState.clear()
         ZeroTierTileService.refreshTile(this)
         joinedNetworkIds.clear()

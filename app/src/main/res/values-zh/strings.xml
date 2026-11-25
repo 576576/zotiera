@@ -45,6 +45,8 @@
     <string name="channel_description">连接状态</string>
     <string name="notification_title_connected">已连接</string>
     <string name="notification_text_connected">已连接至网络: %1$s</string>
+    <string name="notification_title_preparing">准备中</string>
+    <string name="notification_text_preparing">等待网络就绪后建立隧道</string>
     <string name="peer_version_unknown" translatable="false">unknown</string>
     <string name="export_moon_file">导出 moon 文件</string>
     <string name="ui_style">界面风格</string>
