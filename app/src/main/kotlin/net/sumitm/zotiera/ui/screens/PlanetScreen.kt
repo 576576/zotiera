@@ -36,6 +36,7 @@ import kotlinx.coroutines.withContext
 import net.sumitm.zotiera.R
 import net.sumitm.zotiera.ZotieraApplication
 import net.sumitm.zotiera.identity.InstanceStore
+import net.sumitm.zotiera.model.MoonOrbit
 import net.sumitm.zotiera.model.Planet
 import net.sumitm.zotiera.ui.component.AppDialog
 import net.sumitm.zotiera.ui.component.AppDialogAction
@@ -84,7 +85,7 @@ fun PlanetScreen(
 
     /** 解析行星文件头：第一个字节是类型，接着 8 个字节是 world id。 */
     suspend fun stage(bytes: ByteArray?): Boolean {
-        if (bytes == null || bytes.size < 9 || bytes[0] != 0x01.toByte()) {
+        if (bytes == null || bytes.size < 9 || bytes[0] != MoonOrbit.TYPE_PLANET.toByte()) {
             message = wrongFormat
             return false
         }

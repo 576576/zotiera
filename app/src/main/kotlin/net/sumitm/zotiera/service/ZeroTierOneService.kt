@@ -284,6 +284,13 @@ class ZeroTierOneService : VpnService(), EventListener, VirtualNetworkConfigList
                 adapter.setNode(newNode)
                 NodeState.peersProvider = { node?.peers()?.toList().orEmpty() }
 
+                // 把数据库里的卫星重新入轨：关机会把 moon 文件留在 moons.d 里，但引擎只凭
+                // `orbit()` 把卫星加入 `Topology::_moons`；不恢复的话，结点列表看不到月结点角色。
+                for (orbit in repository().moonOrbits()) {
+                    if (!orbit.enabled) continue
+                    newNode.orbit(orbit.moonWorldId, orbit.moonSeed)
+                }
+
                 udpJob = scope.launch { udp.receiveLoop() }
             }
 
