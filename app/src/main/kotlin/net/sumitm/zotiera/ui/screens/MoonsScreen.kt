@@ -50,6 +50,14 @@ import net.sumitm.zotiera.ui.component.appColors
 import net.sumitm.zotiera.ui.component.preference.PreferenceTextField
 import net.sumitm.zotiera.ui.theme.LocalZotieraType
 
+/**
+ * 卫星文件（`.moon`）的解析结果：world id 与卫星根身份的 ZT 地址（后作 `orbit` 的 seed）。
+ */
+private data class MoonStageResult(
+    val worldId: Long,
+    val seed: Long,
+)
+
 @Composable
 fun MoonsScreen(
     viewModel: NodeViewModel,
@@ -102,12 +110,16 @@ fun MoonsScreen(
 
     /**
      * 解析卫星文件头：第一个字节是文件类型（0x7f 才是卫星 World::TYPE_MOON），
-     * 接着 8 个字节是 world id。
+     * 接着 8 个字节是 world id，再往根身份处取扎实的 ZT 地址作为 seed。
      *
-     * @return 解析出的 world id，解析失败/重复时返回 null 并在 message 里告知用户
+     * @return 解析出的 world id 与 seed，解析失败/重复时返回 null 并在 message 里告知用户
      */
-    suspend fun stage(bytes: ByteArray?): Long? {
-        if (bytes == null || bytes.size < 9 || bytes[0] != MoonOrbit.TYPE_MOON.toByte()) {
+    suspend fun stage(bytes: ByteArray?): MoonStageResult? {
+        if (bytes == null) {
+            message = wrongFormat
+            return null
+        }
+        if (bytes[0] != MoonOrbit.TYPE_MOON.toByte()) {
             message = wrongFormat
             return null
         }
@@ -117,7 +129,13 @@ fun MoonsScreen(
             message = String.format(existsFmt, java.lang.Long.toHexString(worldId))
             return null
         }
-        return worldId
+        // 卫星根身份的 ZT 地址是引擎回传卫星世界更新时判定 seed 的唯一依据，
+        // 不能直接取 world id 的高 24 位——只对少数官方卫星碰巧成立。
+        MoonOrbit.moonRootZtAddress(bytes)?.let { seed ->
+            return MoonStageResult(worldId, seed)
+        }
+        message = wrongFormat
+        return null
     }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -133,16 +151,18 @@ fun MoonsScreen(
                 message = readFailed
                 return@launch
             }
-            val worldId = stage(bytes) ?: return@launch
+            val moon = stage(bytes) ?: return@launch
             val error = withContext(Dispatchers.IO) {
-                val dest = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, worldId))
+                val dest = File(instanceDir, String.format(MoonOrbit.MOON_FILE_PATH, moon.worldId))
                 dest.parentFile?.mkdirs()
                 runCatching { dest.writeBytes(bytes) }.exceptionOrNull()
             }
             if (error != null) {
                 message = error.message.takeIf { it?.isNotEmpty() == true } ?: writeFailed
             } else {
-                addMoon(worldId, worldId ushr 24, fromFile = true)
+                // 用卫星根身份的 ZT 地址作为 seed：引擎回传卫星世界更新时只有 seed 匹配的根才会被接受，
+                // 否则卫星不入 `_moons`，结点列表里就看不到月亮角色。
+                addMoon(moon.worldId, moon.seed, fromFile = true)
             }
         }
     }
